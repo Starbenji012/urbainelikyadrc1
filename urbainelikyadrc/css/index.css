@@ -1,0 +1,28 @@
+@import url("https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=DM+Serif+Text:ital@0;1&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Tangerine:wght@400;700&display=swap");
+
+* {
+  margin: 0;
+  padding: 0;
+  font-family: "Bodoni";
+  outline: none;
+  text-decoration: none;
+  list-style: none;
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+}
+
+.root {
+  --bleu-button: #1a73e8;
+  --blanc-bg: #ffffff;
+  --gris-fonce-text: #2f2f2f;
+  --vert-val: #3dbd7d;
+  --orange-avert: #f4a261;
+  --rouge-sign: #e63946;
+}
+
+body {
+  align-items: center;
+  background: var(--blanc-bg);
+}
+
+/*----------------EN-TETE--------------------*/
