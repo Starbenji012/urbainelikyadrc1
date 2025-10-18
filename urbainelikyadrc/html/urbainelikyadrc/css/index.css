@@ -1,0 +1,90 @@
+@import url("https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=DM+Serif+Text:ital@0;1&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Tangerine:wght@400;700&display=swap");
+
+* {
+  margin: 0;
+  padding: 0;
+  font-family: "Bodoni";
+  outline: none;
+  text-decoration: none;
+  list-style: none;
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+}
+
+.root {
+  --bleu-nuit-button: #0f2145;
+  --blanc-bg: #ffffff;
+  --gris-fonce-text: #2f2f2f;
+  --vert-val: #3dbd7d;
+  --orange-avert: #f4a261;
+  --rouge-sign: #e63946;
+}
+
+body {
+  align-items: center;
+  background: var(--blanc-bg);
+}
+
+/*----------------EN-TETE--------------------*/
+header {
+  background: var(--blanc-bg);
+  color: var(--gris-fonce-text);
+  height: 100vh;
+  width: 100%;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 40px;
+  margin-top: -30px;
+}
+
+.navlogo {
+  display: flex;
+  align-items: left;
+  gap: 0;
+}
+
+.navlogo img {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+}
+
+.navigation-menu {
+  display: flex;
+  list-style: none;
+  gap: 20px;
+}
+
+.navigation-menu a {
+  color: var(--bleu-nuit-button);
+  text-decoration: none;
+  font-size: 18px;
+  font-weight: 500;
+  transition: 0.3s ease-in-out;
+}
+
+.btn-connexion {
+  background: var(--bleu-nuit-button);
+  color: var(--blanc-bg);
+  padding: 8px 15px;
+  border-radius: 8px;
+  font-size: 16px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: background 0.3s;
+  display: inline-block;
+  border: none;
+}
+
+/*-------Menu burger-----*/
+
+.menu-burger {
+  display: none;
+  font-size: 15px;
+  cursor: pointer;
+  color: var(--gris-fonce-text);
+}
