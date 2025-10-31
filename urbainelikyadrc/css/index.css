@@ -1,48 +1,51 @@
-/* FONTS + RESET */
+/* FONTS */
 @import url("https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=DM+Serif+Text:ital@0;1&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Tangerine:wght@400;700&display=swap");
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  scroll-behavior: smooth;
-}
-html,
-body {
-  height: 100%;
-}
-
-/* PALETTE (gardée telle quelle) */
+/* VARIABLES (garder ta palette) */
 :root {
   --bleu-nuit-button: #0f2145;
   --blanc-bg: #ffffff;
   --gris-clair-bg: #f5f5f5;
   --gris-fonce-text: #2f2f2f;
   --vert-val: #3dbd7d;
+  --orange-avert: #f4a261;
+  --rouge-sign: #e63946;
 }
 
-/* BASE */
+/* RESET MINIMAL */
+* {
+  box-sizing: border-box;
+}
+html,
 body {
-  background: var(--gris-clair-bg);
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  background: var(--gris-clair-bg); /* corps gris */
   color: var(--gris-fonce-text);
-  font-family: "EB Garamond", "DM Serif Text", "Bodoni Moda", system-ui,
-    -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  line-height: 1.35;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ACCESSIBILITÉ MINIMALE */
+/* ACCESSIBILITÉ : focus visible */
 a,
 button {
+  -webkit-tap-highlight-color: transparent;
+}
+a:focus,
+button:focus {
+  outline: 3px solid rgba(15, 33, 69, 0.12);
   outline-offset: 3px;
 }
 
-/* HEADER compact et propre */
+/* HEADER compact et visible (blanc) */
 header {
-  background: var(--blanc-bg);
+  background: var(--blanc-bg); /* header blanc */
   width: 100%;
-  padding: 8px 0;
+  padding: 8px 0; /* header réduit */
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
@@ -57,7 +60,7 @@ header {
   gap: 12px;
 }
 
-/* LOGO : garder taille 140px demandée */
+/* LOGO : taille demandée 140px */
 .navlogo {
   display: flex;
   flex-direction: column;
@@ -80,7 +83,7 @@ header {
   color: var(--gris-fonce-text);
 }
 
-/* MENU principal : structure ul > li > a attendue */
+/* MENU principal : ul > li > a attendu */
 ul.navigation-menu {
   list-style: none;
   display: flex;
@@ -90,11 +93,11 @@ ul.navigation-menu {
   align-items: center;
 }
 
-/* Liens du menu : sélecteur précis pour éviter d'être surclassé */
+/* LIENS DU MENU : sélecteur précis */
 header .navbar ul.navigation-menu > li > a,
 header .navbar ul.navigation-menu > li > a:link,
 header .navbar ul.navigation-menu > li > a:visited {
-  position: relative;
+  position: relative; /* pour ::before */
   display: inline-block;
   color: var(--gris-fonce-text);
   text-decoration: none;
@@ -105,7 +108,7 @@ header .navbar ul.navigation-menu > li > a:visited {
   z-index: 2;
 }
 
-/* Underline animé centré pour chaque lien */
+/* Underline animé centré (pseudo-élément par lien) */
 header .navbar ul.navigation-menu > li > a::before {
   content: "";
   position: absolute;
@@ -120,12 +123,11 @@ header .navbar ul.navigation-menu > li > a::before {
   opacity: 0.98;
 }
 
-/* Hover / focus des liens : couleur + lueur + underline */
+/* Hover / focus : couleur bleu-nuit + lueur + expand underline */
 header .navbar ul.navigation-menu > li > a:hover,
 header .navbar ul.navigation-menu > li > a:focus {
   color: var(--bleu-nuit-button);
   text-shadow: 0 6px 18px rgba(15, 33, 69, 0.12);
-  outline: none;
 }
 header .navbar ul.navigation-menu > li > a:hover::before,
 header .navbar ul.navigation-menu > li > a:focus::before {
@@ -145,15 +147,15 @@ a.btn-connexion {
   gap: 8px;
   font-weight: 700;
   box-shadow: 0 4px 12px rgba(15, 33, 69, 0.12);
-  transition: transform 0.12s ease, box-shadow 0.2s ease, filter 0.12s ease;
+  transition: transform 0.14s ease, box-shadow 0.22s ease, filter 0.12s ease;
   border: none;
   cursor: pointer;
 }
 
-/* Effet "lumière" identique sur hover/focus */
+/* Effet "lumière" identique sur hover/focus pour tous les boutons */
 .btn:hover,
-a.btn-connexion:hover,
 .btn:focus,
+a.btn-connexion:hover,
 a.btn-connexion:focus {
   transform: translateY(-3px);
   box-shadow: 0 18px 48px rgba(15, 33, 69, 0.3),
@@ -162,16 +164,17 @@ a.btn-connexion:focus {
   outline: none;
 }
 
-/* HERO : image d'arrière-plan + overlay + texte + 3 boutons */
+/* HERO : image d'arrière-plan + overlay + contenu + 3 boutons */
 .images-slogans .hero {
   position: relative;
   width: 100%;
   height: 62vh;
-  min-height: 420px;
+  min-height: 380px;
   overflow: hidden;
-  display: block;
 }
-.images-slogans .hero .hero-bg {
+
+/* image de fond (élément img avec classe .hero-bg) */
+.hero-bg {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -179,17 +182,17 @@ a.btn-connexion:focus {
   filter: brightness(0.9);
 }
 
-/* couche colorée au-dessus de l'image */
-.images-slogans .hero .hero-overlay {
+/* couche colorée au-dessus de l'image pour lisibilité */
+.hero-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(7, 48, 28, 0.45);
+  background: rgba(21, 93, 60, 0.45);
   z-index: 1;
   pointer-events: none;
 }
 
-/* contenu centré par-dessus */
-.images-slogans .hero .hero-content {
+/* contenu centré (titre + boutons) */
+.hero-content {
   position: absolute;
   inset: 0;
   display: flex;
@@ -197,58 +200,61 @@ a.btn-connexion:focus {
   justify-content: center;
   align-items: center;
   text-align: center;
+  z-index: 2;
   gap: 18px;
   padding: 18px;
-  z-index: 2;
-}
-.hero-slogan {
-  margin: 0;
-  color: var(--blanc-bg);
-  font-size: clamp(24px, 4.5vw, 48px);
-  font-weight: 700;
-  text-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
-  letter-spacing: 0.2px;
 }
 
-/* boutons du hero : utiliser le style unifié (.btn) */
+/* slogan */
+.hero-slogan {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(24px, 4.5vw, 48px);
+  line-height: 1.05;
+  font-weight: 700;
+  text-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* boutons sur l'image utilisent la même classe .btn pour unifier l'apparence */
 .hero-buttons {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
 }
-.hero-buttons .btn {
-  /* reprend les règles .btn */
-}
 
-/* variantes non nécessaires mais présentes si utilisées */
-.btn-outline {
-  background: transparent;
-  color: var(--blanc-bg);
-  border: 2px solid rgba(255, 255, 255, 0.9);
-}
+/* si tu veux des variantes, elles héritent du style mais on force la même couleur ici */
+.btn-outline,
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--bleu-nuit-button);
   color: var(--blanc-bg);
+  border: none;
+  box-shadow: 0 4px 12px rgba(15, 33, 69, 0.12);
 }
 
 /* MENU BURGER (mobile) */
 .menu-burger {
   display: none;
-  font-size: 24px;
+  font-size: 22px;
   cursor: pointer;
-  color: var(--gris-fonce-text);
   background: transparent;
   border: none;
-  padding: 8px;
+  color: var(--gris-fonce-text);
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
 }
+
+/* Version mobile : cacher menu et montrer burger */
 @media (max-width: 800px) {
+  ul.navigation-menu {
+    display: none;
+  } /* menu caché par défaut sur mobile */
   .menu-burger {
     display: inline-flex;
   }
-  ul.navigation-menu {
-    display: none;
-  }
+
+  /* si la classe mobile-active est ajoutée via JS, afficher le menu vertical */
   ul.navigation-menu.mobile-active {
     display: flex;
     position: absolute;
@@ -257,28 +263,31 @@ a.btn-connexion:focus {
     background: var(--blanc-bg);
     flex-direction: column;
     gap: 0;
-    padding: 12px;
+    padding: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
     border-radius: 8px;
     z-index: 999;
+    min-width: 160px;
   }
-  header {
-    padding: 8px 0;
+  ul.navigation-menu.mobile-active > li > a {
+    padding: 10px 14px;
+    white-space: nowrap;
+    display: block;
   }
+
+  /* ajustement logo sur mobile */
   .navlogo .logo {
     width: 120px;
     height: 120px;
-  } /* léger ajustement mobile */
+  }
   .images-slogans .hero {
     height: 50vh;
-    min-height: 340px;
+    min-height: 320px;
   }
   .hero-slogan {
     font-size: clamp(20px, 6vw, 30px);
   }
 }
 
-/* Petits nettoyages / performances :
-   - suppression des doublons et des règles invalides (ex: align-items:left ou transition sans 's')
-   - chaque règle importante a un sélecteur ciblé pour éviter d'être écrasée.
-*/
+/* petits nettoyages : éviter doublons ou règles inutiles */
+/* (aucune règle invalide ici, pas d'align-items:left, transitions correctes) */
