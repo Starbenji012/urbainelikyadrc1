@@ -245,6 +245,34 @@ a.btn-connexion:focus {
   padding: 6px;
 }
 
+/*Mise de la section explication*/
+
+/*présentation*/
+.presentation {
+  max-width: 1200px;
+  margin: 40px auto;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.presentation h1 {
+  font-size: clamp(28px, 4vw, 36px);
+  color: var(--gris-fonce-text);
+  text-align: center;
+}
+
+.presentation h1 span {
+  color: var(--bleu-nuit-button);
+}
+
+.presentation p {
+  font-size: 20px;
+  line-height: 1.6;
+  color: var(--gris-fonce-text);
+  text-align: center;
+}
+
 /* Version mobile : cacher menu et montrer burger */
 @media (max-width: 800px) {
   ul.navigation-menu {
@@ -254,7 +282,6 @@ a.btn-connexion:focus {
     display: inline-flex;
   }
 
-  /* si la classe mobile-active est ajoutée via JS, afficher le menu vertical */
   ul.navigation-menu.mobile-active {
     display: flex;
     position: absolute;
@@ -288,6 +315,3 @@ a.btn-connexion:focus {
     font-size: clamp(20px, 6vw, 30px);
   }
 }
-
-/* petits nettoyages : éviter doublons ou règles inutiles */
-/* (aucune règle invalide ici, pas d'align-items:left, transitions correctes) */
