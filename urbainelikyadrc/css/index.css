@@ -186,7 +186,7 @@ a.btn-connexion:focus {
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(21, 93, 60, 0.45);
+  background: rgba(29, 128, 83, 0.45);
   z-index: 1;
   pointer-events: none;
 }
@@ -273,11 +273,105 @@ a.btn-connexion:focus {
   text-align: center;
 }
 
-/* Version mobile : cacher menu et montrer burger */
+/*fonctionnement*/
+.fonctionnement {
+  max-width: 1200px;
+  margin: 32px auto;
+  padding: 16px;
+  gap: 12px;
+}
+
+.fonctionnement h1 {
+  font-size: 2.1rem;
+  color: var(--gris-fonce-text);
+  margin-bottom: 16px;
+}
+
+.fonctionnement p {
+  font-size: 1.2rem;
+  line-height: 1.6;
+  color: var(--gris-fonce-text);
+  margin-bottom: 24px;
+}
+
+/*liste d'étapes en blocs; image à droite et contenu à gauche*/
+
+ol.etapes {
+  counter-reset: step;
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+
+/*etape en carte*/
+ol.etapes .etape {
+  counter-increment: step;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--blanc-bg);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(15, 33, 69, 0.07);
+  position: relative;
+  overflow: visible;
+  padding: 18px 140px 18px 18px; /* espace à droite pour l'image */
+}
+
+/* image positionnée absolument : centrée verticalement et bien visible */
+ol.etapes .etape img {
+  position: absolute;
+  right: 18px; /* was left: 18px */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 12px;
+  z-index: 2;
+}
+
+/* numéro automatique placé avant le h3 (dans le flux du texte) */
+ol.etapes .etape .etape-body h3 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 8px 0;
+  color: var(--vert-val);
+  font-size: 1.5rem;
+}
+
+/* cercle numéro devant le titre */
+ol.etapes .etape .etape-body h3::before {
+  counter-increment: none; /* counter already incremented on .etape */
+  content: counter(step);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--vert-val);
+  color: var(--blanc-bg);
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex: 0 0 36px;
+}
+
+ol.etapes .etape .etape-body p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--gris-fonce-text);
+}
+
+/* responsive : image plus petite et remise en flux pour mobile */
+
 @media (max-width: 800px) {
   ul.navigation-menu {
     display: none;
-  } /* menu caché par défaut sur mobile */
+  }
   .menu-burger {
     display: inline-flex;
   }
@@ -313,5 +407,28 @@ a.btn-connexion:focus {
   }
   .hero-slogan {
     font-size: clamp(20px, 6vw, 30px);
+  }
+}
+
+@media (max-width: 700px) {
+  ol.etapes .etape {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px; /* plus compact, plus d'espace vertical */
+  }
+  ol.etapes .etape img {
+    position: relative;
+    right: 0;
+    top: 0;
+    transform: none;
+    width: 72px;
+    height: 72px;
+    margin-bottom: 10px;
+  }
+  /* numéro réduit sur mobile */
+  ol.etapes .etape .etape-body h3::before {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
   }
 }
