@@ -245,12 +245,11 @@ a.btn-connexion:focus {
   padding: 6px;
 }
 
-/*Mise de la section explication*/
-
 /*présentation*/
 .presentation {
   max-width: 1200px;
-  margin: 40px auto;
+  margin-top: 100px;
+  margin-bottom: 100px;
   padding: 0 16px;
   display: flex;
   flex-direction: column;
@@ -273,6 +272,28 @@ a.btn-connexion:focus {
   text-align: center;
 }
 
+/* Style du nom de la plateforme en deux parties */
+.couleur {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.couleur-part1 {
+  color: var(--bleu-nuit-button);
+  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  font-size: 1.05em;
+}
+
+.couleur-part2 {
+  color: var(--vert-val);
+  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  padding: 2px 8px;
+  font-size: 1.05em;
+}
+
 /*fonctionnement*/
 .fonctionnement {
   max-width: 1200px;
@@ -288,7 +309,7 @@ a.btn-connexion:focus {
 }
 
 .fonctionnement p {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   line-height: 1.6;
   color: var(--gris-fonce-text);
   margin-bottom: 24px;
@@ -313,7 +334,7 @@ ol.etapes .etape {
   gap: 20px;
   background: var(--blanc-bg);
   border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(15, 33, 69, 0.07);
+  box-shadow: 0 10px 30px rgba(138, 231, 178, 0.3);
   position: relative;
   overflow: visible;
   padding: 18px 140px 18px 18px; /* espace à droite pour l'image */
@@ -407,6 +428,11 @@ ol.etapes .etape .etape-body p {
   }
   .hero-slogan {
     font-size: clamp(20px, 6vw, 30px);
+  }
+
+  .brand-part1,
+  .brand-part2 {
+    font-size: 0.95em;
   }
 }
 
