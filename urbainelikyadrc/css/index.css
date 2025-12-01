@@ -248,8 +248,8 @@ a.btn-connexion:focus {
 /*présentation*/
 .presentation {
   max-width: 1200px;
-  margin-top: 100px;
-  margin-bottom: 100px;
+  margin-top: 150px;
+  margin-bottom: 150px;
   padding: 0 16px;
   display: flex;
   flex-direction: column;
@@ -390,7 +390,8 @@ ol.etapes .etape .etape-body p {
 .statistique-resultat {
   text-align: center;
   max-width: 1200px;
-  margin: 32px auto;
+  margin-top: 150px;
+  margin-bottom: 150px;
   padding: 30px 10px;
   gap: 12px;
 }
@@ -435,6 +436,92 @@ ol.etapes .etape .etape-body p {
   color: var(--gris-fonce-text);
 }
 
+/* temoignages */
+
+.temoignages-Avis {
+  max-width: 1200px;
+  margin: 32px auto;
+  padding: 16px;
+  gap: 12px;
+  text-align: center;
+}
+
+.temoignages-Avis h2 {
+  font-size: 2.1rem;
+  color: var(--gris-fonce-text);
+  margin-bottom: 16px;
+}
+
+.temoignages-contenaire {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12px 0;
+}
+
+.temoignages-cards {
+  position: relative;
+  width: 350px;
+  max-width: 100%;
+  background: var(--blanc-bg);
+  padding: 10px 10px 10px 10px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(15, 33, 69, 0.06);
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.left-border {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--vert-val);
+  border-radius: 6px 0 0 6px;
+}
+
+.content {
+  width: 100%;
+}
+
+.message {
+  font-size: 1rem;
+  color: var(--gris-fonce-text);
+  margin: 0 0 10px 0;
+  line-height: 1.5;
+}
+
+.user-info h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--bleu-nuit-button);
+}
+
+.city {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--gris-fonce-text);
+}
+
+.profile-picture {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  position: relative;
+  border: 3px solid var(--blanc-bg);
+}
+
+/* effet de zoom similaire au logo */
+.temoignages-cards:hover {
+  transform: scale(1.03);
+  box-shadow: 0 18px 48px rgba(15, 33, 69, 0.12);
+}
 /* responsive : image plus petite et remise en flux pour mobile */
 
 @media (max-width: 800px) {
