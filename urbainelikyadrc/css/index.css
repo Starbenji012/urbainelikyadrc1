@@ -8,6 +8,7 @@
   --gris-clair-bg: #f5f5f5;
   --gris-fonce-text: #2f2f2f;
   --vert-val: #3dbd7d;
+  --vert-footer: #248154;
   --orange-avert: #f4a261;
   --rouge-sign: #e63946;
 }
@@ -43,9 +44,9 @@ button:focus {
 
 /* HEADER compact et visible (blanc) */
 header {
-  background: var(--blanc-bg); /* header blanc */
+  background: var(--blanc-bg);
   width: 100%;
-  padding: 8px 0; /* header réduit */
+  padding: 8px 0;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
@@ -271,7 +272,7 @@ a.btn-connexion:focus {
   text-align: center;
 }
 
-/* Style du nom de la plateforme en deux parties */
+/*------- Style du nom de la plateforme en deux parties----- */
 .couleur {
   display: inline-flex;
   gap: 6px;
@@ -293,7 +294,7 @@ a.btn-connexion:focus {
   font-size: 1.05em;
 }
 
-/*fonctionnement*/
+/*----------------fonctionnement---------------*/
 .fonctionnement {
   max-width: 1200px;
   margin: 32px auto;
@@ -314,7 +315,7 @@ a.btn-connexion:focus {
   margin-bottom: 24px;
 }
 
-/*liste d'étapes en blocs; image à droite et contenu à gauche*/
+/*--------------liste d'étapes en blocs; image à droite et contenu à gauche------*/
 
 ol.etapes {
   counter-reset: step;
@@ -386,7 +387,7 @@ ol.etapes .etape .etape-body p {
   color: var(--gris-fonce-text);
 }
 
-/* Statistiques */
+/* -------------Statistiques -------------*/
 .statistique-resultat {
   text-align: center;
   max-width: 1200px;
@@ -436,11 +437,12 @@ ol.etapes .etape .etape-body p {
   color: var(--gris-fonce-text);
 }
 
-/* temoignages */
+/*----------- temoignages ------------*/
 
 .temoignages-Avis {
   max-width: 1200px;
-  margin: 32px auto;
+  margin-top: 150px;
+  margin-bottom: 150px;
   padding: 16px;
   gap: 12px;
   text-align: center;
@@ -517,10 +519,61 @@ ol.etapes .etape .etape-body p {
   border: 3px solid var(--blanc-bg);
 }
 
-/* effet de zoom similaire au logo */
+/* ----------effet de zoom similaire au logo ----------*/
 .temoignages-cards:hover {
   transform: scale(1.03);
-  box-shadow: 0 18px 48px rgba(15, 33, 69, 0.12);
+  box-shadow: 0 8px 24px rgba(138, 231, 178, 0.4);
+}
+
+/*-----footer--------*/
+
+footer {
+  background: var(--vert-footer);
+  color: var(--blanc-bg);
+  text-align: center;
+  padding: 16px;
+  font-size: 0.9rem;
+}
+
+.footer-contenaire {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  width: 90%;
+  margin: auto;
+}
+.footer-section {
+  width: 30%;
+  min-width: 250px;
+}
+
+.footer-section h3 {
+  margin-bottom: 12px;
+  font-size: 1.2rem;
+  color: var(--blanc-bg);
+}
+
+.footer-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.footer-section a {
+  color: var(--blanc-bg);
+  text-decoration: none;
+}
+
+.footer-section a:hover {
+  text-decoration: underline;
+  color: var(--bleu-nuit-button);
+}
+.footer-bottom {
+  text-align: center;
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 1rem;
 }
 /* responsive : image plus petite et remise en flux pour mobile */
 
