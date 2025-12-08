@@ -43,10 +43,63 @@
     </header>
 
     <section id="titre-de-page" class="titre-de-page">
-
+        <div class="titre">
+            <h1>Signaler un Problème</h1>
+            <p>Grâce à ce formulaire, vous pouvez signaler un problème dans votre communauté.</p>
+        </div>
     </section>
-    <section class="guide-rapide" id="guide-rapide"></section>
-    <section id="formulaire" class="formulaire"></section>
+    <section class="guide-rapide" id="guide-rapide">
+        <div class="conseil">
+            <h1>Conseils</h1>
+            <p>Prenez un photo claire du problème que vous souhaitez signaler, donner une description précise,
+                choisissez la catégorie appropriée et preciser l'emplacement du problème.</p>
+            <img src="../img/Photo-cuate.png" alt="Conseil Image">
+        </div>
+    </section>
+    <section id="formulaire" class="formulaire">
+        <div class="signalement-contenair">
+            <form id="form-signalement" class="formulaire">
+
+                <div class="form-group">
+                    <label for="titre-probleme">Titre du problème</label>
+                    <input type="text" placeholder="ex: Route abimée" id="titre-probleme" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="photo">Photo</label>
+                    <input type="file" id="photo" accept="image/*" placeholder="Ajouter une photo">
+                </div>
+
+                <div class="form-group">
+                    <label>Type de problème: </label>
+                    <select name="type-probleme" id="type-probleme">
+                        <option value="voirie">Route</option>
+                        <option value="eau">Eau</option>
+                        <option value="electricite">Electricité</option>
+                        <option value="insecurite">Insécurité</option>
+                        <option value="dechet">Déchet</option>
+                        <option value="autre">Autre</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="lieu">Lieu:</label>
+                    <input type="text" id="lieu" placeholder="Indiquez l'emplacement du problème" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description:</label>
+                    <textarea name="" id="description" placeholder="Explique le problème"></textarea>
+                </div>
+
+                <button type="submit" class="btn-submit">Envoyer le Signalement</button>
+
+            </form>
+
+            <div id="map" style="height: 400px; border-radius: 10px;"></div>
+
+        </div>
+    </section>
     <section id="retour" class="retour"></section>
 
     <!------------------------------PIEDS DE LA PAGE------------------->
@@ -84,5 +137,6 @@
 </body>
 
 <script src="https://app.unpkg.com/leaflet@1.9.4/files/dist/leaflet.js"></script>
+<script src="https://unpkg.com/scrollreveal"></script>
 
 </html>
