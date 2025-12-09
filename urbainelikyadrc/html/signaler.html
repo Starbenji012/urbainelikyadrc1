@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
-    <link rel="stylesheet" href="https://app.unpkg.com/leaflet@1.9.4/files/dist/leaflet.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link href='https://cdn.boxicons.com/fonts/brands/boxicons-brands.min.css' rel='stylesheet'>
     <link rel="shortcut icon" href="../img/logo 2.png">
     <link rel="stylesheet" href="../css/signaler.css">
@@ -49,58 +49,107 @@
         </div>
     </section>
     <section class="guide-rapide" id="guide-rapide">
+        <h1 class="titre-conseil">Conseils</h1>
         <div class="conseil">
-            <h1>Conseils</h1>
             <p>Prenez un photo claire du problème que vous souhaitez signaler, donner une description précise,
                 choisissez la catégorie appropriée et preciser l'emplacement du problème.</p>
             <img src="../img/Photo-cuate.png" alt="Conseil Image">
         </div>
     </section>
-    <section id="formulaire" class="formulaire">
-        <div class="signalement-contenair">
-            <form id="form-signalement" class="formulaire">
+    <section id="formulaire" class="formulaire-section">
+        <div class="signalement-wrap">
+            <div class="form-layout">
+                <!-- colonne formulaire -->
+                <form id="form-signalement" class="formulaire" method="post" action="#" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="titre-probleme">Titre du problème</label>
+                        <input id="titre-probleme" name="titre" type="text" placeholder="ex: Route abîmée" required>
+                    </div>
 
-                <div class="form-group">
-                    <label for="titre-probleme">Titre du problème</label>
-                    <input type="text" placeholder="ex: Route abimée" id="titre-probleme" required>
-                </div>
+                    <div class="form-group">
+                        <label for="photo">Photo</label>
+                        <input id="photo" name="photo" type="file" accept="image/*">
+                        <p class="form-note">Max 5MB — JPG, PNG</p>
+                    </div>
 
-                <div class="form-group">
-                    <label for="photo">Photo</label>
-                    <input type="file" id="photo" accept="image/*" placeholder="Ajouter une photo">
-                </div>
+                    <div class="form-group">
+                        <label for="type-probleme">Type de problème</label>
+                        <select name="type-probleme" id="type-probleme">
+                            <option value="voirie">Route</option>
+                            <option value="eau">Eau</option>
+                            <option value="electricite">Électricité</option>
+                            <option value="insecurite">Insécurité</option>
+                            <option value="dechet">Déchet</option>
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label>Type de problème: </label>
-                    <select name="type-probleme" id="type-probleme">
-                        <option value="voirie">Route</option>
-                        <option value="eau">Eau</option>
-                        <option value="electricite">Electricité</option>
-                        <option value="insecurite">Insécurité</option>
-                        <option value="dechet">Déchet</option>
-                        <option value="autre">Autre</option>
-                    </select>
-                </div>
+                    <div class="form-group">
+                        <label for="lieu">Lieu</label>
+                        <input id="lieu" name="lieu" type="text" placeholder="Indiquez l'emplacement du problème">
+                    </div>
 
-                <div class="form-group">
-                    <label for="lieu">Lieu:</label>
-                    <input type="text" id="lieu" placeholder="Indiquez l'emplacement du problème" readonly>
-                </div>
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" placeholder="Explique le problème"
+                            rows="4"></textarea>
+                    </div>
 
-                <div class="form-group">
-                    <label for="description">Description:</label>
-                    <textarea name="" id="description" placeholder="Explique le problème"></textarea>
-                </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn-envoyer">Envoyer le signalement</button>
+                    </div>
 
-                <button type="submit" class="btn-submit">Envoyer le Signalement</button>
+                    <!-- carte placée dans le formulaire, juste après le bouton -->
 
-            </form>
+                    <div id="map" style="height: 200px; border-radius: 10px;"></div>
 
-            <div id="map" style="height: 400px; border-radius: 10px;"></div>
+                </form>
 
+                <!-- aside / bloc d'information à droite -->
+                <aside class="bloc-info">
+                    <h3>Informations et icônes</h3>
+                    <p>Les images ci-dessous montrent les catégories : elles serviront d'icônes sur la carte.</p>
+                    <ul class="etapes liste-icones">
+                        <li class="etape">
+                            <div class="etape-info">
+                                <p>Déchet</p>
+                                <img src="../img/icon-map/icons8-corbeille-48.png" alt="poubelle">
+                            </div>
+                        </li>
+                        <li class="etape">
+                            <div class="etape-info">
+                                <p>Inondation / Eau</p>
+                                <img src="../img/icon-map/icons8-eau-48.png" alt="inondation">
+                            </div>
+                        </li>
+                        <li class="etape">
+                            <div class="etape-info">
+                                <p>Insécurité</p>
+                                <img src="../img/icon-map/icons8-protection-du-trou-de-serrure-48.png" alt="insécurité">
+                            </div>
+                        </li>
+                        <li class="etape">
+                            <div class="etape-info">
+                                <p>Route abîmée</p>
+                                <img src="../img/icon-map/icons8-route-48.png" alt="route">
+                            </div>
+                        </li>
+                        <li class="etape">
+                            <div class="etape-info">
+                                <p>Électricité</p>
+                                <img src="../img/icon-map/icons8-électricité-32.png" alt="électricité">
+                            </div>
+                        </li>
+                    </ul>
+
+                </aside>
+            </div>
         </div>
     </section>
-    <section id="retour" class="retour"></section>
+    <section id="retour" class="retour">
+        <div id="remerciement" class="remerciement">
+            <p>Merci pour votre confiance</p>
+        </div>
+    </section>
 
     <!------------------------------PIEDS DE LA PAGE------------------->
     <footer>
@@ -136,7 +185,8 @@
 
 </body>
 
-<script src="https://app.unpkg.com/leaflet@1.9.4/files/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/scrollreveal"></script>
+<script src="../js/signalement.js"></script>
 
 </html>
