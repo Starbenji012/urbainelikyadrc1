@@ -6,8 +6,8 @@ const sr = ScrollReveal({
     delay: 200,
 });
 
-sr.reveal('header,.navbar,.titre,.guide-rapide,.signalement-wrap,.remerciement',{origin: 'top' });
-sr.reveal('.footer-contenaire,.footer-bottom',{origin: 'bottom' });
+sr.reveal('header,.navbar,.titre,.guide-rapide,.signalement-wrap,.remerciement', { origin: 'top' });
+sr.reveal('.footer-contenaire,.footer-bottom', { origin: 'bottom' });
 
 
 // Initialise la carte (centrée sur Kinshasa)
@@ -45,7 +45,7 @@ map.on('click', function (e) {
 });
 
 // Définition des icônes (paths relatifs corrects depuis la page HTML)
-const iconBasePath = '../img/icon-map/';
+const iconBasePath = '../icon-map/';
 const iconSecurite = L.icon({
     iconUrl: iconBasePath + 'icons8-protection-du-trou-de-serrure-48.png',
     iconSize: [48, 48],
