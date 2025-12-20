@@ -42,116 +42,130 @@
 
     </header>
 
-    <section id="titre-de-page" class="titre-de-page">
-        <div class="titre">
-            <h1>Signaler un Problème</h1>
-            <p>Grâce à ce formulaire, vous pouvez signaler un problème dans votre communauté.</p>
-        </div>
-    </section>
-    <section class="guide-rapide" id="guide-rapide">
-        <h1 class="titre-conseil">Conseils</h1>
-        <div class="conseil">
-            <p>Prenez un photo claire du problème que vous souhaitez signaler, donner une description précise,
-                choisissez la catégorie appropriée et preciser l'emplacement du problème.</p>
-            <img src="../img/Photo-cuate.png" alt="Conseil Image">
-        </div>
-    </section>
-    <section id="formulaire" class="formulaire-section">
-        <div class="signalement-wrap">
-            <div class="form-layout">
-                <!-- colonne formulaire -->
-                <form id="form-signalement" class="formulaire" method="post" action="#" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="titre-probleme">Titre du problème</label>
-                        <input id="titre-probleme" name="titre" type="text" placeholder="ex: Route abîmée" required>
-                    </div>
+    <main class="signalement-page">
+        <!-- Section titre -->
 
-                    <div class="form-group">
-                        <label for="photo">Photo</label>
-                        <input id="photo" name="photo" type="file" accept="image/*">
-                        <p class="form-note">Max 5MB — JPG, PNG</p>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="type-probleme">Type de problème</label>
-                        <select name="type-probleme" id="type-probleme">
-                            <option value="voirie">Route</option>
-                            <option value="eau">Eau</option>
-                            <option value="electricite">Électricité</option>
-                            <option value="insecurite">Insécurité</option>
-                            <option value="dechet">Déchet</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="lieu">Lieu</label>
-                        <input id="lieu" name="lieu" type="text" placeholder="Indiquez l'emplacement du problème">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="description">Description</label>
-                        <textarea id="description" name="description" placeholder="Explique le problème"
-                            rows="4"></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <button type="submit" class="btn-envoyer">Envoyer le signalement</button>
-                    </div>
-
-
-
-                    <div id="map" style="height: 200px; border-radius: 10px;"></div>
-
-                </form>
-
-                <!--  bloc d'information à droite -->
-                <aside class="bloc-info">
-                    <h3>Informations important</h3>
-                    <p>Les images ci-dessous representent les différentes catégories et elles serviront d'icônes sur la
-                        carte.</p>
-                    <ul class="etapes liste-icones">
-                        <li class="etape">
-                            <div class="etape-info">
-                                <p>Déchet</p>
-                                <img src="../icon-map/icons8-corbeille-48.png" alt="poubelle">
-                            </div>
-                        </li>
-                        <li class="etape">
-                            <div class="etape-info">
-                                <p>Inondation / Eau</p>
-                                <img src="../icon-map/icons8-eau-48.png" alt="inondation">
-                            </div>
-                        </li>
-                        <li class="etape">
-                            <div class="etape-info">
-                                <p>Insécurité</p>
-                                <img src="../icon-map/icons8-protection-du-trou-de-serrure-48.png" alt="insécurité">
-                            </div>
-                        </li>
-                        <li class="etape">
-                            <div class="etape-info">
-                                <p>Route abîmée</p>
-                                <img src="../icon-map/icons8-route-48.png" alt="route">
-                            </div>
-                        </li>
-                        <li class="etape">
-                            <div class="etape-info">
-                                <p>Électricité</p>
-                                <img src="../icon-map/icons8-électricité-32.png" alt="électricité">
-                            </div>
-                        </li>
-                    </ul>
-
-                </aside>
+        <section id="titre-de-page" class="titre-de-page">
+            <div class="titre">
+                <h1>Signaler un Problème</h1>
+                <p>Grâce à ce formulaire, vous pouvez signaler un problème dans votre communauté.</p>
             </div>
-        </div>
-    </section>
-    <section id="retour" class="retour">
-        <div id="remerciement" class="remerciement">
-            <p>Merci pour votre confiance</p>
-        </div>
-    </section>
+        </section>
 
+        <!-- Section Conseils -->
+
+        <section class="guide-rapide" id="guide-rapide">
+            <h1 class="titre-conseil">Conseils</h1>
+            <div class="conseil">
+                <p>Prenez un photo claire du problème que vous souhaitez signaler, donner une description précise,
+                    choisissez la catégorie appropriée et preciser l'emplacement du problème.</p>
+                <img src="../img/Photo-cuate.png" alt="Conseil Image">
+            </div>
+        </section>
+
+        <!-- section formulaire -->
+
+        <section id="formulaire" class="formulaire-section">
+            <div class="signalement-wrap">
+                <div class="form-layout">
+                    <!-- colonne formulaire -->
+                    <form id="form-signalement" class="formulaire" method="post" action="#"
+                        enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="titre-probleme">Titre du problème</label>
+                            <input id="titre-probleme" name="titre" type="text" placeholder="ex: Route abîmée" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="photo">Photo</label>
+                            <input id="photo" name="photo" type="file" accept="image/*">
+                            <p class="form-note">Max 5MB — JPG, PNG</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="type-probleme">Type de problème</label>
+                            <select name="type-probleme" id="type-probleme">
+                                <option value="voirie">Route</option>
+                                <option value="eau">Eau</option>
+                                <option value="electricite">Électricité</option>
+                                <option value="insecurite">Insécurité</option>
+                                <option value="dechet">Déchet</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="lieu">Lieu</label>
+                            <input id="lieu" name="lieu" type="text" placeholder="Indiquez l'emplacement du problème">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea id="description" name="description" placeholder="Explique le problème"
+                                rows="4"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn-envoyer">Envoyer le signalement</button>
+                        </div>
+
+
+
+                        <div id="map" style="height: 200px; border-radius: 10px;"></div>
+
+                    </form>
+
+                    <!--  bloc d'information à droite -->
+                    <aside class="bloc-info">
+                        <h3>Informations important</h3>
+                        <p>Les images ci-dessous representent les différentes catégories et elles serviront d'icônes sur
+                            la
+                            carte.</p>
+                        <ul class="etapes liste-icones">
+                            <li class="etape">
+                                <div class="etape-info">
+                                    <p>Déchet</p>
+                                    <img src="../icon-map/icons8-corbeille-48.png" alt="poubelle">
+                                </div>
+                            </li>
+                            <li class="etape">
+                                <div class="etape-info">
+                                    <p>Inondation / Eau</p>
+                                    <img src="../icon-map/icons8-eau-48.png" alt="inondation">
+                                </div>
+                            </li>
+                            <li class="etape">
+                                <div class="etape-info">
+                                    <p>Insécurité</p>
+                                    <img src="../icon-map/icons8-protection-du-trou-de-serrure-48.png" alt="insécurité">
+                                </div>
+                            </li>
+                            <li class="etape">
+                                <div class="etape-info">
+                                    <p>Route abîmée</p>
+                                    <img src="../icon-map/icons8-route-48.png" alt="route">
+                                </div>
+                            </li>
+                            <li class="etape">
+                                <div class="etape-info">
+                                    <p>Électricité</p>
+                                    <img src="../icon-map/icons8-électricité-32.png" alt="électricité">
+                                </div>
+                            </li>
+                        </ul>
+
+                    </aside>
+                </div>
+            </div>
+        </section>
+
+        <!-- section remerciement -->
+
+        <section id="retour" class="retour">
+            <div id="remerciement" class="remerciement">
+                <p>Merci pour votre confiance</p>
+            </div>
+        </section>
+    </main>
     <!------------------------------PIEDS DE LA PAGE------------------->
     <footer>
         <div class="footer-contenaire">

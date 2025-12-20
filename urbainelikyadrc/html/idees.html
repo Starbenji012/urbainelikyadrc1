@@ -41,10 +41,66 @@
 
     </header>
 
-    <section></section>
-    <section></section>
-    <section></section>
-    <section></section>
+    <main class="idée-page">
+
+
+
+        <section class="titre-de-page" id="titre-de-page">
+            <div class="titre">
+                <h1>Idées du Peuple</h1>
+                <p>Partagez vos idées pour améliorer votre communauté et voir vos suggestions prendre vie.</p>
+            </div>
+        </section>
+
+        <!---- Section Conseils ---->
+
+        <section class="guide-rapide" id="guide-rapide">
+            <h1 class="titre-conseil">Comment Soumettre une Idée</h1>
+            <div class="conseil">
+                <p>Pour soumettre une idée, remplissez le formulaire avec
+                    une description claire de votre idée, choisissez la catégorie appropriée et cliquez sur le bouton
+                    "Soumettre une Idée"</p>
+                <img src="" alt="Conseil Image">
+            </div>
+        </section>
+
+        <!---- Section Formulaire ---->
+
+        <section class="formulaire-section" id="formulaire">
+            <div class="idee-formulaire">
+                <!-- colonne formulaire -->
+                <div class="form-colonne">
+
+                    <form action="#" method="post" class="idee-form">
+
+                        <label for="titre">Titre de l'Idée:</label>
+                        <input type="text" id="titre" name="titre" required
+                            placeholder="Entrez le titre de votre idée...">
+
+                        <label for="description">Description de l'Idée:</label>
+                        <textarea id="description" name="description" rows="4" required
+                            placeholder="Décrivez votre idée ici..."></textarea>
+
+                        <label for="categorie">Catégorie:</label>
+                        <select id="categorie" name="categorie" required>
+                            <option value="">--Sélectionnez une catégorie--</option>
+                            <option value="infrastructure">Infrastructure</option>
+                            <option value="environnement">Environnement</option>
+                            <option value="services-publics">Services Publics</option>
+                            <option value="transport">Transport</option>
+                            <option value="autre">Autre</option>
+                        </select>
+
+                        <button type="submit" class="btn-soumettre-idee">Soumettre une Idée</button>
+                    </form>
+                </div>
+
+            </div>
+
+        </section>
+    </main>
+
+
 
     <!------------------------------PIEDS DE LA PAGE------------------->
     <footer>
