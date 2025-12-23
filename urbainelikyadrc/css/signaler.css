@@ -250,7 +250,7 @@ a.btn-connexion:focus {
 }
 
 .conseil > img {
-  width: 140px;
+  width: 100px;
   height: 100px;
   object-fit: cover;
   flex: 0 0 auto;
@@ -278,9 +278,9 @@ a.btn-connexion:focus {
 
 .form-layout {
   display: flex;
-  gap: 14px; /* reduced gap so bloc-info sits closer to the form */
+  gap: 14px;
   align-items: flex-start;
-  justify-content: flex-start; /* align columns at start instead of stretching */
+  justify-content: flex-start;
 }
 
 .form-layout .formulaire {
@@ -361,7 +361,7 @@ a.btn-connexion:focus {
 .form-group textarea,
 .form-group select {
   padding: 12px 14px;
-  border: 1px solid #e7e9ee;
+  border: 1px solid var(--blanc-bg);
   border-radius: 10px;
   background: var(--blanc-bg);
   font-size: 1rem;

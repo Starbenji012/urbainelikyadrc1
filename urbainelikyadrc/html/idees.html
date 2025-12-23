@@ -41,9 +41,9 @@
 
     </header>
 
-    <main class="idée-page">
+    <main class="idee-page">
 
-
+        <!---- Section Titre de la Page ---->
 
         <section class="titre-de-page" id="titre-de-page">
             <div class="titre">
@@ -60,44 +60,81 @@
                 <p>Pour soumettre une idée, remplissez le formulaire avec
                     une description claire de votre idée, choisissez la catégorie appropriée et cliquez sur le bouton
                     "Soumettre une Idée"</p>
-                <img src="" alt="Conseil Image">
+                <img src="../img/Creativity-amico.png" alt="Conseil Image">
             </div>
         </section>
 
         <!---- Section Formulaire ---->
 
-        <section class="formulaire-section" id="formulaire">
+        <section class="formulaire-section" id="idee-formulaire">
             <div class="idee-formulaire">
                 <!-- colonne formulaire -->
                 <div class="form-colonne">
 
-                    <form action="#" method="post" class="idee-form">
+                    <form action="#" method="post" class="formulaire" id="formIdee">
 
-                        <label for="titre">Titre de l'Idée:</label>
-                        <input type="text" id="titre" name="titre" required
-                            placeholder="Entrez le titre de votre idée...">
+                        <div class="form-group">
+                            <label for="titre">Titre de l'Idée:</label>
+                            <input type="text" id="titre" name="titre" required
+                                placeholder="Entrez le titre de votre idée...">
+                        </div>
 
-                        <label for="description">Description de l'Idée:</label>
-                        <textarea id="description" name="description" rows="4" required
-                            placeholder="Décrivez votre idée ici..."></textarea>
+                        <div class="form-group">
+                            <label for="photo">Photo</label>
+                            <input id="photo" name="photo" type="file" accept="image/*">
+                            <p class="form-note">Max 5MB — JPG, PNG</p>
+                        </div>
 
-                        <label for="categorie">Catégorie:</label>
-                        <select id="categorie" name="categorie" required>
-                            <option value="">--Sélectionnez une catégorie--</option>
-                            <option value="infrastructure">Infrastructure</option>
-                            <option value="environnement">Environnement</option>
-                            <option value="services-publics">Services Publics</option>
-                            <option value="transport">Transport</option>
-                            <option value="autre">Autre</option>
-                        </select>
+                        <div class="form-group">
+                            <label for="categorie">Catégorie:</label>
+                            <select id="categorie" name="categorie" required>
+                                <option value="infrastructure">Infrastructure</option>
+                                <option value="environnement">Environnement</option>
+                                <option value="services-publics">Services Publics</option>
+                                <option value="transport">Transport</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                        </div>
 
-                        <button type="submit" class="btn-soumettre-idee">Soumettre une Idée</button>
+                        <div class="form-group">
+                            <label for="description">Description de l'Idée:</label>
+                            <textarea id="description" name="description" rows="4" required
+                                placeholder="Décrivez votre idée ici..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn-envoyer">Soumettre une Idée</button>
+                        </div>
+
                     </form>
                 </div>
 
             </div>
 
         </section>
+        <!---- Section exemple d'idées ---->
+        <section class="section-exemple-idees" id="section-exemple-idees">
+            <h2 class="titre-exemple-idees">Exemples d'Idées</h2>
+            <div class="idees-header"
+                style="max-width:1200px;margin:0 auto 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 16px;">
+                <div class="compteur">Total d'idées : <strong id="totalIdees">0</strong></div>
+                <div>
+                    <button id="btnViderIdees" class="btn" type="button">Vider les idées</button>
+                </div>
+            </div>
+            <div id="listeIdees" class="idees-grid">
+
+            </div>
+        </section>
+
+        <!---- Section remerciement ---->
+        <section class="retour" id="retour">
+            <div class="remerciement" id="remerciement">
+                <h2>Merci pour Votre Contribution!</h2>
+                <p>Nous apprécions votre engagement envers l'amélioration de notre
+                    communauté.</p>
+            </div>
+
     </main>
 
 
@@ -125,7 +162,7 @@
             <div class="footer-section">
                 <h3>Contactez-Nous</h3>
                 <p>Email: contact@urbainelikyadrc.com</p>
-                <p>Téléphone: +243 123 456 789</p>
+                <p>Téléphone: +243 843 630 372</p>
             </div>
         </div>
         <div class="footer-bottom">
@@ -135,5 +172,8 @@
     </footer>
 
 </body>
+
+<script src="https://unpkg.com/scrollreveal"></script>
+<script src="../js/idees.js"></script>
 
 </html>
