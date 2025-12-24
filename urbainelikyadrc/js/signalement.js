@@ -16,12 +16,51 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
+// Charger les signalements sauvegardés au démarrage de la page
+document.addEventListener('DOMContentLoaded', () => {
+    loadSignalements();
+});
+
+// Après chargement, attacher gestionnaires UI pour total / vider / suppression
+document.addEventListener('DOMContentLoaded', () => {
+    updateTotalSignalements();
+    const btnVider = document.getElementById('btnViderSignalements');
+    if (btnVider) {
+        btnVider.addEventListener('click', () => {
+            if (!signalements.length) return showMessage("Il n'y a aucun signalement à supprimer.", 'error');
+            if (confirm('Voulez-vous vraiment supprimer tous les signalements ?')) {
+                // remove markers
+                markers.forEach(m => { try { map.removeLayer(m); } catch (_) {} });
+                markers.length = 0;
+                signalements.length = 0;
+                saveSignalements();
+                updateTotalSignalements();
+                showMessage('Tous les signalements ont été supprimés.', 'success');
+            }
+        });
+    }
+
+    // délégation pour bouton supprimer dans popup
+    document.addEventListener('click', (ev) => {
+        const t = ev.target;
+        if (t && t.classList && t.classList.contains('btn-delete-sig')) {
+            const ts = t.dataset.ts;
+            if (!ts) return;
+            if (!confirm('Supprimer ce signalement ?')) return;
+            deleteSignalement(ts);
+        }
+    });
+});
+
 // Liste de marqueurs ajoutés
 const markers = [];
 
+// Liste des signalements sauvegardés
+const signalements = JSON.parse(localStorage.getItem('signalements') || '[]');
+
 // Dernière position cliquée sur la carte
 let lastLatLng = null;
-let clickMarker = null; // marker temporaire pour indiquer la sélection
+let clickMarker = null; 
 
 // Quand l'utilisateur clique sur la carte, on mémorise la position
 map.on('click', function (e) {
@@ -97,21 +136,58 @@ function getIconForType(typeValue) {
     }
 }
 
+// Helper: redimensionne une image File en DataURL (maxWidth/maxHeight)
+function resizeImage(file, maxWidth = 800, maxHeight = 800, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            img.onload = function () {
+                let { width, height } = img;
+                const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                try {
+                    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    resolve(dataUrl);
+                } catch (err) {
+                    // fallback to original
+                    resolve(e.target.result);
+                }
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
 // Soumission du formulaire
 const form = document.getElementById('form-signalement');
 if (form) {
     form.addEventListener('submit', function (e) {
         e.preventDefault();
 
+        const titre = document.getElementById('titre-probleme')
+            ? document.getElementById('titre-probleme').value.trim()
+            : '';
         const type = document.getElementById('type-probleme')
             ? document.getElementById('type-probleme').value
             : '';
         const desc = document.getElementById('description')
-            ? document.getElementById('description').value
+            ? document.getElementById('description').value.trim()
             : '';
+        const photoInput = document.getElementById('photo');
 
         if (!lastLatLng) {
-            alert('Veuillez cliquer sur la carte pour sélectionner le lieu du problème.');
+            showMessage('Clique sur la carte pour indiquer le lieu.', 'error');
             return;
         }
 
@@ -120,23 +196,171 @@ if (form) {
 
         const chosenIcon = getIconForType(type);
 
-        const m = chosenIcon
-            ? L.marker([lat, lng], { icon: chosenIcon }).addTo(map)
-            : L.marker([lat, lng]).addTo(map);
+        function finishWith(photoData) {
+            const timestamp = new Date().toISOString();
+            const signalement = {
+                titre,
+                type,
+                description: desc,
+                lat,
+                lng,
+                photo: photoData,
+                timestamp
+            };
+            signalements.push(signalement);
+            saveSignalements();
+            addMarkerToMap(lat, lng, titre, desc, photoData, chosenIcon, timestamp);
 
-        m.bindPopup('<b>' + (type || 'Signalement') + '</b><br>' + desc).openPopup();
-        markers.push(m);
+            updateTotalSignalements();
 
-        // réinitialiser état local (si tu veux garder le marker temporaire, supprime ces lignes)
-        if (clickMarker) {
-            map.removeLayer(clickMarker);
-            clickMarker = null;
+            if (clickMarker) {
+                map.removeLayer(clickMarker);
+                clickMarker = null;
+            }
+            lastLatLng = null;
+            form.reset();
+            showMessage('Signalement envoyé ✅', 'success');
         }
-        lastLatLng = null;
-        form.reset();
 
-        alert('Signalement envoyé !');
+        if (photoInput && photoInput.files && photoInput.files[0]) {
+            const file = photoInput.files[0];
+            showLoading('Traitement de l\'image...');
+            // resize to limit file size and dimensions
+            resizeImage(file, 800, 800, 0.78).then(dataUrl => {
+                hideLoading();
+                finishWith(dataUrl);
+            }).catch(() => {
+                // fallback to original file if resize fails
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    hideLoading();
+                    finishWith(event.target.result);
+                };
+                reader.onerror = () => { hideLoading(); finishWith(null); };
+                reader.readAsDataURL(file);
+            });
+        } else {
+            finishWith(null);
+        }
     });
+}
+
+// Fonction pour ajouter un marqueur à la carte avec popup
+function addMarkerToMap(lat, lng, titre, desc, photo, icon, timestamp) {
+    const m = icon
+        ? L.marker([lat, lng], { icon: icon }).addTo(map)
+        : L.marker([lat, lng]).addTo(map);
+
+    let popupContent = '<div class="popup-signalement">';
+    popupContent += '<b>' + (titre || 'Signalement') + '</b><br>';
+
+    if (photo) {
+        popupContent += '<img src="' + photo + '" alt="' + titre + '" class="popup-photo"><br>';
+    }
+
+    popupContent += '<div class="popup-desc">' + (desc || '') + '</div>';
+
+    if (timestamp) {
+        try {
+            const dt = new Date(timestamp).toLocaleString('fr-FR');
+            popupContent += '<div class="popup-time">' + dt + '</div>';
+        } catch (e) { /* ignore */ }
+    }
+
+    // bouton supprimer (data-ts = timestamp unique)
+    if (timestamp) {
+        popupContent += '<div style="margin-top:8px;"><button class="btn btn-delete-sig" data-ts="' + timestamp + '">Supprimer</button></div>';
+    }
+
+    popupContent += '</div>';
+
+    m.bindPopup(popupContent).openPopup();
+    // lier le timestamp au marker pour suppression
+    try { m._sigTimestamp = timestamp; } catch (e) {}
+    markers.push(m);
+}
+
+// Fonction pour sauvegarder les signalements
+function saveSignalements() {
+    try {
+        localStorage.setItem('signalements', JSON.stringify(signalements));
+    } catch (err) {
+        console.warn('Impossible de sauvegarder les signalements', err);
+    }
+}
+
+// Met à jour le compteur affiché
+function updateTotalSignalements() {
+    const el = document.getElementById('totalSignalements');
+    if (el) el.textContent = String(signalements.length || 0);
+}
+
+// Supprimer un signalement par timestamp
+function deleteSignalement(timestamp) {
+    const idx = signalements.findIndex(s => s.timestamp === timestamp);
+    if (idx === -1) return showMessage('Signalement introuvable.', 'error');
+    // remove from array
+    signalements.splice(idx, 1);
+    saveSignalements();
+
+    // remove marker(s) with same timestamp
+    for (let i = markers.length - 1; i >= 0; i--) {
+        const m = markers[i];
+        if (m && m._sigTimestamp === timestamp) {
+            try { map.removeLayer(m); } catch (e) {}
+            markers.splice(i, 1);
+        }
+    }
+
+    updateTotalSignalements();
+    showMessage('Signalement supprimé.', 'success');
+}
+
+// Affiche un message temporaire (toast). type: 'success' | 'error' | undefined
+function showMessage(text, type) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    if (type) toast.classList.add(`toast--${type}`);
+    toast.textContent = text;
+    document.body.appendChild(toast);
+
+    // small delay to allow transition
+    requestAnimationFrame(() => toast.classList.add('show'));
+
+    // remove after 3s
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Loading toast helper
+let __loadingToast = null;
+function showLoading(text = 'Chargement...') {
+    hideLoading();
+    const toast = document.createElement('div');
+    toast.className = 'toast toast--loading';
+    toast.innerHTML = '<span class="toast-spinner"></span> ' + (text || 'Chargement...');
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    __loadingToast = toast;
+}
+function hideLoading() {
+    if (!__loadingToast) return;
+    __loadingToast.classList.remove('show');
+    setTimeout(() => {
+        if (__loadingToast && __loadingToast.parentNode) __loadingToast.parentNode.removeChild(__loadingToast);
+        __loadingToast = null;
+    }, 220);
+}
+
+// Charger les signalements au démarrage
+function loadSignalements() {
+    signalements.forEach(sig => {
+        const icon = getIconForType(sig.type);
+        addMarkerToMap(sig.lat, sig.lng, sig.titre, sig.description, sig.photo, icon, sig.timestamp);
+    });
+    updateTotalSignalements();
 }
 
 // Reverse geocode: lat,lng -> address (Nominatim)
@@ -168,13 +392,15 @@ function geocodeAddress(query) {
 // Si l'utilisateur tape une adresse dans #lieu et appuie sur Entrée, on géocode
 const lieuInput = document.getElementById('lieu');
 if (lieuInput) {
-    lieuInput.addEventListener('keydown', function (ev) {
+    // rendre le gestionnaire async pour utiliser await
+    lieuInput.addEventListener('keydown', async function (ev) {
         if (ev.key === 'Enter') {
             ev.preventDefault();
-            const q = lieuInput.value && lieuInput.value.trim();
-            if (!q) return;
-            // If the user typed lat,lng we accept that immediately
-            const latLngMatch = q.match(/^\s*([+-]?\d+(?:\.\d+)?)[,\s]+([+-]?\d+(?:\.\d+)?)\s*$/);
+            const qRaw = lieuInput.value && lieuInput.value.trim();
+            if (!qRaw) return;
+
+            // si l'utilisateur a entré des coordonnées lat,lng on les utilise directement
+            const latLngMatch = qRaw.match(/^\s*([+-]?\d+(?:\.\d+)?)[,\s]+([+-]?\d+(?:\.\d+)?)\s*$/);
             if (latLngMatch) {
                 const lat = parseFloat(latLngMatch[1]);
                 const lng = parseFloat(latLngMatch[2]);
@@ -184,24 +410,62 @@ if (lieuInput) {
                 return;
             }
 
-            // Otherwise call Nominatim
-            geocodeAddress(q).then(res => {
-                if (!res) {
-                    alert('Adresse introuvable. Essaie d\'être plus précis.');
-                    return;
+            const tryFuzzySearch = async (query) => {
+                // essai direct
+                let res = null;
+                try {
+                    res = await geocodeAddress(query);
+                } catch (e) {
+                    // réseau ou erreur
+                    return { error: true };
                 }
-                // place marker and update input with the display name
-                lastLatLng = { lat: res.lat, lng: res.lng };
-                if (clickMarker) {
-                    clickMarker.setLatLng([res.lat, res.lng]);
-                } else {
-                    clickMarker = L.marker([res.lat, res.lng]).addTo(map);
+                if (res) return res;
+
+                // si échec, on tente en raccourcissant la requête (supprimer les derniers mots)
+                const parts = query.split(/[ ,]+/).filter(Boolean);
+                for (let len = parts.length - 1; len >= 1; len--) {
+                    const q2 = parts.slice(0, len).join(' ');
+                    try {
+                        res = await geocodeAddress(q2);
+                    } catch (e) {
+                        return { error: true };
+                    }
+                    if (res) return res;
                 }
-                map.setView([res.lat, res.lng], 16);
-                lieuInput.value = res.display_name;
-            }).catch(() => {
-                alert('Erreur réseau lors du géocodage.');
-            });
+
+                // essai final: ajouter le nom de la grande ville locale (Kinshasa)
+                try {
+                    res = await geocodeAddress(query + ' Kinshasa');
+                } catch (e) {
+                    return { error: true };
+                }
+                if (res) return res;
+
+                return null;
+            };
+
+            showLoading('Recherche d\'adresse...');
+            const resOrErr = await tryFuzzySearch(qRaw);
+            hideLoading();
+            if (resOrErr && resOrErr.error) {
+                showMessage('Erreur réseau lors du géocodage.', 'error');
+                return;
+            }
+            if (!resOrErr) {
+                showMessage('Adresse introuvable. Essaie d\'être un peu plus précis.', 'error');
+                return;
+            }
+
+            // on a une réponse
+            lastLatLng = { lat: resOrErr.lat, lng: resOrErr.lng };
+            if (clickMarker) {
+                clickMarker.setLatLng([resOrErr.lat, resOrErr.lng]);
+            } else {
+                clickMarker = L.marker([resOrErr.lat, resOrErr.lng]).addTo(map);
+            }
+            map.setView([resOrErr.lat, resOrErr.lng], 16);
+            // écrire une version lisible dans l'input si disponible
+            if (resOrErr.display_name) lieuInput.value = resOrErr.display_name;
         }
     });
 }

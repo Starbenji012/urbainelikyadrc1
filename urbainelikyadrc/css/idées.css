@@ -394,6 +394,15 @@ a.btn-connexion:focus {
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
+/* Photo dans la carte idée */
+.carte-idee-photo {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
 .carte-idee::before {
   content: "";
   position: absolute;
@@ -428,7 +437,7 @@ a.btn-connexion:focus {
   padding: 8px 12px;
   border-radius: 8px;
   background: transparent;
-  border: 1px solid rgba(15,33,69,0.06);
+  border: 1px solid rgba(15, 33, 69, 0.06);
   cursor: pointer;
 }
 
@@ -439,7 +448,27 @@ a.btn-connexion:focus {
 
 /* petit ajustement responsive */
 @media (max-width: 480px) {
-  .carte-idee { padding: 12px; }
+  .carte-idee {
+    padding: 12px;
+  }
+}
+
+/* Bouton supprimer pour les cartes d'idée */
+.btn-delete-idee {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--rouge-sign);
+  border: 1px solid rgba(230, 57, 70, 0.12);
+  cursor: pointer;
+  font-weight: 700;
+  margin-left: 8px;
+  transition: background 160ms ease, color 160ms ease, transform 120ms ease;
+}
+.btn-delete-idee:hover {
+  background: var(--rouge-sign);
+  color: var(--blanc-bg);
+  transform: translateY(-2px);
 }
 
 /* Toast / message temporaire */
@@ -452,7 +481,7 @@ a.btn-connexion:focus {
   color: var(--blanc-bg);
   padding: 10px 14px;
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(15,33,69,0.18);
+  box-shadow: 0 8px 24px rgba(15, 33, 69, 0.18);
   z-index: 9999;
   opacity: 0;
   pointer-events: none;
@@ -464,8 +493,36 @@ a.btn-connexion:focus {
   transform: translateX(-50%) translateY(0);
   pointer-events: auto;
 }
-.toast.toast--success { background: var(--vert-val); color: var(--blanc-bg); }
-.toast.toast--error { background: var(--rouge-sign); color: var(--blanc-bg); }
+.toast.toast--success {
+  background: var(--vert-val);
+  color: var(--blanc-bg);
+}
+.toast.toast--error {
+  background: var(--rouge-sign);
+  color: var(--blanc-bg);
+}
+
+/* Loading toast specifics */
+.toast.toast--loading {
+  background: var(--bleu-nuit-button);
+  color: var(--blanc-bg);
+}
+.toast-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 8px;
+  animation: toast-spin 1s linear infinite;
+}
+@keyframes toast-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 /*----remerciement après envoi du formulaire----*/
 .remerciement {
