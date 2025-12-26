@@ -172,7 +172,7 @@ function resizeImage(file, maxWidth = 800, maxHeight = 800, quality = 0.8) {
 // Soumission du formulaire
 const form = document.getElementById('form-signalement');
 if (form) {
-    form.addEventListener('submit', function (e) {
+    form.addEventListener('submit', async function (e) {
         e.preventDefault();
 
         const titre = document.getElementById('titre-probleme')
@@ -185,10 +185,70 @@ if (form) {
             ? document.getElementById('description').value.trim()
             : '';
         const photoInput = document.getElementById('photo');
+        const lieuValue = lieuInput ? lieuInput.value.trim() : '';
 
+        // Si pas de localisation cliquée mais adresse écrite, essayer de la géocoder
         if (!lastLatLng) {
-            showMessage('Clique sur la carte pour indiquer le lieu.', 'error');
-            return;
+            if (!lieuValue) {
+                showMessage('Clique sur la carte ou écris une adresse.', 'error');
+                return;
+            }
+            // Essayer géocoder l'adresse écrite
+            showLoading('Vérification de l\'adresse...');
+            const latLngMatch = lieuValue.match(/^\s*([+-]?\d+(?:\.\d+)?)[,\s]+([+-]?\d+(?:\.\d+)?)\s*$/);
+            if (latLngMatch) {
+                // C'est des coordonnées
+                const lat = parseFloat(latLngMatch[1]);
+                const lng = parseFloat(latLngMatch[2]);
+                lastLatLng = { lat: lat, lng: lng };
+                hideLoading();
+            } else {
+                // C'est une adresse à rechercher
+                const tryFuzzySearch = async (query) => {
+                    let res = null;
+                    try {
+                        res = await geocodeAddress(query);
+                    } catch (e) {
+                        return { error: true };
+                    }
+                    if (res) return res;
+                    const parts = query.split(/[ ,]+/).filter(Boolean);
+                    for (let len = parts.length - 1; len >= 1; len--) {
+                        const q2 = parts.slice(0, len).join(' ');
+                        try {
+                            res = await geocodeAddress(q2);
+                        } catch (e) {
+                            return { error: true };
+                        }
+                        if (res) return res;
+                    }
+                    try {
+                        res = await geocodeAddress(query + ' Kinshasa');
+                    } catch (e) {
+                        return { error: true };
+                    }
+                    if (res) return res;
+                    return null;
+                };
+                const resOrErr = await tryFuzzySearch(lieuValue);
+                hideLoading();
+                if (resOrErr && resOrErr.error) {
+                    showMessage('Erreur réseau lors de la vérification.', 'error');
+                    return;
+                }
+                if (!resOrErr) {
+                    showMessage('Adresse pas trouvée. Essaie d\'être plus précis ou clique sur la carte.', 'error');
+                    return;
+                }
+                lastLatLng = { lat: resOrErr.lat, lng: resOrErr.lng };
+                if (clickMarker) {
+                    clickMarker.setLatLng([resOrErr.lat, resOrErr.lng]);
+                } else {
+                    clickMarker = L.marker([resOrErr.lat, resOrErr.lng]).addTo(map);
+                }
+                map.setView([resOrErr.lat, resOrErr.lng], 16);
+                if (resOrErr.display_name) lieuInput.value = resOrErr.display_name;
+            }
         }
 
         const lat = lastLatLng.lat;
@@ -376,7 +436,9 @@ function reverseGeocode(lat, lon) {
 
 // Geocode address -> lat,lng (Nominatim search), returns {lat,lng,display_name} or null
 function geocodeAddress(query) {
-    const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&q=' + encodeURIComponent(query) + '&limit=1&addressdetails=1';
+    // Normaliser la requête: convertir en minuscules et nettoyer les espaces multiples
+    const normalizedQuery = query.toLowerCase().trim().replace(/\s+/g, ' ');
+    const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&q=' + encodeURIComponent(normalizedQuery) + '&limit=3&addressdetails=1';
     return fetch(url, { headers: { 'Accept-Language': 'fr' } })
         .then(r => {
             if (!r.ok) throw new Error('Network');
@@ -411,7 +473,7 @@ if (lieuInput) {
             }
 
             const tryFuzzySearch = async (query) => {
-                // essai direct
+                // essai direct (même partiel, même incomplet)
                 let res = null;
                 try {
                     res = await geocodeAddress(query);
@@ -452,7 +514,7 @@ if (lieuInput) {
                 return;
             }
             if (!resOrErr) {
-                showMessage('Adresse introuvable. Essaie d\'être un peu plus précis.', 'error');
+                showMessage('Adresse introuvable. Essaie d\'être un peu plus précis (par ex: nom rue, nom quartier, etc).', 'error');
                 return;
             }
 
@@ -466,6 +528,7 @@ if (lieuInput) {
             map.setView([resOrErr.lat, resOrErr.lng], 16);
             // écrire une version lisible dans l'input si disponible
             if (resOrErr.display_name) lieuInput.value = resOrErr.display_name;
+            showMessage('Adresse trouvée ! ✓', 'success');
         }
     });
 }
