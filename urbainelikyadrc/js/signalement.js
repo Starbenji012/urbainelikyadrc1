@@ -6,7 +6,7 @@ const sr = ScrollReveal({
     delay: 200,
 });
 
-sr.reveal('header,.navbar,.titre,.guide-rapide,.signalement-wrap,.remerciement', { origin: 'top' });
+sr.reveal('header,.navbar,.titre,.guide-rapide,.signalement-wrap,.titre-signalement-non-afficher-map,.Signalements-header,.Signalements-grid,.remerciement', { origin: 'top' });
 sr.reveal('.footer-contenaire,.footer-bottom', { origin: 'bottom' });
 
 
@@ -61,16 +61,37 @@ const signalements = JSON.parse(localStorage.getItem('signalements') || '[]');
 // Dernière position cliquée sur la carte
 let lastLatLng = null;
 let clickMarker = null; 
+// Dernier résultat de géocodage (peut contenir country_code)
+let lastGeocodeResult = null;
 
 // Quand l'utilisateur clique sur la carte, on mémorise la position
-map.on('click', function (e) {
-    lastLatLng = e.latlng;
+map.on('click', async function (e) {
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
     const lieuInput = document.getElementById('lieu');
+    
+    // Vérifier que le clic est en RDC avant de mémoriser
+    try {
+        const rev = await reverseGeocodeDetails(lat, lng);
+        if (rev && rev.address && rev.address.country_code) {
+            const isRDC = String(rev.address.country_code).toLowerCase() === 'cd';
+            if (!isRDC) {
+                showMessage('Clic détecté hors de la RDC — opération annulée.', 'error');
+                showLieuWarning('Clic en dehors de la RDC. Clique sur le territoire de la RDC.');
+                return;
+            }
+        }
+    } catch (err) {
+        // Si on ne peut pas vérifier, on laisse passer pour éviter les faux positifs
+    }
+    
+    lastLatLng = e.latlng;
     if (lieuInput) {
         // show lat,lng immediately while reverse geocoding runs
-        lieuInput.value = e.latlng.lat.toFixed(6) + ', ' + e.latlng.lng.toFixed(6);
+        lieuInput.value = lat.toFixed(6) + ', ' + lng.toFixed(6);
+        clearLieuWarning();
         // try to get a human readable address and set it in the input
-        reverseGeocode(e.latlng.lat, e.latlng.lng).then(addr => {
+        reverseGeocode(lat, lng).then(addr => {
             if (addr) lieuInput.value = addr;
         }).catch(() => {/* ignore errors silently */});
     }
@@ -201,7 +222,20 @@ if (form) {
                 const lat = parseFloat(latLngMatch[1]);
                 const lng = parseFloat(latLngMatch[2]);
                 lastLatLng = { lat: lat, lng: lng };
-                hideLoading();
+                    clearLieuWarning();
+                    hideLoading();
+            
+                    // si l'utilisateur a fourni des coordonnées, tenter un reverse-geocode pour vérifier le pays
+                    try {
+                        const rev = await reverseGeocodeDetails(lat, lng);
+                        if (rev && rev.address && rev.address.country_code && String(rev.address.country_code).toLowerCase() !== 'cd') {
+                            showMessage('Coordonnées situées hors de la RDC — envoi bloqué.', 'error');
+                            showLieuWarning('Coordonnées hors de la RDC. Saisis une adresse en RDC ou clique sur la carte.');
+                            lastLatLng = null;
+                            return;
+                        }
+                    } catch (e) { /* ignore */ }
+            
             } else {
                 // C'est une adresse à rechercher
                 const tryFuzzySearch = async (query) => {
@@ -234,25 +268,83 @@ if (form) {
                 hideLoading();
                 if (resOrErr && resOrErr.error) {
                     showMessage('Erreur réseau lors de la vérification.', 'error');
+                    showLieuWarning('Erreur réseau lors de la vérification de l\'adresse.');
                     return;
                 }
                 if (!resOrErr) {
-                    showMessage('Adresse pas trouvée. Essaie d\'être plus précis ou clique sur la carte.', 'error');
+                    // Adresse introuvable → on accepte mais on avertit l'utilisateur
+                    showLieuWarning('⚠️ Adresse introuvable dans la base de données. Vérification en RDC...');
+                    // On laisse passer avec un avertissement
+                    // mais on ne peut pas vérifier le pays; bloquer par sécurité
+                    showMessage('Adresse introuvable et impossible à vérifier — bloqée par sécurité. Clique sur la carte en RDC.', 'error');
                     return;
                 }
+                // Bloquer si adresse hors RDC
+                if (resOrErr.country_code && String(resOrErr.country_code).toLowerCase() !== 'cd') {
+                    showMessage('Adresse trouvée hors de la RDC — envoi bloqué.', 'error');
+                    showLieuWarning('Adresse trouvée hors de la RDC. Saisis une adresse en RDC ou clique sur la carte.');
+                    return;
+                }
+                // Adresse trouvée et en RDC ✓
+                lastGeocodeResult = resOrErr;
                 lastLatLng = { lat: resOrErr.lat, lng: resOrErr.lng };
                 if (clickMarker) {
                     clickMarker.setLatLng([resOrErr.lat, resOrErr.lng]);
                 } else {
                     clickMarker = L.marker([resOrErr.lat, resOrErr.lng]).addTo(map);
                 }
-                map.setView([resOrErr.lat, resOrErr.lng], 16);
+                map.flyTo([resOrErr.lat, resOrErr.lng], 16, { duration: 1.2 });
                 if (resOrErr.display_name) lieuInput.value = resOrErr.display_name;
+                // avertir si résultat hors de la zone affichée
+                try {
+                    const foundLL = L.latLng(resOrErr.lat, resOrErr.lng);
+                    if (!map.getBounds().contains(foundLL)) {
+                        showLieuWarning('Adresse trouvée mais en dehors de la zone affichée sur la carte.');
+                    } else {
+                        clearLieuWarning();
+                    }
+                } catch (e) { /* ignore */ }
             }
         }
 
         const lat = lastLatLng.lat;
         const lng = lastLatLng.lng;
+
+        // Vérifier que l'adresse/coordonnées sont bien en RDC; si on a un résultat de géocodage récent on l'utilise
+        try {
+            let countryOk = true;
+            if (lastGeocodeResult && lastGeocodeResult.country_code) {
+                countryOk = String(lastGeocodeResult.country_code).toLowerCase() === 'cd';
+            } else {
+                // tenter un reverse-geocode pour connaître le pays
+                const rev = await reverseGeocodeDetails(lat, lng);
+                if (rev && rev.address && rev.address.country_code) {
+                    countryOk = String(rev.address.country_code).toLowerCase() === 'cd';
+                } else {
+                    // si on ne sait pas, on laisse passer (éviter faux positifs)
+                    countryOk = true;
+                }
+            }
+            if (!countryOk) {
+                showMessage('Adresse localisée hors de la RDC — envoi bloqué.', 'error');
+                showLieuWarning('Adresse localisée hors de la RDC. Saisis une adresse en RDC ou clique sur la carte.');
+                hideLoading();
+                return;
+            }
+        } catch (e) { /* ignore */ }
+
+        // Si le point se trouve hors de la vue actuelle, recentrer la carte
+        try {
+            const pt = L.latLng(lat, lng);
+            if (!map.getBounds().contains(pt)) {
+                // recentre et zoome sur l'adresse pour que l'utilisateur la voie
+                map.flyTo([lat, lng], 16, { duration: 1.2 });
+                showMessage('La carte a été recentrée sur l\'adresse trouvée.', 'success');
+                clearLieuWarning();
+            } else {
+                clearLieuWarning();
+            }
+        } catch (e) { /* ignore */ }
 
         const chosenIcon = getIconForType(type);
 
@@ -264,6 +356,7 @@ if (form) {
                 description: desc,
                 lat,
                 lng,
+                lieu: lieuValue,
                 photo: photoData,
                 timestamp
             };
@@ -272,13 +365,16 @@ if (form) {
             addMarkerToMap(lat, lng, titre, desc, photoData, chosenIcon, timestamp);
 
             updateTotalSignalements();
+            renderSignalements();
 
             if (clickMarker) {
                 map.removeLayer(clickMarker);
                 clickMarker = null;
             }
             lastLatLng = null;
+            lastGeocodeResult = null;
             form.reset();
+            clearLieuWarning();
             showMessage('Signalement envoyé ✅', 'success');
         }
 
@@ -373,6 +469,7 @@ function deleteSignalement(timestamp) {
     }
 
     updateTotalSignalements();
+    renderSignalements();
     showMessage('Signalement supprimé.', 'success');
 }
 
@@ -414,6 +511,30 @@ function hideLoading() {
     }, 220);
 }
 
+// Afficher un avertissement lié à l'input #lieu (non bloquant)
+function showLieuWarning(text) {
+    const input = document.getElementById('lieu');
+    if (!input) return;
+    let el = document.getElementById('lieu-warning');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'lieu-warning';
+        el.className = 'lieu-warning';
+        // style minimal pour être visible sans dépendre du CSS
+        el.style.color = '#b22222';
+        el.style.fontSize = '0.9em';
+        el.style.marginTop = '6px';
+        el.style.maxWidth = '420px';
+        input.parentNode && input.parentNode.insertBefore(el, input.nextSibling);
+    }
+    el.textContent = text || '';
+}
+
+function clearLieuWarning() {
+    const el = document.getElementById('lieu-warning');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+}
+
 // Charger les signalements au démarrage
 function loadSignalements() {
     signalements.forEach(sig => {
@@ -421,6 +542,7 @@ function loadSignalements() {
         addMarkerToMap(sig.lat, sig.lng, sig.titre, sig.description, sig.photo, icon, sig.timestamp);
     });
     updateTotalSignalements();
+    renderSignalements();
 }
 
 // Reverse geocode: lat,lng -> address (Nominatim)
@@ -447,8 +569,24 @@ function geocodeAddress(query) {
         .then(results => {
             if (!results || results.length === 0) return null;
             const res = results[0];
-            return { lat: parseFloat(res.lat), lng: parseFloat(res.lon), display_name: res.display_name };
+            return {
+                lat: parseFloat(res.lat),
+                lng: parseFloat(res.lon),
+                display_name: res.display_name,
+                address: res.address || null,
+                country: res.address && res.address.country || null,
+                country_code: res.address && res.address.country_code || null
+            };
         });
+}
+
+// Reverse geocode with address details -> returns full JSON result or null
+function reverseGeocodeDetails(lat, lon) {
+    const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon) + '&addressdetails=1';
+    return fetch(url, { headers: { 'Accept-Language': 'fr' } })
+        .then(r => { if (!r.ok) throw new Error('Network'); return r.json(); })
+        .then(data => data || null)
+        .catch(() => null);
 }
 
 // Si l'utilisateur tape une adresse dans #lieu et appuie sur Entrée, on géocode
@@ -466,9 +604,19 @@ if (lieuInput) {
             if (latLngMatch) {
                 const lat = parseFloat(latLngMatch[1]);
                 const lng = parseFloat(latLngMatch[2]);
+                // vérifier que les coordonnées sont en RDC
+                try {
+                    const rev = await reverseGeocodeDetails(lat, lng);
+                    if (rev && rev.address && rev.address.country_code && String(rev.address.country_code).toLowerCase() !== 'cd') {
+                        showMessage('Coordonnées situées hors de la RDC — opération annulée.', 'error');
+                        showLieuWarning('Coordonnées hors de la RDC. Saisis une adresse en RDC ou clique sur la carte.');
+                        return;
+                    }
+                } catch (e) { /* ignore */ }
                 lastLatLng = { lat: lat, lng: lng };
                 if (clickMarker) clickMarker.setLatLng([lat, lng]); else clickMarker = L.marker([lat, lng]).addTo(map);
-                map.setView([lat, lng], 16);
+                clearLieuWarning();
+                map.flyTo([lat, lng], 16, { duration: 1.2 });
                 return;
             }
 
@@ -511,25 +659,155 @@ if (lieuInput) {
             hideLoading();
             if (resOrErr && resOrErr.error) {
                 showMessage('Erreur réseau lors du géocodage.', 'error');
+                showLieuWarning('Erreur réseau lors du géocodage.');
                 return;
             }
             if (!resOrErr) {
-                showMessage('Adresse introuvable. Essaie d\'être un peu plus précis (par ex: nom rue, nom quartier, etc).', 'error');
+                // Adresse introuvable → on avertit mais on accepte si c'est en RDC
+                showMessage('⚠️ Adresse introuvable dans la base. Impossible à vérifier — clique sur la carte en RDC.', 'error');
+                showLieuWarning('⚠️ Adresse introuvable. Clique sur la carte en RDC pour valider la position.');
                 return;
             }
-
             // on a une réponse
+            // bloquer si l'adresse n'est pas dans la RDC (country_code fourni par Nominatim)
+            if (resOrErr.country_code && String(resOrErr.country_code).toLowerCase() !== 'cd') {
+                showMessage('Adresse trouvée hors de la RDC — envoi bloqué.', 'error');
+                showLieuWarning('Adresse trouvée hors de la RDC. Saisis une adresse en RDC ou clique sur la carte.');
+                return;
+            }
+            // mémoriser le résultat de géocodage
+            lastGeocodeResult = resOrErr;
             lastLatLng = { lat: resOrErr.lat, lng: resOrErr.lng };
             if (clickMarker) {
                 clickMarker.setLatLng([resOrErr.lat, resOrErr.lng]);
             } else {
                 clickMarker = L.marker([resOrErr.lat, resOrErr.lng]).addTo(map);
             }
-            map.setView([resOrErr.lat, resOrErr.lng], 16);
+            map.flyTo([resOrErr.lat, resOrErr.lng], 16, { duration: 1.2 });
             // écrire une version lisible dans l'input si disponible
             if (resOrErr.display_name) lieuInput.value = resOrErr.display_name;
+            // avertir si résultat hors de la zone affichée
+            try {
+                const foundLL = L.latLng(resOrErr.lat, resOrErr.lng);
+                if (!map.getBounds().contains(foundLL)) {
+                    showLieuWarning('Adresse trouvée mais en dehors de la zone affichée sur la carte.');
+                } else {
+                    clearLieuWarning();
+                }
+            } catch (e) { /* ignore */ }
             showMessage('Adresse trouvée ! ✓', 'success');
         }
     });
+}
+
+// ========== RENDU DE LA GRILLE DE SIGNALEMENTS ==========
+function renderSignalements() {
+    const container = document.getElementById('listeSignalements');
+    if (!container) return;
+
+    container.innerHTML = '';
+    const frag = document.createDocumentFragment();
+
+    signalements.forEach((sig, index) => {
+        const card = document.createElement('div');
+        card.className = 'carte-signalement';
+
+        // Ajouter la photo si elle existe
+        if (sig.photo) {
+            const img = document.createElement('img');
+            img.src = sig.photo;
+            img.alt = sig.titre;
+            img.className = 'carte-signalement-photo';
+            card.appendChild(img);
+        }
+
+        // Titre
+        const h3 = document.createElement('h3');
+        h3.textContent = sig.titre;
+        card.appendChild(h3);
+
+        // Description
+        const desc = document.createElement('p');
+        desc.className = 'carte-signalement-desc';
+        desc.textContent = sig.description;
+        card.appendChild(desc);
+
+        // Type (catégorie)
+        const type = document.createElement('span');
+        type.className = 'carte-signalement-type';
+        type.textContent = (sig.type || 'Sans catégorie').charAt(0).toUpperCase() + (sig.type || 'sans catégorie').slice(1);
+        card.appendChild(type);
+
+        // Location (adresse saisie)
+        const location = document.createElement('p');
+        location.className = 'carte-signalement-location';
+        location.textContent = `📍 ${sig.lieu || 'Adresse non spécifiée'}`;
+        card.appendChild(location);
+
+        // Meta (date)
+        const meta = document.createElement('div');
+        meta.className = 'carte-signalement-meta';
+        if (sig.timestamp) {
+            try {
+                const dt = new Date(sig.timestamp).toLocaleString('fr-FR');
+                meta.textContent = dt;
+            } catch (e) {
+                meta.textContent = 'Date inconnue';
+            }
+        }
+        card.appendChild(meta);
+
+        // Boutons (Voir sur carte + Supprimer)
+        const btnContainer = document.createElement('div');
+        btnContainer.className = 'carte-signalement-buttons';
+
+        const btnVoirCarte = document.createElement('button');
+        btnVoirCarte.type = 'button';
+        btnVoirCarte.className = 'btn-voir-carte';
+        btnVoirCarte.textContent = 'Voir sur carte';
+        btnVoirCarte.addEventListener('click', () => {
+            map.flyTo([sig.lat, sig.lng], 16, { duration: 1.2 });
+            // Scroll vers la carte si elle est visible
+            const mapEl = document.getElementById('map');
+            if (mapEl) {
+                mapEl.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+
+        const btnDelete = document.createElement('button');
+        btnDelete.type = 'button';
+        btnDelete.className = 'btn-delete-signalement';
+        btnDelete.textContent = 'Supprimer';
+        btnDelete.addEventListener('click', () => {
+            if (!confirm('Supprimer ce signalement ?')) return;
+            deleteSignalement(sig.timestamp);
+        });
+
+        btnContainer.appendChild(btnVoirCarte);
+        btnContainer.appendChild(btnDelete);
+        card.appendChild(btnContainer);
+
+        frag.appendChild(card);
+    });
+
+    container.appendChild(frag);
+
+    // Mettre à jour les compteurs
+    updateTotalSignalements();
+}
+
+// Mise à jour des compteurs (affichés et total)
+function updateTotalSignalements() {
+    const totalEl = document.getElementById('totalSignalementsAffiche');
+    const totalAllEl = document.getElementById('totalSignalementsAll');
+    
+    if (totalEl) {
+        // Compter les signalements affichés sur la carte (au moins un marker)
+        totalEl.textContent = markers.length;
+    }
+    
+    if (totalAllEl) {
+        totalAllEl.textContent = signalements.length;
+    }
 }
 

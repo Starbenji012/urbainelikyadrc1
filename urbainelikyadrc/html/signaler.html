@@ -43,7 +43,7 @@
     </header>
 
     <main class="signalement-page">
-        <!-- Section titre -->
+        <!-- section titre de la page -->
 
         <section id="titre-de-page" class="titre-de-page">
             <div class="titre">
@@ -126,46 +126,64 @@
                     </form>
 
                     <!--  bloc d'information à droite -->
-                    <aside class="bloc-info">
-                        <h3>Informations important</h3>
-                        <p>Les images ci-dessous representent les différentes catégories et elles serviront d'icônes sur
-                            la
-                            carte.</p>
-                        <ul class="etapes liste-icones">
-                            <li class="etape">
-                                <div class="etape-info">
-                                    <p>Déchet</p>
-                                    <img src="../icon-map/icons8-corbeille-48.png" alt="poubelle">
-                                </div>
-                            </li>
-                            <li class="etape">
-                                <div class="etape-info">
-                                    <p>Inondation / Eau</p>
-                                    <img src="../icon-map/icons8-eau-48.png" alt="inondation">
-                                </div>
-                            </li>
-                            <li class="etape">
-                                <div class="etape-info">
-                                    <p>Insécurité</p>
-                                    <img src="../icon-map/icons8-protection-du-trou-de-serrure-48.png" alt="insécurité">
-                                </div>
-                            </li>
-                            <li class="etape">
-                                <div class="etape-info">
-                                    <p>Route abîmée</p>
-                                    <img src="../icon-map/icons8-route-48.png" alt="route">
-                                </div>
-                            </li>
-                            <li class="etape">
-                                <div class="etape-info">
-                                    <p>Électricité</p>
-                                    <img src="../icon-map/icons8-électricité-32.png" alt="électricité">
-                                </div>
-                            </li>
-                        </ul>
+                    <div class="asides-column">
+                        <aside class="bloc-info">
+                            <h3>Informations important</h3>
+                            <p>Les images ci-dessous representent les différentes catégories et elles serviront d'icônes
+                                sur
+                                la
+                                carte.</p>
+                            <ul class="etapes liste-icones">
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Déchet</p>
+                                        <img src="../icon-map/icons8-corbeille-48.png" alt="poubelle">
+                                    </div>
+                                </li>
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Inondation / Eau</p>
+                                        <img src="../icon-map/icons8-eau-48.png" alt="inondation">
+                                    </div>
+                                </li>
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Insécurité</p>
+                                        <img src="../icon-map/icons8-protection-du-trou-de-serrure-48.png"
+                                            alt="insécurité">
+                                    </div>
+                                </li>
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Route abîmée</p>
+                                        <img src="../icon-map/icons8-route-48.png" alt="route">
+                                    </div>
+                                </li>
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Électricité</p>
+                                        <img src="../icon-map/icons8-électricité-32.png" alt="électricité">
+                                    </div>
+                                </li>
+                            </ul>
 
-                    </aside>
+                        </aside>
+                    </div>
                 </div>
+            </div>
+        </section>
+
+        <!---- Section signalements affichés ---->
+        <section class="section-signalement-non-afficher-map" id="section-signalement-non-afficher-map">
+            <h2 class="titre-signalement-non-afficher-map">Vos Signalements</h2>
+            <div class="Signalements-header"
+                style="max-width:1200px;margin:0 auto 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 16px;">
+                <div class="compteur">Total affichés : <strong id="totalSignalementsAffiche">0</strong> / Total :
+                    <strong id="totalSignalementsAll">0</strong>
+                </div>
+            </div>
+            <div id="listeSignalements" class="Signalements-grid">
+
             </div>
         </section>
 
@@ -173,7 +191,7 @@
 
         <section id="retour" class="retour">
             <div id="remerciement" class="remerciement">
-                <p>Merci pour votre confiance</p>
+                <p>Merci pour votre signalement</p>
             </div>
         </section>
     </main>

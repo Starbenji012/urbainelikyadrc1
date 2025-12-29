@@ -338,13 +338,13 @@ ol.etapes .etape {
   box-shadow: 0 10px 30px rgba(138, 231, 178, 0.3);
   position: relative;
   overflow: visible;
-  padding: 18px 140px 18px 18px; /* espace à droite pour l'image */
+  padding: 18px 140px 18px 18px;
 }
 
 /* image positionnée absolument : centrée verticalement et bien visible */
 ol.etapes .etape img {
   position: absolute;
-  right: 18px; /* was left: 18px */
+  right: 18px;
   top: 50%;
   transform: translateY(-50%);
   width: 100px;

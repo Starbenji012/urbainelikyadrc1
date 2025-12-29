@@ -298,7 +298,16 @@ a.btn-connexion:focus {
   box-shadow: 0 8px 24px rgba(138, 231, 178, 0.12);
 }
 
+/* Conteneur pour empiler verticalement plusieurs blocs-info */
+.asides-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 0 0 300px;
+}
+
 .bloc-info h3 {
+  text-align: center;
   margin-top: 0;
   color: var(--bleu-nuit-button);
 }
@@ -414,6 +423,247 @@ a.btn-connexion:focus {
   filter: brightness(1.03);
 }
 
+/* Style pour les popups de signalements avec photos */
+.popup-signalement {
+  max-width: 250px;
+  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+}
+
+.popup-signalement b {
+  display: block;
+  margin-bottom: 8px;
+  color: #0f2145;
+  font-size: 0.95rem;
+}
+
+.popup-signalement .popup-photo {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.popup-signalement p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #2f2f2f;
+  line-height: 1.4;
+}
+
+/* Toast / message temporaire (utilisé par showMessage) */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: #0f2145;
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 33, 69, 0.18);
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease, transform 220ms ease;
+  font-weight: 600;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.toast.toast--success {
+  background: #3dbd7d;
+  color: #ffffff;
+}
+.toast.toast--error {
+  background: #e63946;
+  color: #ffffff;
+}
+
+/* Loading toast specifics */
+.toast.toast--loading {
+  background: #0f2145;
+  color: #ffffff;
+}
+.toast-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 8px;
+  animation: toast-spin 1s linear infinite;
+}
+
+/* Bouton supprimer utilisé dans les popups de signalement */
+.btn-delete-sig {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--rouge-sign);
+  border: 1px solid rgba(230, 57, 70, 0.12);
+  cursor: pointer;
+  font-weight: 700;
+  transition: background 160ms ease, color 160ms ease, transform 120ms ease;
+}
+.btn-delete-sig:hover {
+  background: var(--rouge-sign);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+@keyframes toast-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* -------- Section Signalements (grille affichage) -------- */
+.section-signalement-non-afficher-map {
+  max-width: 1200px;
+  margin: 150px auto;
+  padding: 0 16px;
+}
+
+.titre-signalement-non-afficher-map {
+  margin-top: 150px;
+  margin-bottom: 24px;
+  text-align: center;
+  font-size: 2rem;
+  color: var(--gris-fonce-text);
+  font-weight: 700;
+}
+
+/* Grille des cartes de signalements */
+.Signalements-grid {
+  max-width: 1200px;
+  margin: 0 auto 80px;
+  padding: 0 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+/* Carte signalement — calquée sur le style des idées */
+.carte-signalement {
+  position: relative;
+  width: 100%;
+  background: var(--blanc-bg);
+  padding: 14px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(15, 33, 69, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+/* Photo dans la carte signalement */
+.carte-signalement-photo {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.carte-signalement::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  background: var(--rouge-sign);
+  border-radius: 6px 0 0 6px;
+}
+
+.carte-signalement h3 {
+  margin: 0;
+  color: var(--bleu-nuit-button);
+  font-size: 1.1rem;
+}
+
+.carte-signalement-desc {
+  margin: 0;
+  color: var(--gris-fonce-text);
+  line-height: 1.4;
+  font-size: 0.95rem;
+}
+
+.carte-signalement-type {
+  font-size: 0.9rem;
+  color: var(--gris-moyen-text);
+  display: inline-block;
+  width: fit-content;
+}
+
+.carte-signalement-location {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--gris-moyen-text);
+}
+
+.carte-signalement-meta {
+  font-size: 0.85rem;
+  color: var(--gris-moyen-text);
+}
+
+.carte-signalement:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(138, 231, 178, 0.18);
+}
+
+.carte-signalement-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Bouton supprimer pour les cartes signalement */
+.btn-delete-signalement {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--rouge-sign);
+  border: 1px solid rgba(230, 57, 70, 0.12);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: background 160ms ease, color 160ms ease, transform 120ms ease;
+  flex: 1;
+}
+
+.btn-delete-signalement:hover {
+  background: var(--rouge-sign);
+  color: var(--blanc-bg);
+  transform: translateY(-2px);
+}
+
+.btn-voir-carte {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--bleu-nuit-button);
+  color: var(--blanc-bg);
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: background 160ms ease, transform 120ms ease;
+  flex: 1;
+}
+
+.btn-voir-carte:hover {
+  background: var(--vert-val);
+  transform: translateY(-2px);
+}
+
 /*----remerciement après envoi du formulaire----*/
 .remerciement {
   max-width: 600px;
@@ -514,104 +764,17 @@ footer {
     width: 120px;
     height: 120px;
   }
-}
 
-/* Style pour les popups de signalements avec photos */
-.popup-signalement {
-  max-width: 250px;
-  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
-}
-
-.popup-signalement b {
-  display: block;
-  margin-bottom: 8px;
-  color: #0f2145;
-  font-size: 0.95rem;
-}
-
-.popup-signalement .popup-photo {
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 6px;
-  margin-bottom: 8px;
-  display: block;
-}
-
-.popup-signalement p {
-  margin: 0;
-  font-size: 0.85rem;
-  color: #2f2f2f;
-  line-height: 1.4;
-}
-
-/* Toast / message temporaire (utilisé par showMessage) */
-.toast {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-8px);
-  background: #0f2145;
-  color: #ffffff;
-  padding: 10px 14px;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(15, 33, 69, 0.18);
-  z-index: 9999;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 220ms ease, transform 220ms ease;
-  font-weight: 600;
-}
-.toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-  pointer-events: auto;
-}
-.toast.toast--success {
-  background: #3dbd7d;
-  color: #ffffff;
-}
-.toast.toast--error {
-  background: #e63946;
-  color: #ffffff;
-}
-
-/* Loading toast specifics */
-.toast.toast--loading {
-  background: #0f2145;
-  color: #ffffff;
-}
-.toast-spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #ffffff;
-  border-radius: 50%;
-  vertical-align: middle;
-  margin-right: 8px;
-
-  /* Bouton supprimer utilisé dans les popups de signalement */
-  .btn-delete-sig {
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--rouge-sign);
-    border: 1px solid rgba(230, 57, 70, 0.12);
-    cursor: pointer;
-    font-weight: 700;
-    transition: background 160ms ease, color 160ms ease, transform 120ms ease;
+  /* Signalements sur mobile */
+  .Signalements-grid {
+    grid-template-columns: 1fr;
   }
-  .btn-delete-sig:hover {
-    background: var(--rouge-sign);
-    color: #ffffff;
-    transform: translateY(-2px);
+
+  .section-signalement-non-afficher-map {
+    margin: 80px auto;
   }
-  animation: toast-spin 1s linear infinite;
-}
-@keyframes toast-spin {
-  to {
-    transform: rotate(360deg);
+
+  .titre-signalement-non-afficher-map {
+    font-size: 1.6rem;
   }
 }

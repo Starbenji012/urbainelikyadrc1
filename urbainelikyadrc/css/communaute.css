@@ -191,6 +191,95 @@ a.btn-connexion:focus {
   font-size: 1.05em;
 }
 
+/*------titre de page------*/
+.titre {
+  margin-top: 150px;
+  text-align: center;
+  margin-bottom: 150px;
+}
+
+.titre h2 {
+  font-size: 2.1rem;
+  color: var(--gris-fonce-text);
+  font-weight: 200;
+}
+
+.titre p {
+  font-size: 1.3rem;
+  color: var(--gris-fonce-text);
+}
+
+/*------Guide rapide------*/
+
+.guide-rapide {
+  margin-top: 150px;
+  margin-bottom: 150px;
+  max-width: 1200px;
+  margin: 32px auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-margin-top: 80px;
+}
+
+.titre-conseil {
+  text-align: center;
+  font-size: 2.1rem;
+  color: var(--gris-fonce-text);
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.conseil {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: var(--blanc-bg);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(138, 231, 178, 0.12);
+  position: relative;
+  padding: 18px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.conseil p {
+  font-size: 1.15rem;
+  line-height: 1.6;
+  color: var(--gris-fonce-text);
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+.conseil > img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+/*----remerciement ----*/
+.remerciement {
+  margin-top: 150px;
+  margin-bottom: 150px;
+  max-width: 600px;
+  margin: 150px auto;
+  padding: 30px;
+  text-align: center;
+}
+.remerciement h2 {
+  font-size: 2rem;
+  color: var(--gris-fonce-text);
+  margin-bottom: 16px;
+}
+
+.remerciement p {
+  font-size: 1.2rem;
+  color: var(--gris-fonce-text);
+  font-weight: 400;
+}
+
 /*-----footer--------*/
 
 footer {

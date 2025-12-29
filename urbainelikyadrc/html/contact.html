@@ -41,6 +41,69 @@
 
     </header>
 
+    <main class="page-contact">
+
+        <!-- Section titre de la page -->
+        <section class="titre-de-page" id="titre-de-page">
+            <div class="titre">
+
+                <h1>Contactez-Nous</h1>
+                <p> Une question, une suggestion ou un problème technique ?
+                    N’hésitez pas à nous écrire.</p>
+            </div>
+
+        </section>
+
+        <!-- Section Formulaire de Contact -->
+
+        <section class="formulaire-section" id="formulaire-section">
+            <div class="formulaire-contact">
+                <div class="form-colonne">
+                    <form action="#" method="post" class="formulaire" id="formcont">
+
+                        <div class="form-group">
+                            <label for="nom">Nom</label>
+                            <input type="text" id="nom" name="nom" placeholder="Votre nom" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sujet">Sujet</label>
+                            <input type="text" id="sujet" name="sujet" placeholder="Sujet du message" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" placeholder="Votre email" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="message">Message</label>
+                            <textarea id="message" name="message" rows="4" placeholder="Décrivez votre besoin ici..."
+                                required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn-envoyer">Envoyer</button>
+                        </div>
+
+                    </form>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- Section Informations de Contact -->
+        <section class="retour" id="retour">
+            <div class="remerciement">
+                <p>Alors n'hésitez pas à nous écrire.</p>
+            </div>
+        </section>
+
+
+    </main>
+
     <!------------------------------PIEDS DE LA PAGE------------------->
     <footer>
         <div class="footer-contenaire">
@@ -74,5 +137,7 @@
     </footer>
 
 </body>
+<script src="https://unpkg.com/scrollreveal"></script>
+<script src="../js/contact.js"></script>
 
 </html>
