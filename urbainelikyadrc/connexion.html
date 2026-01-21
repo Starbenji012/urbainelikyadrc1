@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Connexion</title>
+    <link rel="stylesheet" href="css/connexion.css" />
+</head>
+
+<body>
+    <div class="hero-overlay" aria-hidden="true"></div>
+
+    <main>
+        <section class="form-colonne">
+            <form id="loginForm" class="formulaire" novalidate>
+                <h1>Connexion</h1>
+
+                <div class="form-group">
+                    <label for="email">Adresse e‑mail</label>
+                    <input id="email" name="email" type="email" autocomplete="email" required />
+                    <div class="form-error" id="emailError" aria-live="polite"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <div style="display:flex;gap:8px;">
+                        <input id="password" name="password" type="password" autocomplete="current-password" required
+                            style="flex:1;" />
+                        <button type="button" id="togglePwd" aria-label="Afficher le mot de passe">Afficher</button>
+                    </div>
+                    <div class="form-error" id="passwordError" aria-live="polite"></div>
+                </div>
+
+                <div class="form-actions">
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:500;">
+                        <input type="checkbox" id="remember" name="remember" /> Se souvenir
+                    </label>
+                    <button class="btn-envoyer" type="submit">Se connecter</button>
+                </div>
+
+                <p class="form-note" style="margin-top:12px; text-align:center;">
+                    Pas encore inscrit ? <a href="#" class="switch">Créer un compte</a>
+                </p>
+            </form>
+        </section>
+    </main>
+
+    <script src="js/connexion.js"></script>
+</body>
+
+</html>

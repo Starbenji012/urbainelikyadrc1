@@ -4,11 +4,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
+    <link href='https://cdn.boxicons.com/fonts/brands/boxicons-brands.min.css' rel='stylesheet'>
+    <link rel="shortcut icon" href="../img/logo 2.png">
+    <link rel="stylesheet" href="../css/connexion.css">
+    <title>Connexion</title>
 </head>
 
 <body>
+    <main class="page-connexion">
+
+        <!--------  Fond de couleur transparent -------->
+        <div class="hero-overlay"></div>
+
+        <section class="formulaire-section" id="formulaire-section">
+            <div class="formulaire-connexion-inscription">
+
+                <div class="form connexion active">
+
+                    <!--------Logo-------->
+                    <div class="navlogo">
+                        <img src="../img/logo.png" alt="urbainelikyadrc" class="logo">
+                    </div>
+
+                    <!--------formulaire connexion et inscription-------->
+                    <form action="#" method="post" class="formulaire" id="formCon">
+
+                        <div class="form-group">
+                            <label for="titre">Nom</label>
+                            <input type="text" id="nom" name="nom" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="prenom">Prénom</label>
+                            <input type="text" id="prenom" name="prenom" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn-envoyer">Connexion</button>
+                        </div>
+
+                        <div class="form-group">
+                            <p>
+                                Pas encore de compte ?
+                                <span class="Switch">Inscrivez-vous ici</span>
+                            </p>
+                        </div>
+                    </form>
+                </div>
+
+                <!--------formulaire connexion et inscription-------->
+                <div class="form inscription">
+                    <form action="#" method="post" class="formulaire" id="formIns">
+
+                        <div class="form-group">
+                            <label for="titre">Nom</label>
+                            <input type="text" id="nom" name="nom" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="prenom">Prénom</label>
+                            <input type="text" id="prenom" name="prenom" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="surnom">Surnom</label>
+                            <input type="text" id="surnom" name="surnom" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Mot de passe</label>
+                            <input type="password" id="password" name="password" required>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn-envoyer">Inscription</button>
+                        </div>
+
+                        <div class="form-group">
+                            <p>
+                                Vous avez déjà un compte ?
+                                <span class="Switch">Connectez-vous</span>
+                            </p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
 
 </body>
+
+<script src="https://unpkg.com/scrollreveal"></script>
+<script src="../js/connexion.js"></script>
 
 </html>
