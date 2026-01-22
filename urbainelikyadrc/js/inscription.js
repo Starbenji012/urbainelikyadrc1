@@ -21,7 +21,7 @@ function goBack() {
 }
 
 /* ============================================
-   GESTION DES FORMULAIRES CONNEXION
+   GESTION DES FORMULAIRES INSCRIPTION
    ============================================ */
 
 /**
@@ -32,6 +32,33 @@ function goBack() {
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
+};
+
+/**
+ * Valide la force d'un mot de passe
+ * @param {string} password - Le mot de passe à tester
+ * @returns {object} { isValid: boolean, message: string }
+ */
+const validatePassword = (password) => {
+  if (password.length < 8) {
+    return {
+      isValid: false,
+      message: 'Le mot de passe doit contenir au moins 8 caractères.'
+    };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return {
+      isValid: false,
+      message: 'Le mot de passe doit contenir au moins une majuscule.'
+    };
+  }
+  if (!/[0-9]/.test(password)) {
+    return {
+      isValid: false,
+      message: 'Le mot de passe doit contenir au moins un chiffre.'
+    };
+  }
+  return { isValid: true, message: 'Mot de passe fort ✓' };
 };
 
 /**
@@ -99,15 +126,17 @@ const clearFormErrors = (form) => {
   });
 };
 
-// ========== INITIALISATION FORMULAIRE CONNEXION ==========
+// ========== INITIALISATION FORMULAIRE INSCRIPTION ==========
 document.addEventListener('DOMContentLoaded', () => {
-  const formConnexion = document.getElementById('formCon');
+  const formInscription = document.getElementById('formIns');
   
-  if (formConnexion) {
-    const nomField = formConnexion.querySelector('#nom');
-    const prenomField = formConnexion.querySelector('#prenom');
-    const emailField = formConnexion.querySelector('#email');
-    const submitBtn = formConnexion.querySelector('.btn-envoyer');
+  if (formInscription) {
+    const nomField = formInscription.querySelector('#nom');
+    const prenomField = formInscription.querySelector('#prenom');
+    const surnomField = formInscription.querySelector('#surnom');
+    const emailField = formInscription.querySelector('#email');
+    const passwordField = formInscription.querySelector('#password');
+    const submitBtn = formInscription.querySelector('.btn-envoyer');
 
     // Validation en temps réel au blur
     emailField?.addEventListener('blur', () => {
@@ -118,15 +147,27 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    // Validation du mot de passe en temps réel
+    passwordField?.addEventListener('input', () => {
+      const validation = validatePassword(passwordField.value);
+      if (!validation.isValid) {
+        passwordField.classList.add('input-error');
+      } else {
+        passwordField.classList.remove('input-error');
+      }
+    });
+
     // Gestion de la soumission du formulaire
-    formConnexion.addEventListener('submit', (e) => {
+    formInscription.addEventListener('submit', (e) => {
       e.preventDefault();
-      clearFormErrors(formConnexion);
+      clearFormErrors(formInscription);
 
       let isValid = true;
       const nom = nomField?.value.trim() || '';
       const prenom = prenomField?.value.trim() || '';
+      const surnom = surnomField?.value.trim() || '';
       const email = emailField?.value.trim() || '';
+      const password = passwordField?.value || '';
 
       // Validation Nom
       if (!nom) {
@@ -134,6 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
         isValid = false;
       } else if (nom.length < 2) {
         markFieldError(nomField, 'Le nom doit contenir au moins 2 caractères.');
+        isValid = false;
+      } else if (!/^[a-zA-ZÀ-ÿ\s-]+$/.test(nom)) {
+        markFieldError(nomField, 'Le nom doit contenir uniquement des lettres.');
         isValid = false;
       }
 
@@ -143,6 +187,21 @@ document.addEventListener('DOMContentLoaded', () => {
         isValid = false;
       } else if (prenom.length < 2) {
         markFieldError(prenomField, 'Le prénom doit contenir au moins 2 caractères.');
+        isValid = false;
+      } else if (!/^[a-zA-ZÀ-ÿ\s-]+$/.test(prenom)) {
+        markFieldError(prenomField, 'Le prénom doit contenir uniquement des lettres.');
+        isValid = false;
+      }
+
+      // Validation Surnom
+      if (!surnom) {
+        markFieldError(surnomField, 'Surnom requis.');
+        isValid = false;
+      } else if (surnom.length < 2) {
+        markFieldError(surnomField, 'Le surnom doit contenir au moins 2 caractères.');
+        isValid = false;
+      } else if (surnom.length > 20) {
+        markFieldError(surnomField, 'Le surnom ne doit pas dépasser 20 caractères.');
         isValid = false;
       }
 
@@ -155,6 +214,18 @@ document.addEventListener('DOMContentLoaded', () => {
         isValid = false;
       }
 
+      // Validation Mot de passe
+      if (!password) {
+        markFieldError(passwordField, 'Mot de passe requis.');
+        isValid = false;
+      } else {
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.isValid) {
+          markFieldError(passwordField, passwordValidation.message);
+          isValid = false;
+        }
+      }
+
       if (!isValid) {
         return;
       }
@@ -163,34 +234,40 @@ document.addEventListener('DOMContentLoaded', () => {
       const payload = {
         nom: nom,
         prenom: prenom,
+        surnom: surnom,
         email: email,
+        password: password,
         timestamp: new Date().toISOString()
       };
 
-      console.log('Données Connexion:', payload);
+      console.log('Données Inscription:', payload);
 
       // Désactiver le bouton et afficher le chargement
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Connexion en cours...';
+      submitBtn.textContent = 'Inscription en cours...';
       submitBtn.style.opacity = '0.7';
 
       // Simuler un appel API (remplacer par fetch réel)
       setTimeout(() => {
         // Succès simulé
-        const messageSuccess = showMessage('✓ Connexion réussie ! Redirection...', 'success');
-        formConnexion.insertBefore(messageSuccess, formConnexion.firstChild);
+        const messageSuccess = showMessage('✓ Inscription réussie ! Bienvenue...', 'success');
+        formInscription.insertBefore(messageSuccess, formInscription.firstChild);
+
+        // Réinitialiser le formulaire
+        formInscription.reset();
+        clearFormErrors(formInscription);
 
         // Réinitialiser le bouton
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Connexion';
+        submitBtn.textContent = 'Inscription';
         submitBtn.style.opacity = '1';
 
-        // Redirection après 1.5s
+        // Redirection après 2s
         setTimeout(() => {
-          // À remplacer: window.location.href = 'index.html';
-          console.log('Redirection vers tableau de bord...');
-        }, 1500);
-      }, 800);
+          // À remplacer: window.location.href = 'connexion.html';
+          console.log('Redirection vers connexion...');
+        }, 2000);
+      }, 1000);
     });
   }
 

@@ -182,8 +182,19 @@ a.btn-connexion:focus {
   justify-content: center;
   padding: 6px;
 }
+/* BURGER MENU responsif */
+.menu-burger {
+  display: none;
+  font-size: 1.8rem;
+  color: var(--bleu-nuit-button);
+  cursor: pointer;
+  transition: transform 0.22s ease;
+}
+.menu-burger:hover {
+  transform: scale(1.1);
+}
 
-/* PAGE CONNEXION : Background + overlay */
+/* PAGE INSCRIPTION : Background + overlay */
 .page-connexion {
   position: relative;
   min-height: calc(100vh - 160px);

@@ -358,7 +358,8 @@ if (form) {
                 lng,
                 lieu: lieuValue,
                 photo: photoData,
-                timestamp
+                timestamp,
+                etat: 'en_cours'
             };
             signalements.push(signalement);
             saveSignalements();

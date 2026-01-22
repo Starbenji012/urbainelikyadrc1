@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 
 <head>
     <meta charset="UTF-8">
@@ -7,8 +7,8 @@
     <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
     <link href='https://cdn.boxicons.com/fonts/brands/boxicons-brands.min.css' rel='stylesheet'>
     <link rel="shortcut icon" href="../img/logo 2.png">
-    <link rel="stylesheet" href="../css/communaute.css">
-    <title>Communauté</title>
+    <link rel="stylesheet" href="../css/inscription.css">
+    <title>Inscription</title>
 </head>
 
 <body>
@@ -40,69 +40,61 @@
         </nav>
 
     </header>
-    <main class="page-communaute">
+    <main class="page-connexion">
 
-        <!-- Section titre de la page -->
-        <section class="titre-de-page" id="titre-de-page">
-            <div class="titre">
+        <!--------  Fond de couleur transparent -------->
+        <div class="hero-overlay"></div>
 
-                <h1>Bienvenue dans la communauté urbaine de ElikyaDRC.</h1>
-                <p>Ensemble, améliorons nos villes grâce aux signalements,
-                    aux idées et au suivi citoyen.</p>
-            </div>
+        <section class="formulaire-section" id="formulaire-section">
+            <div class="formulaire-connexion-inscription">
 
-        </section>
+                <div class="form connexion active">
 
-        <!-- Section Conseils -->
+                    <!--------Bouton Retour-------->
+                    <button class="btn-retour" id="btn-retour" onclick="goBack()">
+                        <i class='bx bx-arrow-back'></i> Retour
+                    </button>
 
-        <section class="guide-rapide" id="guide-rapide">
-            <h1 class="titre-conseil">Conseils</h1>
-            <div class="conseil">
-                <p>Vous pouvez aussi signaler des problèmes ici. Tout en remplissent correctement les informations
-                    demandées.</p>
-                <img src="../img/Forms-cuate.png" alt="photo-conseil-1">
-            </div>
-            <div class="conseil">
-                <p>Partagez vos idées pour améliorer l'urbanisme dans votre ville. Vos suggestions sont précieuses
-                    pour nous aider à créer des espaces urbains plus vivables et durables.
-                    Consultez les idées proposées par d'autres membres de la communauté et votez pour celles que
-                    vous trouvez les plus pertinentes.</p>
-                <img src="../img/Team spirit-cuate.png" alt="photo-conseil-2">
-        </section>
+                    <!--------formulaire inscription -------->
+                    <div class="form inscription">
+                        <form action="#" method="post" class="formulaire" id="formIns">
 
-        <!-- Section signalement -->
-        <section class="communaute-signalement" id="communaute-signalement">
-            <h1 class="titre-signalement">Signalements Faites</h1>
-            <div class="signalements-container">
-                <!-- Exemple de signalement -->
-                <div class="signalement">
+                            <div class="form-group">
+                                <label for="titre">Nom</label>
+                                <input type="text" id="nom" name="nom" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="prenom">Prénom</label>
+                                <input type="text" id="prenom" name="prenom" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="surnom">Surnom</label>
+                                <input type="text" id="surnom" name="surnom" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <input type="email" id="email" name="email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">Mot de passe</label>
+                                <input type="password" id="password" name="password" required>
+                            </div>
+                            <div class="form-group">
+                                <button type="submit" class="btn-envoyer">Inscription</button>
+                            </div>
 
+                            <div class="form-group">
+                                <p>
+                                    Vous avez déjà un compte ?
+                                    <span><a href="connexion.html" class="Switch">Connectez-vous</a></span>
+                                </p>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-
-            </div>
-
-        </section>
-        <section class="communaute-idees" id="communaute-idees">
-            <h1 class="titre-idee">Idées Soumises</h1>
-            <div class="idees-container">
-                <!-- Exemple d'idée -->
-                <div class="idee">
-
-                </div>
-
-        </section>
-
-
-        <section class="retour" id="retour">
-            <div class="remerciement">
-                <h2>Merci à notre communauté et à tout nos citoyens congolais!</h2>
-                <p>Votre participation active contribue à bâtir des villes meilleures pour tous.</p>
-            </div>
-
         </section>
     </main>
 
-    <!------------------------------PIEDS DE LA PAGE------------------->
     <footer>
         <div class="footer-contenaire">
 
@@ -134,8 +126,10 @@
 
     </footer>
 
-    <script src="https://unpkg.com/scrollreveal"></script>
-    <script src="../js/communaute.js"></script>
 </body>
+
+<script src="https://unpkg.com/scrollreveal"></script>
+<script src="../js/connexion.js"></script>
+<script src="../js/inscription.js"></script>
 
 </html>
