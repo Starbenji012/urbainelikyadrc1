@@ -23,8 +23,8 @@ body {
 }
 body {
   margin: 0;
-  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
+  font-family:
+    system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   background: var(--gris-clair-bg); /* corps gris */
   color: var(--gris-fonce-text);
   -webkit-font-smoothing: antialiased;
@@ -105,7 +105,9 @@ header .navbar ul.navigation-menu > li > a:visited {
   font-size: 16px;
   font-weight: 500;
   padding: 6px 8px;
-  transition: color 0.22s ease, text-shadow 0.22s ease;
+  transition:
+    color 0.22s ease,
+    text-shadow 0.22s ease;
   z-index: 2;
 }
 
@@ -148,7 +150,10 @@ a.btn-connexion {
   gap: 8px;
   font-weight: 700;
   box-shadow: 0 4px 12px rgba(15, 33, 69, 0.12);
-  transition: transform 0.14s ease, box-shadow 0.22s ease, filter 0.12s ease;
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.22s ease,
+    filter 0.12s ease;
   border: none;
   cursor: pointer;
 }
@@ -159,7 +164,8 @@ a.btn-connexion {
 a.btn-connexion:hover,
 a.btn-connexion:focus {
   transform: translateY(-3px);
-  box-shadow: 0 18px 48px rgba(15, 33, 69, 0.3),
+  box-shadow:
+    0 18px 48px rgba(15, 33, 69, 0.3),
     0 0 26px rgba(61, 189, 125, 0.12);
   filter: brightness(1.05);
   outline: none;
@@ -282,15 +288,15 @@ a.btn-connexion:focus {
 
 .couleur-part1 {
   color: var(--bleu-nuit-button);
-  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
+  font-family:
+    system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 1.05em;
 }
 
 .presentation h1 .couleur-part2 {
   color: var(--vert-val);
-  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
+  font-family:
+    system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   padding: 2px 8px;
   font-size: 1.05em;
 }
@@ -413,7 +419,9 @@ ol.etapes .etape .etape-body p {
   box-shadow: 0 8px 24px rgba(138, 231, 178, 0.3);
   flex: 1 1 200px;
   border: 2px solid transparent;
-  transition: transform 0.14s ease, border-color 0.18s ease,
+  transition:
+    transform 0.14s ease,
+    border-color 0.18s ease,
     box-shadow 0.22s ease;
 }
 
@@ -476,7 +484,9 @@ ol.etapes .etape .etape-body p {
   display: flex;
   gap: 16px;
   align-items: flex-start;
-  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease;
 }
 
 .left-border {
@@ -525,6 +535,152 @@ ol.etapes .etape .etape-body p {
 .temoignages-cards:hover {
   transform: scale(1.03);
   box-shadow: 0 8px 24px rgba(138, 231, 178, 0.4);
+}
+
+/* Simple style pour le formulaire de témoignage */
+
+.btn-temoigner {
+  display: inline-block;
+  margin: 10px auto 12px;
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--bleu-nuit-button);
+  border: 2px solid var(--bleu-nuit-button);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition:
+    background 0.18s,
+    color 0.18s,
+    transform 0.12s;
+}
+.btn-temoigner:hover {
+  background: var(--bleu-nuit-button);
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.temoignage-form {
+  width: 350px;
+  max-width: 100%;
+  margin: 0 auto 16px;
+  background: var(--blanc-bg);
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(15, 33, 69, 0.06);
+  display: block;
+}
+
+.temoignage-form input,
+.temoignage-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.temoignage-form textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.temoignage-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.btn-submit {
+  background: var(--vert-val);
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.btn-cancel {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.temoignage-form {
+  background: var(--blanc-bg);
+  padding: 14px;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(15, 33, 69, 0.06);
+  display: block;
+  max-width: 680px; /* largeur réduite */
+  margin: 0 auto; /* centrer */
+}
+.temoignage-form .input,
+.temoignage-form textarea,
+.temoignage-form input[type="file"] {
+  width: 100%;
+
+  padding: 8px 10px;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #fff;
+  color: var(--gris-fonce-text);
+}
+.temoignage-form textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+.temoignage-form #temoignage-preview img {
+  max-width: 120px;
+  border-radius: 8px;
+  display: block;
+  margin-top: 8px;
+}
+.temoignages-actions {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+/* Toast notification */
+#toast-container {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  background: rgba(15, 33, 69, 0.95);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  min-width: 180px;
+  max-width: 320px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  transform: translateY(12px);
+  opacity: 0;
+  transition:
+    transform 240ms ease,
+    opacity 240ms ease;
+  font-weight: 600;
+}
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+.toast.success {
+  background: linear-gradient(90deg, #2bb673, #22a06b);
+}
+.toast.error {
+  background: linear-gradient(90deg, #f05a6b, #e63946);
 }
 
 /*-----footer--------*/

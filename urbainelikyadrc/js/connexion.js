@@ -6,12 +6,9 @@ const sr = ScrollReveal({
     delay: 200,
 });
 
-sr.reveal('header,.navbar,.hero-bg,.hero-overlay, .hero-content, .formulaire-section,.formulaire-connexion-inscription', { origin: 'top' });
+sr.reveal('header,.navbar,.hero-bg,.hero-overlay, .hero-content, .formulaire-section,.formulaire-connexion-inscription,.btn-retour', { origin: 'top' });
 sr.reveal('.footer-contenaire,.footer-bottom', { origin: 'bottom' });
 
-/* ============================================
-   FONCTION RETOUR
-   ============================================ */
 
 /**
  * Fonction pour retourner à la page précédente

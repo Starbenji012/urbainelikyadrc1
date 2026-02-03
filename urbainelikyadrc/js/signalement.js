@@ -6,7 +6,7 @@ const sr = ScrollReveal({
     delay: 200,
 });
 
-sr.reveal('header,.navbar,.titre,.guide-rapide,.signalement-wrap,.titre-signalement-non-afficher-map,.Signalements-header,.Signalements-grid,.remerciement', { origin: 'top' });
+sr.reveal('header,.navbar,.titre,.guide-rapide,.signalement-wrap,.titre-signalement-non-afficher-map,.Signalements-header,.Signalements-grid,.remerciement,', { origin: 'top' });
 sr.reveal('.footer-contenaire,.footer-bottom', { origin: 'bottom' });
 
 
@@ -19,6 +19,22 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 // Charger les signalements sauvegardés au démarrage de la page
 document.addEventListener('DOMContentLoaded', () => {
     loadSignalements();
+
+    // Initialiser les contrôles de filtrage des icônes
+    document.querySelectorAll('.filter-icon').forEach(img => {
+        img.addEventListener('click', () => {
+            const type = img.dataset.type;
+            if (!type) return;
+            if (currentFilter === type.toLowerCase()) setFilter(null);
+            else setFilter(type);
+        });
+    });
+
+    const btnAll = document.getElementById('btn-show-all');
+    if (btnAll) btnAll.addEventListener('click', () => setFilter(null));
+
+    // Default: montrer tous
+    setFilter(null);
 });
 
 // Après chargement, attacher gestionnaires UI pour total / vider / suppression
@@ -40,20 +56,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // délégation pour bouton supprimer dans popup
+    // délégation pour boutons dans popup (supprimer, voir)
     document.addEventListener('click', (ev) => {
         const t = ev.target;
-        if (t && t.classList && t.classList.contains('btn-delete-sig')) {
+        if (!t || !t.classList) return;
+        if (t.classList.contains('btn-delete-sig')) {
             const ts = t.dataset.ts;
             if (!ts) return;
             if (!confirm('Supprimer ce signalement ?')) return;
             deleteSignalement(ts);
+            return;
+        }
+        if (t.classList.contains('btn-voir-carte')) {
+            const ts = t.dataset.ts;
+            if (!ts) return;
+            const m = markers.find(x => String(x._sigTimestamp || '') === String(ts));
+            if (m) { try { map.flyTo(m.getLatLng(), 16, { duration: 0.8 }); m.openPopup(); } catch (e) {} }
+            return;
         }
     });
 });
 
 // Liste de marqueurs ajoutés
 const markers = [];
+// Filtre courant (null = aucun)
+let currentFilter = null;
 
 // Liste des signalements sauvegardés
 const signalements = JSON.parse(localStorage.getItem('signalements') || '[]');
@@ -363,7 +390,10 @@ if (form) {
             };
             signalements.push(signalement);
             saveSignalements();
-            addMarkerToMap(lat, lng, titre, desc, photoData, chosenIcon, timestamp);
+            addMarkerToMap(lat, lng, titre, desc, photoData, chosenIcon, timestamp, type);
+
+            // Appliquer le filtre courant si besoin (nouveau marker pourra être caché)
+            updateMarkersVisibility();
 
             updateTotalSignalements();
             renderSignalements();
@@ -403,38 +433,82 @@ if (form) {
 }
 
 // Fonction pour ajouter un marqueur à la carte avec popup
-function addMarkerToMap(lat, lng, titre, desc, photo, icon, timestamp) {
+function addMarkerToMap(lat, lng, titre, desc, photo, icon, timestamp, type) {
     const m = icon
         ? L.marker([lat, lng], { icon: icon }).addTo(map)
         : L.marker([lat, lng]).addTo(map);
 
-    let popupContent = '<div class="popup-signalement">';
-    popupContent += '<b>' + (titre || 'Signalement') + '</b><br>';
-
+    // construire un contenu de popup qui ressemble aux cartes de la page "signaler"
+    let popupContent = '<div class="carte-signalement popup-signalement">';
     if (photo) {
-        popupContent += '<img src="' + photo + '" alt="' + titre + '" class="popup-photo"><br>';
+        popupContent += '<img src="' + photo + '" alt="' + (titre || 'Signalement') + '" class="carte-signalement-photo">';
     }
-
-    popupContent += '<div class="popup-desc">' + (desc || '') + '</div>';
-
+    popupContent += '<h3>' + (titre || 'Signalement') + '</h3>';
+    popupContent += '<p class="carte-signalement-desc">' + (desc || '') + '</p>';
+    if (type) popupContent += '<span class="carte-signalement-type">' + (type || '') + '</span>';
     if (timestamp) {
-        try {
-            const dt = new Date(timestamp).toLocaleString('fr-FR');
-            popupContent += '<div class="popup-time">' + dt + '</div>';
-        } catch (e) { /* ignore */ }
+        try { popupContent += '<div class="carte-signalement-meta">' + new Date(timestamp).toLocaleString('fr-FR') + '</div>'; } catch (e) {}
     }
-
-    // bouton supprimer (data-ts = timestamp unique)
-    if (timestamp) {
-        popupContent += '<div style="margin-top:8px;"><button class="btn btn-delete-sig" data-ts="' + timestamp + '">Supprimer</button></div>';
-    }
-
+    // actions
+    popupContent += '<div class="carte-signalement-buttons">';
+    popupContent += '<button class="btn-voir-carte" data-ts="' + (timestamp || '') + '">Voir</button>';
+    if (timestamp) popupContent += '<button class="btn btn-delete-sig" data-ts="' + timestamp + '">Supprimer</button>';
+    popupContent += '</div>';
     popupContent += '</div>';
 
-    m.bindPopup(popupContent).openPopup();
-    // lier le timestamp au marker pour suppression
-    try { m._sigTimestamp = timestamp; } catch (e) {}
+    m.bindPopup(popupContent);
+    // lier le timestamp et le type au marker pour suppression/filtrage (type normalisé en minuscule)
+    try { m._sigTimestamp = timestamp; m._sigType = (type || '').toLowerCase(); } catch (e) {}
     markers.push(m);
+
+    // Lorsque l'utilisateur clique sur l'icône (marqueur), on filtre la liste et on affiche la section
+    try {
+        m.on('click', () => {
+            const t = (m._sigType || '').toString().toLowerCase();
+            if (t) {
+                setFilter(t);
+                const section = document.getElementById('section-signalement-non-afficher-map');
+                if (section) section.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    } catch (e) {}
+
+}
+
+// Appliquer un filtre (type) : montre uniquement les markers et signalements correspondant au type
+function setFilter(type) {
+    currentFilter = type ? String(type).toLowerCase() : null;
+    const af = document.getElementById('activeFilter');
+    if (af) af.textContent = currentFilter ? currentFilter : 'Tous';
+
+    // Mettre en évidence l'icône active
+    document.querySelectorAll('.filter-icon').forEach(img => {
+        try { img.classList.toggle('active-filter', currentFilter && img.dataset.type && img.dataset.type.toLowerCase() === currentFilter); } catch (e) {}
+    });
+
+    updateMarkersVisibility();
+    renderSignalements();
+}
+
+function updateMarkersVisibility() {
+    markers.forEach(m => {
+        try {
+            const t = String(m._sigType || '').toLowerCase();
+            const show = !currentFilter || (t === currentFilter);
+            if (show) {
+                if (!map.hasLayer(m)) map.addLayer(m);
+            } else {
+                if (map.hasLayer(m)) map.removeLayer(m);
+            }
+        } catch (e) { }
+    });
+
+    // Mettre à jour le compteur visible
+    const totalAllEl = document.getElementById('totalSignalementsAfficheAll');
+    if (totalAllEl) {
+        const count = signalements.filter(s => !currentFilter || (s.type && String(s.type).toLowerCase() === currentFilter)).length;
+        totalAllEl.textContent = count;
+    }
 }
 
 // Fonction pour sauvegarder les signalements
@@ -446,11 +520,8 @@ function saveSignalements() {
     }
 }
 
-// Met à jour le compteur affiché
-function updateTotalSignalements() {
-    const el = document.getElementById('totalSignalements');
-    if (el) el.textContent = String(signalements.length || 0);
-}
+// updateTotalSignalements : la version consolidée se trouve plus bas dans le fichier
+
 
 // Supprimer un signalement par timestamp
 function deleteSignalement(timestamp) {
@@ -471,6 +542,8 @@ function deleteSignalement(timestamp) {
 
     updateTotalSignalements();
     renderSignalements();
+    // si la page 'suivi' a rendu une vue filtrée, rafraichir aussi
+    if (typeof renderVisibleSignalements === 'function') try { renderVisibleSignalements(); } catch (e) {}
     showMessage('Signalement supprimé.', 'success');
 }
 
@@ -540,7 +613,7 @@ function clearLieuWarning() {
 function loadSignalements() {
     signalements.forEach(sig => {
         const icon = getIconForType(sig.type);
-        addMarkerToMap(sig.lat, sig.lng, sig.titre, sig.description, sig.photo, icon, sig.timestamp);
+        addMarkerToMap(sig.lat, sig.lng, sig.titre, sig.description, sig.photo, icon, sig.timestamp, sig.type);
     });
     updateTotalSignalements();
     renderSignalements();
@@ -709,9 +782,12 @@ function renderSignalements() {
     container.innerHTML = '';
     const frag = document.createDocumentFragment();
 
-    signalements.forEach((sig, index) => {
+    const items = signalements.filter(sig => !currentFilter || (sig.type && sig.type.toLowerCase() === currentFilter));
+    items.forEach((sig, index) => {
         const card = document.createElement('div');
         card.className = 'carte-signalement';
+        // lier la carte au timestamp pour faciliter la recherche
+        if (sig.timestamp) card.dataset.ts = sig.timestamp;
 
         // Ajouter la photo si elle existe
         if (sig.photo) {
@@ -797,18 +873,12 @@ function renderSignalements() {
     updateTotalSignalements();
 }
 
-// Mise à jour des compteurs (affichés et total)
+// Mise à jour des compteurs (global et filtré)
 function updateTotalSignalements() {
-    const totalEl = document.getElementById('totalSignalementsAffiche');
-    const totalAllEl = document.getElementById('totalSignalementsAll');
-    
-    if (totalEl) {
-        // Compter les signalements affichés sur la carte (au moins un marker)
-        totalEl.textContent = markers.length;
-    }
-    
-    if (totalAllEl) {
-        totalAllEl.textContent = signalements.length;
-    }
+    const el = document.getElementById('totalSignalements');
+    if (el) el.textContent = String(signalements.length || 0);
+    const filteredCount = signalements.filter(s => !currentFilter || (s.type && s.type.toLowerCase() === currentFilter)).length;
+    const totalAllEl = document.getElementById('totalSignalementsAfficheAll');
+    if (totalAllEl) totalAllEl.textContent = String(filteredCount);
 }
 

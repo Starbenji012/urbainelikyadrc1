@@ -7,7 +7,8 @@ const sr = ScrollReveal({
 });
 
 sr.reveal('header,.navbar,.hero-bg,.hero-overlay, .hero-content, .presentation, .fonctionnement,.statistique-resultat,.temoignages-Avis,.temoignages-Avis h2', { origin: 'top' });
-sr.reveal('.hero-buttons,.footer-contenaire,.footer-bottom', { origin: 'bottom' });
+sr.reveal('.hero-buttons,', { origin: 'bottom' });
+
 
 /* ============================================
    CHARGEMENT AUTOMATIQUE DES STATS ET TÉMOIGNAGES
@@ -86,3 +87,129 @@ function loadTemoignages() {
     
     container.appendChild(fragment);
 }
+
+// --- Form handling: ajouter un témoignage depuis la page d'accueil ---
+function initTemoignageForm() {
+    const btnAdd = document.getElementById('btn-add-temoignage');
+    const form = document.getElementById('form-temoignage');
+    const inputNom = document.getElementById('temoignage-nom');
+    const inputVille = document.getElementById('temoignage-ville');
+    const inputMessage = document.getElementById('temoignage-message');
+    const inputPhoto = document.getElementById('temoignage-photo');
+    const preview = document.getElementById('temoignage-preview');
+    const btnCancel = document.getElementById('btn-cancel-temoignage');
+    const feedback = document.getElementById('temoignage-feedback');
+
+    if (!btnAdd || !form) return;
+
+    // Afficher / masquer le formulaire
+    btnAdd.addEventListener('click', () => {
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        feedback.textContent = '';
+    });
+
+    // Annuler
+    if (btnCancel) btnCancel.addEventListener('click', () => {
+        form.style.display = 'none';
+        clearForm();
+        feedback.textContent = '';
+    });
+
+    // Prévisualiser la photo
+    if (inputPhoto) inputPhoto.addEventListener('change', () => {
+        if (!preview) return;
+        preview.innerHTML = '';
+        const file = inputPhoto.files && inputPhoto.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.style.maxWidth = '100px';
+            img.style.borderRadius = '6px';
+            img.alt = 'Aperçu';
+            preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Soumettre le formulaire
+    form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        if (!inputMessage) return;
+        const nom = (inputNom && inputNom.value || '').trim();
+        const ville = (inputVille && inputVille.value || '').trim();
+        const message = (inputMessage && inputMessage.value || '').trim();
+        if (!message) {
+            if (feedback) { feedback.style.color = 'red'; feedback.textContent = 'Le message est requis.'; }
+            showToast('Le message est requis.', 'error');
+            return;
+        }
+        if (feedback) { feedback.style.color = 'green'; feedback.textContent = 'Envoi en cours...'; }
+        let photoData = '';
+        const file = inputPhoto && inputPhoto.files && inputPhoto.files[0];
+        if (file) {
+            try {
+                photoData = await fileToDataURL(file);
+            } catch (err) {
+                photoData = '';
+                showToast('Impossible de lire la photo.', 'error');
+            }
+        }
+
+        const temoignages = JSON.parse(localStorage.getItem('temoignages') || '[]');
+        temoignages.unshift({
+            nom: nom || 'Anonyme',
+            ville: ville || 'Kinshasa',
+            message,
+            photo: photoData || '../img/logo.png',
+            ts: Date.now()
+        });
+        localStorage.setItem('temoignages', JSON.stringify(temoignages));
+        loadTemoignages();
+
+        if (feedback) { feedback.style.color = 'green'; feedback.textContent = 'Merci ! Votre témoignage a été ajouté.'; }
+        showToast('Merci ! Votre témoignage a été ajouté.', 'success');
+        clearForm();
+        form.style.display = 'none';
+    });
+
+    function clearForm() {
+        if (inputNom) inputNom.value = '';
+        if (inputVille) inputVille.value = '';
+        if (inputMessage) inputMessage.value = '';
+        if (inputPhoto) inputPhoto.value = '';
+        if (preview) preview.innerHTML = '';
+    }
+}
+
+function fileToDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Erreur lecture fichier'));
+        reader.readAsDataURL(file);
+    });
+}
+
+// Petite notification toast
+function showToast(message, type = 'success', duration = 3500) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const t = document.createElement('div');
+    t.className = 'toast ' + (type === 'error' ? 'error' : 'success');
+    t.textContent = message;
+    container.appendChild(t);
+    // force reflow pour activer la transition
+    void t.offsetWidth;
+    t.classList.add('show');
+    setTimeout(() => {
+        t.classList.remove('show');
+        setTimeout(() => { try { container.removeChild(t); } catch (_) {} }, 240);
+    }, duration);
+}
+
+// Initialiser le gestionnaire de formulaire au chargement
+document.addEventListener('DOMContentLoaded', () => {
+    initTemoignageForm();
+});
