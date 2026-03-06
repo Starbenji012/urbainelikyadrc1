@@ -1,13 +1,4 @@
-// Initialize ScrollReveal correctly and reuse the instance
-const sr = ScrollReveal({
-    reset: true,
-    distance: '80px',
-    duration: 2000,
-    delay: 200,
-});
 
-sr.reveal('header,.navbar,.hero-bg,.hero-overlay, .hero-content, .formulaire-section,.formulaire-connexion-inscription', { origin: 'top' });
-sr.reveal('.footer-contenaire,.footer-bottom', { origin: 'bottom' });
 
 /* ============================================
    FONCTION RETOUR
@@ -18,6 +9,27 @@ sr.reveal('.footer-contenaire,.footer-bottom', { origin: 'bottom' });
  */
 function goBack() {
   window.history.back();
+}
+
+/* ============================================
+   GESTION DU MENU BURGER
+   ============================================ */
+function initMenuBurger() {
+    const menuBurger = document.getElementById('menu-burger');
+    const navigationMenu = document.querySelector('.navigation-menu');
+
+    if (menuBurger && navigationMenu) {
+        menuBurger.addEventListener('click', () => {
+            navigationMenu.classList.toggle('active');
+        });
+
+        // Fermer le menu quand un lien est cliqué
+        navigationMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                navigationMenu.classList.remove('active');
+            });
+        });
+    }
 }
 
 /* ============================================
@@ -128,6 +140,9 @@ const clearFormErrors = (form) => {
 
 // ========== INITIALISATION FORMULAIRE INSCRIPTION ==========
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialiser le menu burger
+  initMenuBurger();
+  
   const formInscription = document.getElementById('formIns');
   
   if (formInscription) {

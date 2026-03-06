@@ -1,18 +1,34 @@
-const sr = ScrollReveal({
-    reset: true,
-    distance: '80px',
-    duration: 2000,
-    delay: 200,
-});
-
-sr.reveal('header,.navbar,.titre,.guide-rapide,.idee-formulaire,.titre-exemple-idees,.idees-header,.idees-grid,.remerciement', { origin: 'top' });
-sr.reveal('.footer-contenaire,.footer-bottom', { origin: 'bottom' });
 
 
 // Liste des idées en mémoire (restauration depuis localStorage si présente)
 const idees = JSON.parse(localStorage.getItem('idees') || '[]');
 
+/* ============================================
+   GESTION DU MENU BURGER
+   ============================================ */
+function initMenuBurger() {
+    const menuBurger = document.getElementById('menu-burger');
+    const navigationMenu = document.querySelector('.navigation-menu');
+
+    if (menuBurger && navigationMenu) {
+        menuBurger.addEventListener('click', () => {
+            navigationMenu.classList.toggle('active');
+        });
+
+        // Fermer le menu quand un lien est cliqué
+        navigationMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                navigationMenu.classList.remove('active');
+            });
+        });
+    }
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialiser le menu burger
+    initMenuBurger();
+    
     const form = document.getElementById('formIdee');
     const container = document.getElementById('listeIdees');
     const totalEl = document.getElementById('totalIdees');

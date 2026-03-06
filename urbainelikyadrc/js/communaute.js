@@ -1,19 +1,29 @@
-// Initialize ScrollReveal
-const sr = ScrollReveal({
-    reset: true,
-    distance: '80px',
-    duration: 2000,
-    delay: 200,
-});
-
-sr.reveal('header,.navbar,.titre,.guide-rapide,.titre-signalement,.titre-idee,.remerciement', { origin: 'top' });
-sr.reveal('.footer-contenaire,.footer-bottom', { origin: 'bottom' });
 
 /* ============================================
-   CHARGEMENT COMMUNAUTÉ - SIGNALEMENTS ET IDÉES
+   GESTION DU MENU BURGER
    ============================================ */
+function initMenuBurger() {
+    const menuBurger = document.getElementById('menu-burger');
+    const navigationMenu = document.querySelector('.navigation-menu');
+
+    if (menuBurger && navigationMenu) {
+        menuBurger.addEventListener('click', () => {
+            navigationMenu.classList.toggle('active');
+        });
+
+        // Fermer le menu quand un lien est cliqué
+        navigationMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                navigationMenu.classList.remove('active');
+            });
+        });
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialiser le menu burger
+    initMenuBurger();
+    
     // Afficher les signalements
     displaySignalements();
     // Afficher les idées

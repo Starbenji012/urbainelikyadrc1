@@ -1,14 +1,25 @@
 
-const sr = ScrollReveal({
-    reset: true,
-    distance: '80px',
-    duration: 2000,
-    delay: 200,
-});
 
-sr.reveal('header,.navbar,.titre,.guide-rapide,.signalement-wrap,.titre-signalement-non-afficher-map,.Signalements-header,.Signalements-grid,.remerciement,', { origin: 'top' });
-sr.reveal('.footer-contenaire,.footer-bottom', { origin: 'bottom' });
+/* ============================================
+   GESTION DU MENU BURGER
+   ============================================ */
+function initMenuBurger() {
+    const menuBurger = document.getElementById('menu-burger');
+    const navigationMenu = document.querySelector('.navigation-menu');
 
+    if (menuBurger && navigationMenu) {
+        menuBurger.addEventListener('click', () => {
+            navigationMenu.classList.toggle('active');
+        });
+
+        // Fermer le menu quand un lien est cliqué
+        navigationMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                navigationMenu.classList.remove('active');
+            });
+        });
+    }
+}
 
 // Initialise la carte (centrée sur Kinshasa)
 const map = L.map('map').setView([-4.0383, 21.7587], 13);
@@ -18,6 +29,9 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 // Charger les signalements sauvegardés au démarrage de la page
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialiser le menu burger
+    initMenuBurger();
+    
     loadSignalements();
 
     // Initialiser les contrôles de filtrage des icônes

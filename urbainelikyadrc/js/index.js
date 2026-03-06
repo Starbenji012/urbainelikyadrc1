@@ -1,13 +1,3 @@
-// Initialize ScrollReveal correctly and reuse the instance
-const sr = ScrollReveal({
-    reset: true,
-    distance: '80px',
-    duration: 2000,
-    delay: 200,
-});
-
-sr.reveal('header,.navbar,.hero-bg,.hero-overlay, .hero-content, .presentation, .fonctionnement,.statistique-resultat,.temoignages-Avis,.temoignages-Avis h2', { origin: 'top' });
-sr.reveal('.hero-buttons,', { origin: 'bottom' });
 
 
 /* ============================================
@@ -209,7 +199,30 @@ function showToast(message, type = 'success', duration = 3500) {
     }, duration);
 }
 
-// Initialiser le gestionnaire de formulaire au chargement
+/* ============================================
+   GESTION DU MENU BURGER
+   ============================================ */
+function initMenuBurger() {
+    const menuBurger = document.getElementById('menu-burger');
+    const navigationMenu = document.querySelector('.navigation-menu');
+
+    if (menuBurger && navigationMenu) {
+        menuBurger.addEventListener('click', () => {
+            navigationMenu.classList.toggle('active');
+        });
+
+        // Fermer le menu quand un lien est cliqué
+        navigationMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                navigationMenu.classList.remove('active');
+            });
+        });
+    }
+}
+
+
+// Initialiser le gestionnaire de formulaire et menu au chargement
 document.addEventListener('DOMContentLoaded', () => {
     initTemoignageForm();
+    initMenuBurger();
 });
