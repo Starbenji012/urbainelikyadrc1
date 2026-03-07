@@ -214,8 +214,8 @@ a.btn-connexion:focus {
 
 /* slogan */
 .hero-slogan {
-  margin: 0;
-  color: #fff;
+  margin: 0 20px 0 0;
+  color: var(--blanc-bg);
   font-size: clamp(24px, 4.5vw, 48px);
   line-height: 1.05;
   font-weight: 700;
@@ -224,6 +224,7 @@ a.btn-connexion:focus {
 
 /* boutons sur l'image utilisent la même classe .btn pour unifier l'apparence */
 .hero-buttons {
+  margin: 20px 0 0 0;
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
@@ -417,7 +418,8 @@ ol.etapes .etape .etape-body p {
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(138, 231, 178, 0.3);
-  flex: 1 1 200px;
+  flex: 1 1 150px;
+  max-width: 250px;
   border: 2px solid transparent;
   transition:
     transform 0.14s ease,
