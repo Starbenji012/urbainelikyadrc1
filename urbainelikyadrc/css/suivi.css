@@ -254,10 +254,10 @@ a.btn-connexion:focus {
 }
 
 /* ---------- Formulaire: form-group & btn-envoyer (simple, moderne) ---------- */
-.carte {
+.carte-section {
   margin-top: 150px;
   margin-bottom: 150px;
-  max-width: 640px;
+  max-width: 1200px;
   background: var(--blanc-bg);
   padding: 20px;
   border-radius: 12px;
@@ -291,7 +291,6 @@ a.btn-connexion:focus {
 
 /* Permet à la colonne carte d'être plus large que la valeur par défaut */
 .map-layout > .map-container {
-  flex: 1 1 720px;
   min-width: 520px;
 }
 
@@ -302,10 +301,10 @@ a.btn-connexion:focus {
 }
 
 .map-layout {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 300px;
   gap: 14px;
-  align-items: flex-start;
-  justify-content: flex-start;
+  align-items: start;
 }
 
 .map-layout .carte {
@@ -328,7 +327,6 @@ a.btn-connexion:focus {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  flex: 0 0 300px;
 }
 
 .bloc-info h3 {
@@ -770,5 +768,12 @@ footer {
 
   .titre-signalement-non-afficher-map {
     font-size: 1.6rem;
+  }
+}
+
+/* Responsive pour la map-layout */
+@media (max-width: 900px) {
+  .map-layout {
+    grid-template-columns: 1fr;
   }
 }

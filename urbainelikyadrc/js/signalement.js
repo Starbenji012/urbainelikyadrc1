@@ -19,6 +19,57 @@ function initMenuBurger() {
   }
 }
 
+// Helper to remove accents/diacritics from a string (for easier matching)
+function removeDiacritics(str) {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+// Vérifie si une adresse contient le nom d'un pays étranger (autre que la RDC)
+// on utilise une liste minimale de pays et d'expressions communes.
+function containsForeignCountry(addr) {
+  if (!addr || typeof addr !== "string") return false;
+  const normalized = removeDiacritics(addr.toLowerCase());
+  const forbidden = [
+    // pays voisins ou africains couramment confondus
+    "rwanda",
+    "uganda",
+    "tanzanie",
+    "kenya",
+    "zambie",
+    "angola",
+    "soudan",
+    "soudan du sud",
+    "brazzaville",
+    "kigali",
+    "harare",
+    "pretoria",
+    // autres pays
+    "france",
+    "belgique",
+    "italie",
+    "espagne",
+    "algerie",
+    "maroc",
+    "tunisie",
+    "libye",
+    "egypte",
+    "usa",
+    "etats-unis",
+    "amerique",
+    "canada",
+    "gb",
+    "germany",
+    "allemagne",
+    "chine",
+    "russie",
+    "brazil",
+    "bresil",
+    // ajouter d'autres si nécessaire
+  ];
+
+  return forbidden.some((country) => normalized.includes(country));
+}
+
 // Initialise la carte (centrée sur Kinshasa)
 const map = L.map("map").setView([-4.0383, 21.7587], 13);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -283,6 +334,17 @@ if (form) {
         showMessage("Clique sur la carte ou écris une adresse.", "error");
         return;
       }
+      // bloquer rapidement si l'input contient un pays étranger
+      if (containsForeignCountry(lieuValue)) {
+        showMessage(
+          "L'adresse contient un pays étranger – elle doit être spécifique à la RDC.",
+          "error",
+        );
+        showLieuWarning(
+          "Veuillez saisir uniquement des lieux situés en RDC (ville, avenue, rue, commune, quartier, etc.).",
+        );
+        return;
+      }
       // Essayer géocoder l'adresse écrite
       showLoading("Vérification de l'adresse...");
       const latLngMatch = lieuValue.match(
@@ -321,6 +383,9 @@ if (form) {
       } else {
         // C'est une adresse à rechercher
         const tryFuzzySearch = async (query) => {
+          if (containsForeignCountry(query)) {
+            return { error: "forbidden_country" };
+          }
           let res = null;
           try {
             res = await geocodeAddress(query);
@@ -346,9 +411,31 @@ if (form) {
           if (res) return res;
           return null;
         };
+        // avant d'appeler FuzzySearch, bloquer si le texte contient un pays
+        if (containsForeignCountry(lieuValue)) {
+          hideLoading();
+          showMessage(
+            "L'adresse contient un pays étranger – elle doit être spécifique à la RDC.",
+            "error",
+          );
+          showLieuWarning(
+            "Veuillez saisir uniquement des lieux situés en RDC (ville, avenue, rue, commune, quartier, etc.).",
+          );
+          return;
+        }
         const resOrErr = await tryFuzzySearch(lieuValue);
         hideLoading();
         if (resOrErr && resOrErr.error) {
+          if (resOrErr.error === "forbidden_country") {
+            showMessage(
+              "L'adresse contient un pays étranger – envoi bloqué.",
+              "error",
+            );
+            showLieuWarning(
+              "Adresse invalide : elle doit être limitée aux éléments RDC.",
+            );
+            return;
+          }
           showMessage("Erreur réseau lors de la vérification.", "error");
           showLieuWarning(
             "Erreur réseau lors de la vérification de l'adresse.",
@@ -900,6 +987,10 @@ if (lieuInput) {
       }
 
       const tryFuzzySearch = async (query) => {
+        // bloquer si la chaîne contient un pays étranger
+        if (containsForeignCountry(query)) {
+          return { error: "forbidden_country" };
+        }
         // essai direct (même partiel, même incomplet)
         let res = null;
         try {
@@ -933,10 +1024,29 @@ if (lieuInput) {
         return null;
       };
 
+      // vérification rapide du contenu avant de lancer la recherche
+      if (containsForeignCountry(qRaw)) {
+        showMessage(
+          "L'adresse contient un pays étranger – elle doit être spécifique à la RDC.",
+          "error",
+        );
+        showLieuWarning(
+          "Veuillez saisir uniquement des lieux situés en RDC (ville, avenue, rue, commune, quartier, etc.).",
+        );
+        return;
+      }
       showLoading("Recherche d'adresse...");
       const resOrErr = await tryFuzzySearch(qRaw);
       hideLoading();
       if (resOrErr && resOrErr.error) {
+        if (resOrErr.error === "forbidden_country") {
+          // message déjà affiché plus haut, mais on met un petit rappel
+          showMessage("Adresse invalide : contient un pays étranger.", "error");
+          showLieuWarning(
+            "Adresse invalide : elle doit être limitée aux éléments RDC.",
+          );
+          return;
+        }
         showMessage("Erreur réseau lors du géocodage.", "error");
         showLieuWarning("Erreur réseau lors du géocodage.");
         return;
