@@ -1,42 +1,29 @@
-/**
- * Fonction pour retourner à la page précédente
- */
+/* Fonction de navigation - Retour direct à l'accueil */
 function goBack() {
-  if (window.history.length > 1) {
-    window.history.back();
-  } else {
-    window.location.href = "index.html";
-  }
+  window.location.href = "./index.html";
 }
 
-/* ============================================
-   GESTION DU MENU BURGER
-   ============================================ */
+let map = null; // Variable globale pour la carte
+let signalements = [];
+
+/* GESTION MENU BURGER */
 function initMenuBurger() {
   const menuBurger = document.getElementById("menu-burger");
   const navigationMenu = document.querySelector(".navigation-menu");
-
   if (menuBurger && navigationMenu) {
     menuBurger.addEventListener("click", () => {
-      navigationMenu.classList.toggle("active");
+      navigationMenu.classList.toggle("mobile-active");
     });
-
-    // Fermer le menu quand un lien est cliqué
     navigationMenu.querySelectorAll("a").forEach((link) => {
-      link.addEventListener("click", () => {
-        navigationMenu.classList.remove("active");
-      });
+      link.addEventListener("click", () =>
+        navigationMenu.classList.remove("mobile-active"),
+      );
     });
   }
 }
 
-/* ============================================
-   INITIALISATION CARTE ET SIGNALEMENTS
-   ============================================ */
-let map;
-let markers = [];
-let signalements = [];
 let currentFilter = null;
+let markers = [];
 
 document.addEventListener("DOMContentLoaded", () => {
   // Initialiser le menu burger
@@ -49,14 +36,11 @@ document.addEventListener("DOMContentLoaded", () => {
     btn._backInstalled = true;
   }
 
-  // Charger les signalements depuis localStorage
+  // Initialiser la carte avec gestion du global signalements
   signalements = JSON.parse(localStorage.getItem("signalements") || "[]");
-
-  // Initialiser la carte
   initMap();
-
-  // Afficher les signalements
-  loadAndDisplaySignalements();
+  renderSignalementsList();
+  updateCounters();
 
   // Ajouter les écouteurs de filtrage
   addFilterListeners();
@@ -86,7 +70,24 @@ function initMap() {
 /**
  * Charge et affiche les signalements sur la carte
  */
-function loadAndDisplaySignalements() {
+async function loadAndDisplaySignalements() {
+  // récupérer les signalements depuis le backend
+  try {
+    const resp = await fetch("/backend/api/signaler.php");
+    if (resp.ok) {
+      signalements = await resp.json();
+    } else {
+      console.error(
+        "Erreur HTTP lors du chargement des signalements",
+        resp.status,
+      );
+      signalements = [];
+    }
+  } catch (err) {
+    console.error("Erreur réseau lors du chargement des signalements", err);
+    signalements = [];
+  }
+
   // Nettoyer les marqueurs existants
   markers.forEach((m) => {
     try {
@@ -126,6 +127,10 @@ function addMarkerToMap(sig) {
 
   // Créer le contenu du popup
   let popupContent = '<div class="carte-signalement popup-signalement">';
+  if (sig.user_nom) {
+    popupContent +=
+      '<div class="carte-signalement-author">Par : ' + sig.user_nom + "</div>";
+  }
   if (sig.adresseTrouvee === false) {
     popupContent +=
       '<div style="color:#b22222;font-weight:bold;margin-bottom:6px;">Adresse non vérifiée</div>';
@@ -306,6 +311,13 @@ function renderSignalementsList() {
       type.className = "carte-signalement-type";
       type.textContent = sig.type.charAt(0).toUpperCase() + sig.type.slice(1);
       card.appendChild(type);
+    }
+
+    if (sig.user_nom) {
+      const author = document.createElement("p");
+      author.className = "carte-signalement-author";
+      author.textContent = "Par : " + sig.user_nom;
+      card.appendChild(author);
     }
 
     const location = document.createElement("p");

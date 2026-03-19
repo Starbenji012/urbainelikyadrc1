@@ -89,7 +89,7 @@ ul.navigation-menu {
   list-style: none;
   display: flex;
   gap: 18px;
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
   align-items: center;
 }
@@ -170,6 +170,14 @@ a.btn-connexion:focus {
   filter: brightness(1.05);
   outline: none;
 }
+/* Force couleur texte bouton connexion blanc */
+a.btn-connexion,
+a.btn-connexion:link,
+a.btn-connexion:visited,
+a.btn-connexion:hover,
+a.btn-connexion:focus {
+  color: white !important;
+}
 /* MENU BURGER (mobile) */
 .menu-burger {
   display: none;
@@ -195,6 +203,14 @@ a.btn-connexion:focus {
   font-family:
     system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 1.05em;
+}
+
+/* style for idea author in cards */
+.carte-auteur {
+  font-size: 0.9rem;
+  color: #555;
+  margin: 4px 0;
+  font-style: italic;
 }
 
 /*------titre de page------*/
@@ -276,7 +292,7 @@ a.btn-connexion:focus {
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
   max-width: 1200px;
-  margin: 20px  auto;
+  margin: 20px auto;
   padding: 0 16px;
 }
 
@@ -445,11 +461,12 @@ footer {
     display: flex;
     position: absolute;
     top: 100%;
-    right: 16px;
+    left: 0;
+    right: 0;
     background: var(--blanc-bg);
     flex-direction: column;
     gap: 0;
-    padding: 8px;
+    padding: 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
     border-radius: 8px;
     z-index: 999;
@@ -459,6 +476,11 @@ footer {
     padding: 10px 14px;
     white-space: nowrap;
     display: block;
+  }
+  ul.navigation-menu.mobile-active > li > a.btn-connexion {
+    display: inline-flex;
+    padding: 10px 16px;
+    margin: 6px 0;
   }
 
   /* ajustement logo sur mobile */
@@ -473,4 +495,91 @@ footer {
   .idees-container {
     grid-template-columns: 1fr;
   }
+}
+
+/* ====== CARTES IDÉES & LIKES ====== */
+
+.carte-idee {
+  background: var(--blanc-bg);
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition:
+    box-shadow 0.22s ease,
+    transform 0.22s ease;
+}
+
+.carte-idee:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.carte-idee h3 {
+  margin: 0 0 8px 0;
+  color: var(--bleu-nuit-button);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.carte-idee p {
+  margin: 8px 0;
+  color: #555555;
+  line-height: 1.6;
+}
+
+.carte-idee .categorie-badge {
+  display: inline-block;
+  background: var(--orange-avert);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 8px 0;
+}
+
+.carte-idee small {
+  display: block;
+  color: #aaa;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.carte-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.btn-like {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--vert-val);
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.22s ease,
+    transform 0.14s ease;
+}
+
+.btn-like:hover {
+  background: #2da66a;
+  transform: scale(1.05);
+}
+
+.btn-like i {
+  font-size: 16px;
+}
+
+.like-count {
+  font-weight: 700;
 }

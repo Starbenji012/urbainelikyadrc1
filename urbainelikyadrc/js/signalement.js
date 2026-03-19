@@ -1,3 +1,5 @@
+/* SIGNALEMENT.JS - VERSION INITIALE BASIQUE (localStorage, sans backend/géocodage) */
+
 /* ============================================
    GESTION DU MENU BURGER
    ============================================ */
@@ -7,1172 +9,148 @@ function initMenuBurger() {
 
   if (menuBurger && navigationMenu) {
     menuBurger.addEventListener("click", () => {
-      navigationMenu.classList.toggle("active");
+      navigationMenu.classList.toggle("mobile-active");
     });
 
     // Fermer le menu quand un lien est cliqué
     navigationMenu.querySelectorAll("a").forEach((link) => {
       link.addEventListener("click", () => {
-        navigationMenu.classList.remove("active");
+        navigationMenu.classList.remove("mobile-active");
       });
     });
   }
 }
 
-// Helper to remove accents/diacritics from a string (for easier matching)
-function removeDiacritics(str) {
-  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-}
+let map;
+let markers = [];
+let signalements = [];
 
-// Vérifie si une adresse contient le nom d'un pays étranger (autre que la RDC)
-// on utilise une liste minimale de pays et d'expressions communes.
-function containsForeignCountry(addr) {
-  if (!addr || typeof addr !== "string") return false;
-  const normalized = removeDiacritics(addr.toLowerCase());
-  const forbidden = [
-    // pays voisins ou africains couramment confondus
-    "rwanda",
-    "uganda",
-    "tanzanie",
-    "kenya",
-    "zambie",
-    "angola",
-    "soudan",
-    "soudan du sud",
-    "brazzaville",
-    "kigali",
-    "harare",
-    "pretoria",
-    // autres pays
-    "france",
-    "belgique",
-    "italie",
-    "espagne",
-    "algerie",
-    "maroc",
-    "tunisie",
-    "libye",
-    "egypte",
-    "usa",
-    "etats-unis",
-    "amerique",
-    "canada",
-    "gb",
-    "germany",
-    "allemagne",
-    "chine",
-    "russie",
-    "brazil",
-    "bresil",
-    // ajouter d'autres si nécessaire
-  ];
-
-  return forbidden.some((country) => normalized.includes(country));
-}
-
-// Initialise la carte (centrée sur Kinshasa)
-const map = L.map("map").setView([-4.0383, 21.7587], 13);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  attribution: "&copy; OpenStreetMap contributors",
-}).addTo(map);
-
-// Charger les signalements sauvegardés au démarrage de la page
 document.addEventListener("DOMContentLoaded", () => {
-  // Initialiser le menu burger
   initMenuBurger();
 
-  loadSignalements();
+  // Charger signalements depuis localStorage
+  const saved = localStorage.getItem("signalements");
+  if (saved) {
+    signalements = JSON.parse(saved);
+  }
 
-  // Initialiser les contrôles de filtrage des icônes
-  document.querySelectorAll(".filter-icon").forEach((img) => {
-    img.addEventListener("click", () => {
-      const type = img.dataset.type;
-      if (!type) return;
-      if (currentFilter === type.toLowerCase()) setFilter(null);
-      else setFilter(type);
-    });
-  });
+  initMap();
+  renderList();
+  renderMap();
 
-  const btnAll = document.getElementById("btn-show-all");
-  if (btnAll) btnAll.addEventListener("click", () => setFilter(null));
+  // Form submit
+  const form = document.getElementById("form-signalement");
+  if (form) {
+    form.addEventListener("submit", addSignalement);
+  }
 
-  // Default: montrer tous
-  setFilter(null);
-});
-
-// Après chargement, attacher gestionnaires UI pour total / vider / suppression
-document.addEventListener("DOMContentLoaded", () => {
-  updateTotalSignalements();
+  // Clear all
   const btnVider = document.getElementById("btnViderSignalements");
   if (btnVider) {
-    btnVider.addEventListener("click", () => {
-      if (!signalements.length)
-        return showMessage("Il n'y a aucun signalement à supprimer.", "error");
-      if (confirm("Voulez-vous vraiment supprimer tous les signalements ?")) {
-        // remove markers
-        markers.forEach((m) => {
-          try {
-            map.removeLayer(m);
-          } catch (_) {}
-        });
-        markers.length = 0;
-        signalements.length = 0;
-        saveSignalements();
-        updateTotalSignalements();
-        showMessage("Tous les signalements ont été supprimés.", "success");
-      }
-    });
-  }
-
-  // délégation pour boutons dans popup (supprimer, voir)
-  document.addEventListener("click", (ev) => {
-    const t = ev.target;
-    if (!t || !t.classList) return;
-    if (t.classList.contains("btn-delete-sig")) {
-      const ts = t.dataset.ts;
-      if (!ts) return;
-      if (!confirm("Supprimer ce signalement ?")) return;
-      deleteSignalement(ts);
-      return;
-    }
-    if (t.classList.contains("btn-voir-carte")) {
-      const ts = t.dataset.ts;
-      if (!ts) return;
-      const m = markers.find(
-        (x) => String(x._sigTimestamp || "") === String(ts),
-      );
-      if (m) {
-        try {
-          map.flyTo(m.getLatLng(), 16, { duration: 0.8 });
-          m.openPopup();
-        } catch (e) {}
-      }
-      return;
-    }
-  });
-});
-
-// Liste de marqueurs ajoutés
-const markers = [];
-// Filtre courant (null = aucun)
-let currentFilter = null;
-
-// Liste des signalements sauvegardés
-const signalements = JSON.parse(localStorage.getItem("signalements") || "[]");
-
-// Dernière position cliquée sur la carte
-let lastLatLng = null;
-let clickMarker = null;
-// Dernier résultat de géocodage (peut contenir country_code)
-let lastGeocodeResult = null;
-
-// Quand l'utilisateur clique sur la carte, on mémorise la position
-map.on("click", async function (e) {
-  const lat = e.latlng.lat;
-  const lng = e.latlng.lng;
-  const lieuInput = document.getElementById("lieu");
-
-  // Vérifier que le clic est en RDC avant de mémoriser
-  try {
-    const rev = await reverseGeocodeDetails(lat, lng);
-    if (rev && rev.address && rev.address.country_code) {
-      const isRDC = String(rev.address.country_code).toLowerCase() === "cd";
-      if (!isRDC) {
-        showMessage(
-          "Clic détecté hors de la RDC — opération annulée.",
-          "error",
-        );
-        showLieuWarning(
-          "Clic en dehors de la RDC. Clique sur le territoire de la RDC.",
-        );
-        return;
-      }
-    }
-  } catch (err) {
-    // Si on ne peut pas vérifier, on laisse passer pour éviter les faux positifs
-  }
-
-  lastLatLng = e.latlng;
-  if (lieuInput) {
-    // show lat,lng immediately while reverse geocoding runs
-    lieuInput.value = lat.toFixed(6) + ", " + lng.toFixed(6);
-    clearLieuWarning();
-    // try to get a human readable address and set it in the input
-    reverseGeocode(lat, lng)
-      .then((addr) => {
-        if (addr) lieuInput.value = addr;
-      })
-      .catch(() => {
-        /* ignore errors silently */
-      });
-  }
-
-  // affiche ou déplace un marker temporaire
-  if (clickMarker) {
-    clickMarker.setLatLng(e.latlng);
-  } else {
-    clickMarker = L.marker(e.latlng).addTo(map);
-  }
-});
-
-// Définition des icônes (paths relatifs corrects depuis la page HTML)
-const iconBasePath = "../icon-map/";
-const iconSecurite = L.icon({
-  iconUrl: iconBasePath + "icons8-protection-du-trou-de-serrure-48.png",
-  iconSize: [48, 48],
-  iconAnchor: [24, 48],
-  popupAnchor: [0, -40],
-});
-const iconVoirie = L.icon({
-  iconUrl: iconBasePath + "icons8-route-48.png",
-  iconSize: [48, 48],
-  iconAnchor: [24, 48],
-  popupAnchor: [0, -40],
-});
-const iconEau = L.icon({
-  iconUrl: iconBasePath + "icons8-eau-48.png",
-  iconSize: [48, 48],
-  iconAnchor: [24, 48],
-  popupAnchor: [0, -40],
-});
-const iconElectricite = L.icon({
-  iconUrl: iconBasePath + "icons8-électricité-32.png",
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -28],
-});
-const iconDechets = L.icon({
-  iconUrl: iconBasePath + "icons8-corbeille-48.png",
-  iconSize: [48, 48],
-  iconAnchor: [24, 48],
-  popupAnchor: [0, -40],
-});
-
-// Fonction utilitaire pour choisir l'icône selon le type (valeurs du <select>)
-function getIconForType(typeValue) {
-  switch ((typeValue || "").toLowerCase()) {
-    case "voirie":
-      return iconVoirie;
-    case "eau":
-      return iconEau;
-    case "electricite":
-    case "électricité":
-      return iconElectricite;
-    case "insecurite":
-      return iconSecurite;
-    case "dechet":
-    case "déchet":
-      return iconDechets;
-    default:
-      return null;
-  }
-}
-
-// Helper: redimensionne une image File en DataURL (maxWidth/maxHeight)
-function resizeImage(file, maxWidth = 800, maxHeight = 800, quality = 0.8) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      img.onload = function () {
-        let { width, height } = img;
-        const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
-        width = Math.round(width * ratio);
-        height = Math.round(height * ratio);
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-        try {
-          const dataUrl = canvas.toDataURL("image/jpeg", quality);
-          resolve(dataUrl);
-        } catch (err) {
-          // fallback to original
-          resolve(e.target.result);
-        }
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-// Soumission du formulaire
-const form = document.getElementById("form-signalement");
-if (form) {
-  form.addEventListener("submit", async function (e) {
-    e.preventDefault();
-
-    const titre = document.getElementById("titre-probleme")
-      ? document.getElementById("titre-probleme").value.trim()
-      : "";
-    const type = document.getElementById("type-probleme")
-      ? document.getElementById("type-probleme").value
-      : "";
-    const desc = document.getElementById("description")
-      ? document.getElementById("description").value.trim()
-      : "";
-    const photoInput = document.getElementById("photo");
-    const lieuValue = lieuInput ? lieuInput.value.trim() : "";
-
-    // flag pour savoir si l'adresse a pu être localisée
-    let adresseTrouvee = true;
-    // si un géocodage rapide précédent a déjà marqué l'adresse
-    if (typeof window._adresseTrouveeTemp !== "undefined") {
-      adresseTrouvee = window._adresseTrouveeTemp;
-      // reset après usage pour éviter persistance intempestive
-      window._adresseTrouveeTemp = undefined;
-    }
-
-    // Si pas de localisation cliquée mais adresse écrite, essayer de la géocoder
-    if (!lastLatLng) {
-      if (!lieuValue) {
-        showMessage("Clique sur la carte ou écris une adresse.", "error");
-        return;
-      }
-      // bloquer rapidement si l'input contient un pays étranger
-      if (containsForeignCountry(lieuValue)) {
-        showMessage(
-          "L'adresse contient un pays étranger – elle doit être spécifique à la RDC.",
-          "error",
-        );
-        showLieuWarning(
-          "Veuillez saisir uniquement des lieux situés en RDC (ville, avenue, rue, commune, quartier, etc.).",
-        );
-        return;
-      }
-      // Essayer géocoder l'adresse écrite
-      showLoading("Vérification de l'adresse...");
-      const latLngMatch = lieuValue.match(
-        /^\s*([+-]?\d+(?:\.\d+)?)[,\s]+([+-]?\d+(?:\.\d+)?)\s*$/,
-      );
-      if (latLngMatch) {
-        // C'est des coordonnées
-        const lat = parseFloat(latLngMatch[1]);
-        const lng = parseFloat(latLngMatch[2]);
-        lastLatLng = { lat: lat, lng: lng };
-        clearLieuWarning();
-        hideLoading();
-
-        // si l'utilisateur a fourni des coordonnées, tenter un reverse-geocode pour vérifier le pays
-        try {
-          const rev = await reverseGeocodeDetails(lat, lng);
-          if (
-            rev &&
-            rev.address &&
-            rev.address.country_code &&
-            String(rev.address.country_code).toLowerCase() !== "cd"
-          ) {
-            showMessage(
-              "Coordonnées situées hors de la RDC — envoi bloqué.",
-              "error",
-            );
-            showLieuWarning(
-              "Coordonnées hors de la RDC. Saisis une adresse en RDC ou clique sur la carte.",
-            );
-            lastLatLng = null;
-            return;
-          }
-        } catch (e) {
-          /* ignore */
-        }
-      } else {
-        // C'est une adresse à rechercher
-        const tryFuzzySearch = async (query) => {
-          if (containsForeignCountry(query)) {
-            return { error: "forbidden_country" };
-          }
-          let res = null;
-          try {
-            res = await geocodeAddress(query);
-          } catch (e) {
-            return { error: true };
-          }
-          if (res) return res;
-          const parts = query.split(/[ ,]+/).filter(Boolean);
-          for (let len = parts.length - 1; len >= 1; len--) {
-            const q2 = parts.slice(0, len).join(" ");
-            try {
-              res = await geocodeAddress(q2);
-            } catch (e) {
-              return { error: true };
-            }
-            if (res) return res;
-          }
-          try {
-            res = await geocodeAddress(query + " Kinshasa");
-          } catch (e) {
-            return { error: true };
-          }
-          if (res) return res;
-          return null;
-        };
-        // avant d'appeler FuzzySearch, bloquer si le texte contient un pays
-        if (containsForeignCountry(lieuValue)) {
-          hideLoading();
-          showMessage(
-            "L'adresse contient un pays étranger – elle doit être spécifique à la RDC.",
-            "error",
-          );
-          showLieuWarning(
-            "Veuillez saisir uniquement des lieux situés en RDC (ville, avenue, rue, commune, quartier, etc.).",
-          );
-          return;
-        }
-        const resOrErr = await tryFuzzySearch(lieuValue);
-        hideLoading();
-        if (resOrErr && resOrErr.error) {
-          if (resOrErr.error === "forbidden_country") {
-            showMessage(
-              "L'adresse contient un pays étranger – envoi bloqué.",
-              "error",
-            );
-            showLieuWarning(
-              "Adresse invalide : elle doit être limitée aux éléments RDC.",
-            );
-            return;
-          }
-          showMessage("Erreur réseau lors de la vérification.", "error");
-          showLieuWarning(
-            "Erreur réseau lors de la vérification de l'adresse.",
-          );
-          return;
-        }
-        let adresseTrouvee = true;
-        if (!resOrErr) {
-          // adresse introuvable → on accepte mais enregistre comme non vérifiée
-          adresseTrouvee = false;
-          showLieuWarning(
-            "⚠️ Adresse introuvable dans la base de données. Le signalement sera envoyé mais marqué « adresse non vérifiée ».",
-          );
-          // on fixe une position par défaut (centre de la carte) pour pouvoir montrer un marqueur
-          const centre = map ? map.getCenter() : { lat: -4.0383, lng: 21.7587 };
-          lastLatLng = { lat: centre.lat, lng: centre.lng };
-        } else {
-          // Bloquer si adresse hors RDC
-          if (
-            resOrErr.country_code &&
-            String(resOrErr.country_code).toLowerCase() !== "cd"
-          ) {
-            showMessage(
-              "Adresse trouvée hors de la RDC — envoi bloqué.",
-              "error",
-            );
-            showLieuWarning(
-              "Adresse trouvée hors de la RDC. Saisis une adresse en RDC ou clique sur la carte.",
-            );
-            return;
-          }
-          // Adresse trouvée et en RDC ✓
-          lastGeocodeResult = resOrErr;
-          lastLatLng = { lat: resOrErr.lat, lng: resOrErr.lng };
-          if (clickMarker) {
-            clickMarker.setLatLng([resOrErr.lat, resOrErr.lng]);
-          } else {
-            clickMarker = L.marker([resOrErr.lat, resOrErr.lng]).addTo(map);
-          }
-          map.flyTo([resOrErr.lat, resOrErr.lng], 16, { duration: 1.2 });
-          if (resOrErr.display_name) lieuInput.value = resOrErr.display_name;
-          // avertir si résultat hors de la zone affichée
-          try {
-            const foundLL = L.latLng(resOrErr.lat, resOrErr.lng);
-            if (!map.getBounds().contains(foundLL)) {
-              showLieuWarning(
-                "Adresse trouvée mais en dehors de la zone affichée sur la carte.",
-              );
-            } else {
-              clearLieuWarning();
-            }
-          } catch (e) {
-            /* ignore */
-          }
-        }
-      }
-    }
-
-    const lat = lastLatLng.lat;
-    const lng = lastLatLng.lng;
-
-    // Vérifier que l'adresse/coordonnées sont bien en RDC; si on a un résultat de géocodage récent on l'utilise
-    try {
-      let countryOk = true;
-      if (lastGeocodeResult && lastGeocodeResult.country_code) {
-        countryOk =
-          String(lastGeocodeResult.country_code).toLowerCase() === "cd";
-      } else {
-        // tenter un reverse-geocode pour connaître le pays
-        const rev = await reverseGeocodeDetails(lat, lng);
-        if (rev && rev.address && rev.address.country_code) {
-          countryOk = String(rev.address.country_code).toLowerCase() === "cd";
-        } else {
-          // si on ne sait pas, on laisse passer (éviter faux positifs)
-          countryOk = true;
-        }
-      }
-      if (!countryOk) {
-        showMessage(
-          "Adresse localisée hors de la RDC — envoi bloqué.",
-          "error",
-        );
-        showLieuWarning(
-          "Adresse localisée hors de la RDC. Saisis une adresse en RDC ou clique sur la carte.",
-        );
-        hideLoading();
-        return;
-      }
-    } catch (e) {
-      /* ignore */
-    }
-
-    // Si le point se trouve hors de la vue actuelle, recentrer la carte
-    try {
-      const pt = L.latLng(lat, lng);
-      if (!map.getBounds().contains(pt)) {
-        // recentre et zoome sur l'adresse pour que l'utilisateur la voie
-        map.flyTo([lat, lng], 16, { duration: 1.2 });
-        showMessage(
-          "La carte a été recentrée sur l'adresse trouvée.",
-          "success",
-        );
-        clearLieuWarning();
-      } else {
-        clearLieuWarning();
-      }
-    } catch (e) {
-      /* ignore */
-    }
-
-    const chosenIcon = getIconForType(type);
-
-    function finishWith(photoData, adresseTrouveeFlag) {
-      const timestamp = new Date().toISOString();
-      const signalement = {
-        titre,
-        type,
-        description: desc,
-        lat,
-        lng,
-        lieu: lieuValue,
-        photo: photoData,
-        timestamp,
-        etat: "en_cours",
-        adresseTrouvee: adresseTrouveeFlag === false ? false : true,
-      };
-      signalements.push(signalement);
-      saveSignalements();
-      addMarkerToMap(
-        lat,
-        lng,
-        titre,
-        desc,
-        photoData,
-        chosenIcon,
-        timestamp,
-        type,
-        adresseTrouveeFlag,
-      );
-
-      // Appliquer le filtre courant si besoin (nouveau marker pourra être caché)
-      updateMarkersVisibility();
-
-      updateTotalSignalements();
-      renderSignalements();
-
-      if (clickMarker) {
-        map.removeLayer(clickMarker);
-        clickMarker = null;
-      }
-      lastLatLng = null;
-      lastGeocodeResult = null;
-      form.reset();
-      clearLieuWarning();
-      showMessage("Signalement envoyé ✅", "success");
-    }
-
-    if (photoInput && photoInput.files && photoInput.files[0]) {
-      const file = photoInput.files[0];
-      showLoading("Traitement de l'image...");
-      // resize to limit file size and dimensions
-      resizeImage(file, 800, 800, 0.78)
-        .then((dataUrl) => {
-          hideLoading();
-          finishWith(dataUrl, adresseTrouvee);
-        })
-        .catch(() => {
-          // fallback to original file if resize fails
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            hideLoading();
-            finishWith(event.target.result, adresseTrouvee);
-          };
-          reader.onerror = () => {
-            hideLoading();
-            finishWith(null, adresseTrouvee);
-          };
-          reader.readAsDataURL(file);
-        });
-    } else {
-      finishWith(null, adresseTrouvee);
-    }
-  });
-}
-
-// Fonction pour ajouter un marqueur à la carte avec popup
-function addMarkerToMap(
-  lat,
-  lng,
-  titre,
-  desc,
-  photo,
-  icon,
-  timestamp,
-  type,
-  adresseTrouveeFlag,
-) {
-  // si adresse non trouvée, on utilise une opacité réduite et on ajoute un badge
-  const opts = {};
-  if (adresseTrouveeFlag === false) {
-    opts.opacity = 0.6;
-  }
-  const m = icon
-    ? L.marker([lat, lng], Object.assign({ icon: icon }, opts)).addTo(map)
-    : L.marker([lat, lng], opts).addTo(map);
-
-  // construire un contenu de popup qui ressemble aux cartes de la page "signaler"
-  let popupContent = '<div class="carte-signalement popup-signalement">';
-  if (photo) {
-    popupContent +=
-      '<img src="' +
-      photo +
-      '" alt="' +
-      (titre || "Signalement") +
-      '" class="carte-signalement-photo">';
-  }
-  popupContent += "<h3>" + (titre || "Signalement") + "</h3>";
-  popupContent += '<p class="carte-signalement-desc">' + (desc || "") + "</p>";
-  if (type)
-    popupContent +=
-      '<span class="carte-signalement-type">' + (type || "") + "</span>";
-  if (timestamp) {
-    try {
-      popupContent +=
-        '<div class="carte-signalement-meta">' +
-        new Date(timestamp).toLocaleString("fr-FR") +
-        "</div>";
-    } catch (e) {}
-  }
-  // actions
-  if (adresseTrouveeFlag === false) {
-    popupContent +=
-      '<div style="color:#b22222;font-weight:bold;margin-bottom:6px;">Adresse non vérifiée</div>';
-  }
-  popupContent += '<div class="carte-signalement-buttons">';
-  popupContent +=
-    '<button class="btn-voir-carte" data-ts="' +
-    (timestamp || "") +
-    '">Voir</button>';
-  if (timestamp)
-    popupContent +=
-      '<button class="btn btn-delete-sig" data-ts="' +
-      timestamp +
-      '">Supprimer</button>';
-  popupContent += "</div>";
-  popupContent += "</div>";
-
-  m.bindPopup(popupContent);
-  // lier le timestamp et le type au marker pour suppression/filtrage (type normalisé en minuscule)
-  try {
-    m._sigTimestamp = timestamp;
-    m._sigType = (type || "").toLowerCase();
-  } catch (e) {}
-  markers.push(m);
-
-  // Lorsque l'utilisateur clique sur l'icône (marqueur), on filtre la liste et on affiche la section
-  try {
-    m.on("click", () => {
-      const t = (m._sigType || "").toString().toLowerCase();
-      if (t) {
-        setFilter(t);
-        const section = document.getElementById(
-          "section-signalement-non-afficher-map",
-        );
-        if (section) section.scrollIntoView({ behavior: "smooth" });
-      }
-    });
-  } catch (e) {}
-}
-
-// Appliquer un filtre (type) : montre uniquement les markers et signalements correspondant au type
-function setFilter(type) {
-  currentFilter = type ? String(type).toLowerCase() : null;
-  const af = document.getElementById("activeFilter");
-  if (af) af.textContent = currentFilter ? currentFilter : "Tous";
-
-  // Mettre en évidence l'icône active
-  document.querySelectorAll(".filter-icon").forEach((img) => {
-    try {
-      img.classList.toggle(
-        "active-filter",
-        currentFilter &&
-          img.dataset.type &&
-          img.dataset.type.toLowerCase() === currentFilter,
-      );
-    } catch (e) {}
-  });
-
-  updateMarkersVisibility();
-  renderSignalements();
-}
-
-function updateMarkersVisibility() {
-  markers.forEach((m) => {
-    try {
-      const t = String(m._sigType || "").toLowerCase();
-      const show = !currentFilter || t === currentFilter;
-      if (show) {
-        if (!map.hasLayer(m)) map.addLayer(m);
-      } else {
-        if (map.hasLayer(m)) map.removeLayer(m);
-      }
-    } catch (e) {}
-  });
-
-  // Mettre à jour le compteur visible
-  const totalAllEl = document.getElementById("totalSignalementsAfficheAll");
-  if (totalAllEl) {
-    const count = signalements.filter(
-      (s) =>
-        !currentFilter ||
-        (s.type && String(s.type).toLowerCase() === currentFilter),
-    ).length;
-    totalAllEl.textContent = count;
-  }
-}
-
-// Fonction pour sauvegarder les signalements
-function saveSignalements() {
-  try {
-    localStorage.setItem("signalements", JSON.stringify(signalements));
-  } catch (err) {
-    console.warn("Impossible de sauvegarder les signalements", err);
-  }
-}
-
-// updateTotalSignalements : la version consolidée se trouve plus bas dans le fichier
-
-// Supprimer un signalement par timestamp
-function deleteSignalement(timestamp) {
-  const idx = signalements.findIndex((s) => s.timestamp === timestamp);
-  if (idx === -1) return showMessage("Signalement introuvable.", "error");
-  // remove from array
-  signalements.splice(idx, 1);
-  saveSignalements();
-
-  // remove marker(s) with same timestamp
-  for (let i = markers.length - 1; i >= 0; i--) {
-    const m = markers[i];
-    if (m && m._sigTimestamp === timestamp) {
-      try {
-        map.removeLayer(m);
-      } catch (e) {}
-      markers.splice(i, 1);
-    }
+    btnVider.addEventListener("click", clearSignalements);
   }
 
   updateTotalSignalements();
-  renderSignalements();
-  // si la page 'suivi' a rendu une vue filtrée, rafraichir aussi
-  if (typeof renderVisibleSignalements === "function")
-    try {
-      renderVisibleSignalements();
-    } catch (e) {}
-  showMessage("Signalement supprimé.", "success");
+});
+
+function initMap() {
+  map = L.map("map").setView([-4.0383, 15.3267], 10); // Kinshasa
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenStreetMap contributors",
+  }).addTo(map);
+
+  // Click to set location
+  map.on("click", function (e) {
+    document.getElementById("lieu").value =
+      `${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`;
+  });
+
+  renderMap();
 }
 
-// Affiche un message temporaire (toast). type: 'success' | 'error' | undefined
-function showMessage(text, type) {
-  const toast = document.createElement("div");
-  toast.className = "toast";
-  if (type) toast.classList.add(`toast--${type}`);
-  toast.textContent = text;
-  document.body.appendChild(toast);
+function addSignalement(e) {
+  e.preventDefault();
+  const titre = document.getElementById("titre-probleme").value.trim();
+  const type = document.getElementById("type-probleme").value;
+  const desc = document.getElementById("description").value.trim();
+  const lieu = document.getElementById("lieu").value.trim();
 
-  // small delay to allow transition
-  requestAnimationFrame(() => toast.classList.add("show"));
-
-  // remove after 3s
-  setTimeout(() => {
-    toast.classList.remove("show");
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
-}
-
-// Loading toast helper
-let __loadingToast = null;
-function showLoading(text = "Chargement...") {
-  hideLoading();
-  const toast = document.createElement("div");
-  toast.className = "toast toast--loading";
-  toast.innerHTML =
-    '<span class="toast-spinner"></span> ' + (text || "Chargement...");
-  document.body.appendChild(toast);
-  requestAnimationFrame(() => toast.classList.add("show"));
-  __loadingToast = toast;
-}
-function hideLoading() {
-  if (!__loadingToast) return;
-  __loadingToast.classList.remove("show");
-  setTimeout(() => {
-    if (__loadingToast && __loadingToast.parentNode)
-      __loadingToast.parentNode.removeChild(__loadingToast);
-    __loadingToast = null;
-  }, 220);
-}
-
-// Afficher un avertissement lié à l'input #lieu (non bloquant)
-function showLieuWarning(text) {
-  const input = document.getElementById("lieu");
-  if (!input) return;
-  let el = document.getElementById("lieu-warning");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "lieu-warning";
-    el.className = "lieu-warning";
-    // style minimal pour être visible sans dépendre du CSS
-    el.style.color = "#b22222";
-    el.style.fontSize = "0.9em";
-    el.style.marginTop = "6px";
-    el.style.maxWidth = "420px";
-    input.parentNode && input.parentNode.insertBefore(el, input.nextSibling);
+  if (!titre || !desc) {
+    alert("Titre et description requis");
+    return;
   }
-  el.textContent = text || "";
-}
 
-function clearLieuWarning() {
-  const el = document.getElementById("lieu-warning");
-  if (el && el.parentNode) el.parentNode.removeChild(el);
-}
+  const latLng = lieu.match(/([-+]?\d+\.?\d*),?\s*([-+]?\d+\.?\d*)/);
+  const lat = latLng ? parseFloat(latLng[1]) : -4.0383;
+  const lng = latLng ? parseFloat(latLng[2]) : 15.3267;
 
-// Charger les signalements au démarrage
-function loadSignalements() {
-  signalements.forEach((sig) => {
-    const icon = getIconForType(sig.type);
-    // en cas de signalement importé avec adresse non trouvée, passer le flag
-    const adrFlag = sig.hasOwnProperty("adresseTrouvee")
-      ? sig.adresseTrouvee
-      : true;
-    addMarkerToMap(
-      sig.lat,
-      sig.lng,
-      sig.titre,
-      sig.description,
-      sig.photo,
-      icon,
-      sig.timestamp,
-      sig.type,
-      adrFlag,
-    );
-  });
+  const sig = {
+    titre,
+    type,
+    description: desc,
+    lieu,
+    lat,
+    lng,
+    timestamp: new Date().toISOString(),
+  };
+
+  signalements.unshift(sig); // Add to front
+  localStorage.setItem("signalements", JSON.stringify(signalements));
+
+  renderList();
+  renderMap();
   updateTotalSignalements();
-  renderSignalements();
+
+  // Centrer la carte sur le nouveau signalement
+  if (map) {
+    map.flyTo([lat, lng], 16, { duration: 1.2 });
+  }
+
+  e.target.reset();
+  document.getElementById("lieu").value = "";
+  alert("Signalement ajouté !");
 }
 
-// Reverse geocode: lat,lng -> address (Nominatim)
-function reverseGeocode(lat, lon) {
-  const url =
-    "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" +
-    encodeURIComponent(lat) +
-    "&lon=" +
-    encodeURIComponent(lon);
-  return fetch(url, { headers: { "Accept-Language": "fr" } })
-    .then((r) => {
-      if (!r.ok) throw new Error("Network");
-      return r.json();
-    })
-    .then((data) => data.display_name || null);
-}
-
-// Geocode address -> lat,lng (Nominatim search), returns {lat,lng,display_name} or null
-function geocodeAddress(query) {
-  // Normaliser la requête: convertir en minuscules et nettoyer les espaces multiples
-  const normalizedQuery = query.toLowerCase().trim().replace(/\s+/g, " ");
-  const url =
-    "https://nominatim.openstreetmap.org/search?format=jsonv2&q=" +
-    encodeURIComponent(normalizedQuery) +
-    "&limit=3&addressdetails=1";
-  return fetch(url, { headers: { "Accept-Language": "fr" } })
-    .then((r) => {
-      if (!r.ok) throw new Error("Network");
-      return r.json();
-    })
-    .then((results) => {
-      if (!results || results.length === 0) return null;
-      const res = results[0];
-      return {
-        lat: parseFloat(res.lat),
-        lng: parseFloat(res.lon),
-        display_name: res.display_name,
-        address: res.address || null,
-        country: (res.address && res.address.country) || null,
-        country_code: (res.address && res.address.country_code) || null,
-      };
-    });
-}
-
-// Reverse geocode with address details -> returns full JSON result or null
-function reverseGeocodeDetails(lat, lon) {
-  const url =
-    "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" +
-    encodeURIComponent(lat) +
-    "&lon=" +
-    encodeURIComponent(lon) +
-    "&addressdetails=1";
-  return fetch(url, { headers: { "Accept-Language": "fr" } })
-    .then((r) => {
-      if (!r.ok) throw new Error("Network");
-      return r.json();
-    })
-    .then((data) => data || null)
-    .catch(() => null);
-}
-
-// Si l'utilisateur tape une adresse dans #lieu et appuie sur Entrée, on géocode
-const lieuInput = document.getElementById("lieu");
-if (lieuInput) {
-  // rendre le gestionnaire async pour utiliser await
-  lieuInput.addEventListener("keydown", async function (ev) {
-    if (ev.key === "Enter") {
-      ev.preventDefault();
-      const qRaw = lieuInput.value && lieuInput.value.trim();
-      if (!qRaw) return;
-
-      // si l'utilisateur a entré des coordonnées lat,lng on les utilise directement
-      const latLngMatch = qRaw.match(
-        /^\s*([+-]?\d+(?:\.\d+)?)[,\s]+([+-]?\d+(?:\.\d+)?)\s*$/,
-      );
-      if (latLngMatch) {
-        const lat = parseFloat(latLngMatch[1]);
-        const lng = parseFloat(latLngMatch[2]);
-        // vérifier que les coordonnées sont en RDC
-        try {
-          const rev = await reverseGeocodeDetails(lat, lng);
-          if (
-            rev &&
-            rev.address &&
-            rev.address.country_code &&
-            String(rev.address.country_code).toLowerCase() !== "cd"
-          ) {
-            showMessage(
-              "Coordonnées situées hors de la RDC — opération annulée.",
-              "error",
-            );
-            showLieuWarning(
-              "Coordonnées hors de la RDC. Saisis une adresse en RDC ou clique sur la carte.",
-            );
-            return;
-          }
-        } catch (e) {
-          /* ignore */
-        }
-        lastLatLng = { lat: lat, lng: lng };
-        if (clickMarker) clickMarker.setLatLng([lat, lng]);
-        else clickMarker = L.marker([lat, lng]).addTo(map);
-        clearLieuWarning();
-        map.flyTo([lat, lng], 16, { duration: 1.2 });
-        return;
-      }
-
-      const tryFuzzySearch = async (query) => {
-        // bloquer si la chaîne contient un pays étranger
-        if (containsForeignCountry(query)) {
-          return { error: "forbidden_country" };
-        }
-        // essai direct (même partiel, même incomplet)
-        let res = null;
-        try {
-          res = await geocodeAddress(query);
-        } catch (e) {
-          // réseau ou erreur
-          return { error: true };
-        }
-        if (res) return res;
-
-        // si échec, on tente en raccourcissant la requête (supprimer les derniers mots)
-        const parts = query.split(/[ ,]+/).filter(Boolean);
-        for (let len = parts.length - 1; len >= 1; len--) {
-          const q2 = parts.slice(0, len).join(" ");
-          try {
-            res = await geocodeAddress(q2);
-          } catch (e) {
-            return { error: true };
-          }
-          if (res) return res;
-        }
-
-        // essai final: ajouter le nom de la grande ville locale (Kinshasa)
-        try {
-          res = await geocodeAddress(query + " Kinshasa");
-        } catch (e) {
-          return { error: true };
-        }
-        if (res) return res;
-
-        return null;
-      };
-
-      // vérification rapide du contenu avant de lancer la recherche
-      if (containsForeignCountry(qRaw)) {
-        showMessage(
-          "L'adresse contient un pays étranger – elle doit être spécifique à la RDC.",
-          "error",
-        );
-        showLieuWarning(
-          "Veuillez saisir uniquement des lieux situés en RDC (ville, avenue, rue, commune, quartier, etc.).",
-        );
-        return;
-      }
-      showLoading("Recherche d'adresse...");
-      const resOrErr = await tryFuzzySearch(qRaw);
-      hideLoading();
-      if (resOrErr && resOrErr.error) {
-        if (resOrErr.error === "forbidden_country") {
-          // message déjà affiché plus haut, mais on met un petit rappel
-          showMessage("Adresse invalide : contient un pays étranger.", "error");
-          showLieuWarning(
-            "Adresse invalide : elle doit être limitée aux éléments RDC.",
-          );
-          return;
-        }
-        showMessage("Erreur réseau lors du géocodage.", "error");
-        showLieuWarning("Erreur réseau lors du géocodage.");
-        return;
-      }
-      if (!resOrErr) {
-        // adresse introuvable, conserver comme non vérifiée mais ne pas bloquer
-        window._adresseTrouveeTemp = false;
-        showLieuWarning(
-          "⚠️ Adresse introuvable dans la base. Le signalement sera envoyé mais marqué « adresse non vérifiée ».",
-        );
-        // placer un marqueur temporaire au centre
-        const centre = map ? map.getCenter() : { lat: -4.0383, lng: 21.7587 };
-        lastLatLng = { lat: centre.lat, lng: centre.lng };
-        if (clickMarker) {
-          clickMarker.setLatLng([centre.lat, centre.lng]);
-        } else {
-          clickMarker = L.marker([centre.lat, centre.lng]).addTo(map);
-        }
-        map.flyTo([centre.lat, centre.lng], 16, { duration: 1.2 });
-        return;
-      }
-      // on a une réponse
-      // bloquer si l'adresse n'est pas dans la RDC (country_code fourni par Nominatim)
-      if (
-        resOrErr.country_code &&
-        String(resOrErr.country_code).toLowerCase() !== "cd"
-      ) {
-        showMessage("Adresse trouvée hors de la RDC — envoi bloqué.", "error");
-        showLieuWarning(
-          "Adresse trouvée hors de la RDC. Saisis une adresse en RDC ou clique sur la carte.",
-        );
-        return;
-      }
-      // mémoriser le résultat de géocodage
-      window._adresseTrouveeTemp = true;
-      lastGeocodeResult = resOrErr;
-      lastLatLng = { lat: resOrErr.lat, lng: resOrErr.lng };
-      if (clickMarker) {
-        clickMarker.setLatLng([resOrErr.lat, resOrErr.lng]);
-      } else {
-        clickMarker = L.marker([resOrErr.lat, resOrErr.lng]).addTo(map);
-      }
-      map.flyTo([resOrErr.lat, resOrErr.lng], 16, { duration: 1.2 });
-      // écrire une version lisible dans l'input si disponible
-      if (resOrErr.display_name) lieuInput.value = resOrErr.display_name;
-      // avertir si résultat hors de la zone affichée
-      try {
-        const foundLL = L.latLng(resOrErr.lat, resOrErr.lng);
-        if (!map.getBounds().contains(foundLL)) {
-          showLieuWarning(
-            "Adresse trouvée mais en dehors de la zone affichée sur la carte.",
-          );
-        } else {
-          clearLieuWarning();
-        }
-      } catch (e) {
-        /* ignore */
-      }
-      showMessage("Adresse trouvée ! ✓", "success");
-    }
-  });
-}
-
-// ========== RENDU DE LA GRILLE DE SIGNALEMENTS ==========
-function renderSignalements() {
+function renderList() {
   const container = document.getElementById("listeSignalements");
   if (!container) return;
 
   container.innerHTML = "";
+
+  if (signalements.length === 0) {
+    container.innerHTML =
+      '<p style="text-align: center; padding: 40px; color: #666; grid-column: 1 / -1;">Aucun signalement.</p>';
+    return;
+  }
+
   const frag = document.createDocumentFragment();
 
-  const items = signalements.filter(
-    (sig) =>
-      !currentFilter || (sig.type && sig.type.toLowerCase() === currentFilter),
-  );
-  items.forEach((sig, index) => {
+  signalements.forEach((sig) => {
     const card = document.createElement("div");
     card.className = "carte-signalement";
-    // lier la carte au timestamp pour faciliter la recherche
-    if (sig.timestamp) card.dataset.ts = sig.timestamp;
+    card.dataset.ts = sig.timestamp;
 
-    // Ajouter la photo si elle existe
-    if (sig.photo) {
-      const img = document.createElement("img");
-      img.src = sig.photo;
-      img.alt = sig.titre;
-      img.className = "carte-signalement-photo";
-      card.appendChild(img);
-    }
-
-    // Titre
     const h3 = document.createElement("h3");
     h3.textContent = sig.titre;
     card.appendChild(h3);
-    // si adresse non vérifiée, ajouter badge visuel
-    if (sig.adresseTrouvee === false) {
-      card.style.border = "2px dashed #b22222";
-      const badge = document.createElement("div");
-      badge.textContent = "Adresse non vérifiée";
-      badge.style.color = "#b22222";
-      badge.style.fontWeight = "bold";
-      badge.style.marginBottom = "8px";
-      card.insertBefore(badge, h3);
-    }
 
-    // Description
     const desc = document.createElement("p");
     desc.className = "carte-signalement-desc";
     desc.textContent = sig.description;
     card.appendChild(desc);
 
-    // Type (catégorie)
-    const type = document.createElement("span");
-    type.className = "carte-signalement-type";
-    type.textContent =
-      (sig.type || "Sans catégorie").charAt(0).toUpperCase() +
-      (sig.type || "sans catégorie").slice(1);
-    card.appendChild(type);
+    if (sig.type) {
+      const type = document.createElement("span");
+      type.className = "carte-signalement-type";
+      type.textContent = sig.type.charAt(0).toUpperCase() + sig.type.slice(1);
+      card.appendChild(type);
+    }
 
-    // Location (adresse saisie)
     const location = document.createElement("p");
     location.className = "carte-signalement-location";
-    location.textContent = `📍 ${sig.lieu || "Adresse non spécifiée"}`;
+    location.textContent = "📍 " + (sig.lieu || "Adresse non spécifiée");
     card.appendChild(location);
 
-    // Meta (date)
     const meta = document.createElement("div");
     meta.className = "carte-signalement-meta";
     if (sig.timestamp) {
@@ -1185,7 +163,6 @@ function renderSignalements() {
     }
     card.appendChild(meta);
 
-    // Boutons (Voir sur carte + Supprimer)
     const btnContainer = document.createElement("div");
     btnContainer.className = "carte-signalement-buttons";
 
@@ -1194,11 +171,8 @@ function renderSignalements() {
     btnVoirCarte.className = "btn-voir-carte";
     btnVoirCarte.textContent = "Voir sur carte";
     btnVoirCarte.addEventListener("click", () => {
-      map.flyTo([sig.lat, sig.lng], 16, { duration: 1.2 });
-      // Scroll vers la carte si elle est visible
-      const mapEl = document.getElementById("map");
-      if (mapEl) {
-        mapEl.scrollIntoView({ behavior: "smooth" });
+      if (map) {
+        map.flyTo([sig.lat, sig.lng], 16, { duration: 1.2 });
       }
     });
 
@@ -1207,7 +181,6 @@ function renderSignalements() {
     btnDelete.className = "btn-delete-signalement";
     btnDelete.textContent = "Supprimer";
     btnDelete.addEventListener("click", () => {
-      if (!confirm("Supprimer ce signalement ?")) return;
       deleteSignalement(sig.timestamp);
     });
 
@@ -1219,18 +192,84 @@ function renderSignalements() {
   });
 
   container.appendChild(frag);
-
-  // Mettre à jour les compteurs
-  updateTotalSignalements();
 }
 
-// Mise à jour des compteurs (global et filtré)
+function renderMap() {
+  // Clear existing markers
+  markers.forEach((m) => map.removeLayer(m));
+  markers = [];
+
+  signalements.forEach((sig) => {
+    const icon = getIconForType(sig.type);
+    const markerOptions = icon ? { icon: icon } : {};
+    const marker = L.marker([sig.lat, sig.lng], markerOptions).addTo(map)
+      .bindPopup(`
+        <b>${sig.titre}</b><br>
+        <strong>${sig.type}</strong><br>
+        ${sig.description}<br>
+        📍 ${sig.lieu}
+      `);
+    markers.push(marker);
+  });
+}
+
+function deleteSignalement(timestamp) {
+  if (confirm("Supprimer ce signalement ?")) {
+    signalements = signalements.filter((s) => s.timestamp !== timestamp);
+    localStorage.setItem("signalements", JSON.stringify(signalements));
+    renderList();
+    renderMap();
+    updateTotalSignalements();
+  }
+}
+
+function clearSignalements() {
+  if (confirm("Vider tous les signalements ?")) {
+    signalements = [];
+    localStorage.removeItem("signalements");
+    renderList();
+    renderMap();
+    updateTotalSignalements();
+  }
+}
+
 function updateTotalSignalements() {
   const el = document.getElementById("totalSignalements");
-  if (el) el.textContent = String(signalements.length || 0);
-  const filteredCount = signalements.filter(
-    (s) => !currentFilter || (s.type && s.type.toLowerCase() === currentFilter),
-  ).length;
-  const totalAllEl = document.getElementById("totalSignalementsAfficheAll");
-  if (totalAllEl) totalAllEl.textContent = String(filteredCount);
+  if (el) el.textContent = signalements.length;
+  const elAll = document.getElementById("totalSignalementsAfficheAll");
+  if (elAll) elAll.textContent = signalements.length;
+}
+
+/**
+ * Obtient l'icône appropriée selon le type
+ */
+function getIconForType(typeValue) {
+  const iconBasePath = "../icon-map/";
+
+  const icons = {
+    voirie: { url: iconBasePath + "icons8-route-48.png", size: [48, 48] },
+    eau: { url: iconBasePath + "icons8-eau-48.png", size: [48, 48] },
+    electricite: {
+      url: iconBasePath + "icons8-électricité-32.png",
+      size: [32, 32],
+    },
+    insecurite: {
+      url: iconBasePath + "icons8-protection-du-trou-de-serrure-48.png",
+      size: [48, 48],
+    },
+    dechet: { url: iconBasePath + "icons8-corbeille-48.png", size: [48, 48] },
+  };
+
+  const key = (typeValue || "").toLowerCase();
+  const config = icons[key];
+
+  if (!config) return null;
+
+  const size = config.size;
+  return L.icon({
+    iconUrl: config.url,
+    iconSize: size,
+    iconAnchor: [size[0] / 2, size[1]],
+    popupAnchor: [0, -size[1]],
+  });
 }
