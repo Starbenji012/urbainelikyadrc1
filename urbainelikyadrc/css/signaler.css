@@ -359,6 +359,33 @@ a.btn-connexion:focus {
   margin-left: auto;
 }
 
+.filter-icon {
+  cursor: pointer;
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s;
+}
+
+.filter-icon:hover {
+  transform: translateY(-3px);
+}
+
+.filter-icon.active-filter {
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.18);
+  border-radius: 6px;
+}
+
+.user-label-tooltip {
+  background: rgba(15, 33, 69, 0.92);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+}
+
 .bloc-info-image {
   width: 100%;
   border-radius: 8px;
@@ -412,6 +439,23 @@ a.btn-connexion:focus {
 .form-note {
   font-size: 0.9rem;
   color: var(--gris-moyen-text);
+}
+
+.address-status {
+  margin: 2px 0 0;
+  font-size: 0.88rem;
+}
+
+.address-status.is-info {
+  color: #3a556a;
+}
+
+.address-status.is-success {
+  color: #1f7a4f;
+}
+
+.address-status.is-error {
+  color: #b22222;
 }
 
 .btn-envoyer {
@@ -572,6 +616,7 @@ a.btn-connexion:focus {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
+  align-items: start;
 }
 
 /* Carte signalement — calquée sur le style des idées */
@@ -585,6 +630,7 @@ a.btn-connexion:focus {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  align-self: start;
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease;
@@ -597,6 +643,38 @@ a.btn-connexion:focus {
   object-fit: cover;
   border-radius: 8px;
   margin-bottom: 8px;
+}
+
+.carte-signalement.no-photo {
+  padding: 8px;
+  gap: 4px;
+}
+
+.carte-signalement.no-photo h3 {
+  font-size: 1rem;
+}
+
+.carte-signalement.no-photo .carte-signalement-desc {
+  font-size: 0.88rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.carte-signalement.no-photo .carte-signalement-location {
+  font-size: 0.84rem;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.carte-signalement.no-photo .carte-signalement-buttons {
+  margin-top: 2px;
 }
 
 .carte-signalement::before {

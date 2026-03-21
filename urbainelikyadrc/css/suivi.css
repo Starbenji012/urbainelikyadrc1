@@ -146,6 +146,17 @@ header .navbar ul.navigation-menu > li > a:focus::before {
   font-style: italic;
 }
 
+.user-label-tooltip {
+  background: rgba(15, 33, 69, 0.92);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+}
+
 /* BOUTONS : style unifié pour btn-connexion et boutons du hero */
 .btn,
 a.btn-connexion {
@@ -616,6 +627,38 @@ a.btn-connexion:focus {
 .carte-signalement-meta {
   font-size: 0.85rem;
   color: var(--gris-moyen-text);
+}
+
+.carte-signalement.no-photo {
+  padding: 8px;
+  gap: 4px;
+}
+
+.carte-signalement.no-photo h3 {
+  font-size: 1rem;
+}
+
+.carte-signalement.no-photo .carte-signalement-desc {
+  font-size: 0.88rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.carte-signalement.no-photo .carte-signalement-location {
+  font-size: 0.84rem;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.carte-signalement.no-photo .carte-signalement-buttons {
+  margin-top: 2px;
 }
 
 .carte-signalement:hover {

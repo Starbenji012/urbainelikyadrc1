@@ -94,6 +94,8 @@
                         <div class="form-group">
                             <label for="lieu">Lieu</label>
                             <input id="lieu" name="lieu" type="text" placeholder="Indiquez l'emplacement du problème">
+                            <p id="lieu-status" class="form-note address-status" role="status" aria-live="polite">
+                                Saisissez une adresse en RDC pour vérification.</p>
                         </div>
 
                         <div class="form-group">
@@ -106,10 +108,14 @@
                             <button type="submit" class="btn-envoyer">Envoyer le signalement</button>
                         </div>
 
-                        <!-- header compteur et vider -->
+                        <!-- header compteur, filtre et vider -->
                         <div class="idees-header"
                             style="max-width:1200px;margin:12px 0;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 0;">
                             <div class="compteur">Total de signalements : <strong id="totalSignalements">0</strong>
+                            </div>
+                            <div>
+                                <button id="btn-show-all" class="btn" type="button">Afficher tous ✅</button>
+                                <span style="margin-left:12px;">Filtre: <strong id="activeFilter">Tous</strong></span>
                             </div>
                             <div>
                                 <button id="btnViderSignalements" class="btn" type="button">Vider les
@@ -135,32 +141,36 @@
                                 <li class="etape">
                                     <div class="etape-info">
                                         <p>Déchet</p>
-                                        <img src="../icon-map/icons8-corbeille-48.png" alt="poubelle">
+                                        <img src="../icon-map/icons8-corbeille-48.png" alt="poubelle" data-type="dechet"
+                                            class="filter-icon">
                                     </div>
                                 </li>
                                 <li class="etape">
                                     <div class="etape-info">
                                         <p>Eau</p>
-                                        <img src="../icon-map/icons8-eau-48.png" alt="inondation">
+                                        <img src="../icon-map/icons8-eau-48.png" alt="inondation" data-type="eau"
+                                            class="filter-icon">
                                     </div>
                                 </li>
                                 <li class="etape">
                                     <div class="etape-info">
                                         <p>Insécurité</p>
                                         <img src="../icon-map/icons8-protection-du-trou-de-serrure-48.png"
-                                            alt="insécurité">
+                                            alt="insécurité" data-type="insecurite" class="filter-icon">
                                     </div>
                                 </li>
                                 <li class="etape">
                                     <div class="etape-info">
                                         <p>Route abîmée</p>
-                                        <img src="../icon-map/icons8-route-48.png" alt="route">
+                                        <img src="../icon-map/icons8-route-48.png" alt="route" data-type="voirie"
+                                            class="filter-icon">
                                     </div>
                                 </li>
                                 <li class="etape">
                                     <div class="etape-info">
                                         <p>Électricité</p>
-                                        <img src="../icon-map/icons8-électricité-32.png" alt="électricité">
+                                        <img src="../icon-map/icons8-électricité-32.png" alt="électricité"
+                                            data-type="electricite" class="filter-icon">
                                     </div>
                                 </li>
                             </ul>
@@ -172,21 +182,16 @@
                             </p>
                             <p>Voici comment indiquer une adresse précise :
                             <ul>
-                                <li>Commence par indiquer le quartier.</li>
-                                <li>Ensuite, précise la commune.</li>
-                                <li>Enfin, précise l'avenue.</li>
+                                <li>Indiquez la rue ou l'avenue.</li>
+                                <li>Précisez le quartier et la commune.</li>
+                                <li>Ajoutez la ville.</li>
+                                <li>Terminez par RDC.</li>
                             </ul>
-                            <p>Par exemple : <strong>Ngungu, Bumbu, Kinshasa, République
-                                    démocratique du Congo</strong></p>
-                            <p>Meme si l'adresse est mal inscrit, veuillez quand-meme inscrire correctement le quartier
-                                ou l'avenue. </p>
-
-                            <p>Si par malheur l'adresse n'est pas trouvée, le signalement sera placé à une position
-                                par
-                                défaut
-                                sur la carte, mais vous pourrez toujours le déplacer manuellement.</p>
-                            <p>Si aussi l'adresse saisi ne se trouve pas sur la map, le signalement sera toujours
-                                considerer.</p>
+                            <p>Par exemple : <strong>Avenue Kasa-Vubu, Quartier Ngungu, Commune Bumbu, Ville Kinshasa,
+                                    RDC</strong></p>
+                            <p>Une adresse partielle est acceptée si elle est trouvée correctement en RDC.</p>
+                            <p>Pendant la saisie, la carte se recentre automatiquement vers la zone reconnue.</p>
+                            <p>Les adresses hors RDC restent refusées automatiquement.</p>
                         </aside>
                     </div>
                 </div>

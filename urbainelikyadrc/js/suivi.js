@@ -5,6 +5,9 @@ function goBack() {
 
 let map = null; // Variable globale pour la carte
 let signalements = [];
+const DRC_CENTER = [-2.8797, 23.656];
+const DRC_DEFAULT_ZOOM = 6;
+const SIGNAL_VIEW_ZOOM = 18;
 
 /* GESTION MENU BURGER */
 function initMenuBurger() {
@@ -25,6 +28,27 @@ function initMenuBurger() {
 let currentFilter = null;
 let markers = [];
 
+function mergeUniqueByKey(arrA, arrB, keyFn) {
+  const out = [];
+  const seen = new Set();
+  [...arrA, ...arrB].forEach((item) => {
+    const k = keyFn(item);
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push(item);
+  });
+  return out;
+}
+
+function normalizeSignalement(sig) {
+  const s = sig || {};
+  return {
+    ...s,
+    type: s.type ? String(s.type).toLowerCase() : "",
+    user_nom: s.user_nom || s.userName || s.nom || "Utilisateur local",
+  };
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // Initialiser le menu burger
   initMenuBurger();
@@ -36,9 +60,15 @@ document.addEventListener("DOMContentLoaded", () => {
     btn._backInstalled = true;
   }
 
+  // Initialiser le filtre à null (afficher tous)
+  currentFilter = null;
+  const af = document.getElementById("activeFilter");
+  if (af) af.textContent = "Tous";
+
   // Initialiser la carte avec gestion du global signalements
   signalements = JSON.parse(localStorage.getItem("signalements") || "[]");
   initMap();
+  loadAndDisplaySignalements();
   renderSignalementsList();
   updateCounters();
 
@@ -48,7 +78,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Ajouter l'écouteur pour le bouton "Afficher tous"
   const btnShowAll = document.getElementById("btn-show-all");
   if (btnShowAll) {
-    btnShowAll.addEventListener("click", () => setFilter(null));
+    btnShowAll.addEventListener("click", () => {
+      console.log("Bouton 'Afficher tous' cliqué");
+      setFilter(null);
+    });
   }
 });
 
@@ -57,8 +90,8 @@ document.addEventListener("DOMContentLoaded", () => {
  */
 function initMap() {
   try {
-    // Créer la carte centrée sur Kinshasa
-    map = L.map("map").setView([-4.0383, 21.7587], 13);
+    // Créer la carte centrée sur la RDC
+    map = L.map("map").setView(DRC_CENTER, DRC_DEFAULT_ZOOM);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors",
     }).addTo(map);
@@ -71,22 +104,44 @@ function initMap() {
  * Charge et affiche les signalements sur la carte
  */
 async function loadAndDisplaySignalements() {
+  let backendSignalements = [];
+
   // récupérer les signalements depuis le backend
   try {
     const resp = await fetch("/backend/api/signaler.php");
     if (resp.ok) {
-      signalements = await resp.json();
+      const rows = await resp.json();
+      backendSignalements = Array.isArray(rows) ? rows : [];
     } else {
       console.error(
         "Erreur HTTP lors du chargement des signalements",
         resp.status,
       );
-      signalements = [];
+      backendSignalements = [];
     }
   } catch (err) {
     console.error("Erreur réseau lors du chargement des signalements", err);
-    signalements = [];
+    backendSignalements = [];
   }
+
+  const localSignalements = JSON.parse(
+    localStorage.getItem("signalements") || "[]",
+  );
+
+  signalements = mergeUniqueByKey(
+    (Array.isArray(backendSignalements) ? backendSignalements : []).map(
+      normalizeSignalement,
+    ),
+    (Array.isArray(localSignalements) ? localSignalements : []).map(
+      normalizeSignalement,
+    ),
+    (s) =>
+      String(
+        s?.id ||
+          s?.timestamp ||
+          `${s?.titre || ""}-${s?.lat || ""}-${s?.lng || ""}`,
+      ),
+  );
 
   // Nettoyer les marqueurs existants
   markers.forEach((m) => {
@@ -127,10 +182,6 @@ function addMarkerToMap(sig) {
 
   // Créer le contenu du popup
   let popupContent = '<div class="carte-signalement popup-signalement">';
-  if (sig.user_nom) {
-    popupContent +=
-      '<div class="carte-signalement-author">Par : ' + sig.user_nom + "</div>";
-  }
   if (sig.adresseTrouvee === false) {
     popupContent +=
       '<div style="color:#b22222;font-weight:bold;margin-bottom:6px;">Adresse non vérifiée</div>';
@@ -146,6 +197,10 @@ function addMarkerToMap(sig) {
   popupContent += "<h3>" + (sig.titre || "Signalement") + "</h3>";
   popupContent +=
     '<p class="carte-signalement-desc">' + (sig.description || "") + "</p>";
+  popupContent +=
+    '<div class="carte-signalement-author">Par : ' +
+    (sig.user_nom || "Utilisateur local") +
+    "</div>";
   if (sig.type)
     popupContent +=
       '<span class="carte-signalement-type">' + sig.type + "</span>";
@@ -161,14 +216,69 @@ function addMarkerToMap(sig) {
   m.bindPopup(popupContent);
   m._sigType = (sig.type || "").toLowerCase();
   m._sigTimestamp = sig.timestamp;
+  m._sigLat = sig.lat;
+  m._sigLng = sig.lng;
   markers.push(m);
+}
+
+function findMarkerForSignalement(sig) {
+  if (!sig) return null;
+
+  let marker = null;
+  if (sig.timestamp) {
+    marker = markers.find((m) => m._sigTimestamp === sig.timestamp) || null;
+  }
+
+  if (!marker && sig.lat != null && sig.lng != null) {
+    marker =
+      markers.find(
+        (m) =>
+          Math.abs(Number(m._sigLat) - Number(sig.lat)) < 0.000001 &&
+          Math.abs(Number(m._sigLng) - Number(sig.lng)) < 0.000001,
+      ) || null;
+  }
+
+  return marker;
+}
+
+function focusSignalementOnMap(sig) {
+  if (!map || !sig || sig.lat == null || sig.lng == null) return;
+
+  const mapEl = document.getElementById("map");
+  if (mapEl) {
+    mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  const marker = findMarkerForSignalement(sig);
+
+  window.setTimeout(() => {
+    try {
+      map.invalidateSize();
+    } catch (e) {}
+
+    if (marker && !map.hasLayer(marker)) {
+      try {
+        map.addLayer(marker);
+      } catch (e) {}
+    }
+
+    map.flyTo([sig.lat, sig.lng], SIGNAL_VIEW_ZOOM, { duration: 1.1 });
+  }, 250);
+
+  if (marker) {
+    window.setTimeout(() => {
+      try {
+        marker.openPopup();
+      } catch (e) {}
+    }, 700);
+  }
 }
 
 /**
  * Obtient l'icône appropriée selon le type
  */
 function getIconForType(typeValue) {
-  const iconBasePath = "../icon-map/";
+  const iconBasePath = "/icon-map/";
 
   const icons = {
     voirie: { url: iconBasePath + "icons8-route-48.png", size: [48, 48] },
@@ -187,7 +297,10 @@ function getIconForType(typeValue) {
   const key = (typeValue || "").toLowerCase();
   const config = icons[key];
 
-  if (!config) return null;
+  if (!config) {
+    console.warn("Icon not found for type:", typeValue, "normalized:", key);
+    return null;
+  }
 
   const size = config.size;
   return L.icon({
@@ -221,10 +334,19 @@ function addFilterListeners() {
  */
 function setFilter(type) {
   currentFilter = type ? String(type).toLowerCase() : null;
+  console.log(
+    "setFilter appelé avec:",
+    type,
+    "currentFilter est maintenant:",
+    currentFilter,
+  );
 
   // Mettre à jour l'affichage du filtre actif
   const af = document.getElementById("activeFilter");
-  if (af) af.textContent = currentFilter ? currentFilter : "Tous";
+  if (af) {
+    af.textContent = currentFilter ? currentFilter : "Tous";
+    console.log("activeFilter mis à jour à:", af.textContent);
+  }
 
   // Mettre en évidence les icônes de filtre
   document.querySelectorAll(".filter-icon").forEach((img) => {
@@ -288,6 +410,9 @@ function renderSignalementsList() {
     const card = document.createElement("div");
     card.className = "carte-signalement";
     card.dataset.ts = sig.timestamp;
+    if (!sig.photo) {
+      card.classList.add("no-photo");
+    }
 
     if (sig.photo) {
       const img = document.createElement("img");
@@ -313,12 +438,10 @@ function renderSignalementsList() {
       card.appendChild(type);
     }
 
-    if (sig.user_nom) {
-      const author = document.createElement("p");
-      author.className = "carte-signalement-author";
-      author.textContent = "Par : " + sig.user_nom;
-      card.appendChild(author);
-    }
+    const author = document.createElement("p");
+    author.className = "carte-signalement-author";
+    author.textContent = "Par : " + (sig.user_nom || "Utilisateur local");
+    card.appendChild(author);
 
     const location = document.createElement("p");
     location.className = "carte-signalement-location";
@@ -345,9 +468,7 @@ function renderSignalementsList() {
     btnVoirCarte.className = "btn-voir-carte";
     btnVoirCarte.textContent = "Voir sur carte";
     btnVoirCarte.addEventListener("click", () => {
-      if (map) {
-        map.flyTo([sig.lat, sig.lng], 16, { duration: 1.2 });
-      }
+      focusSignalementOnMap(sig);
     });
 
     btnContainer.appendChild(btnVoirCarte);
