@@ -1,55 +1,5 @@
 /* INDEX.JS - PAGE D'ACCUEIL */
 
-/* GESTION MENU BURGER */
-function initMenuBurger() {
-  const menuBurger = document.getElementById("menu-burger");
-  const navigationMenu = document.querySelector(".navigation-menu");
-  if (menuBurger && navigationMenu) {
-    const burgerIcon = menuBurger.querySelector("i");
-    const updateBurgerIcon = () => {
-      if (!burgerIcon) return;
-      const isOpen = navigationMenu.classList.contains("mobile-active");
-      burgerIcon.classList.toggle("bx-menu", !isOpen);
-      burgerIcon.classList.toggle("bx-x", isOpen);
-    };
-
-    menuBurger.addEventListener("click", (e) => {
-      e.stopPropagation();
-      navigationMenu.classList.toggle("mobile-active");
-      updateBurgerIcon();
-    });
-    navigationMenu.querySelectorAll("a").forEach((link) => {
-      link.addEventListener("click", () => {
-        navigationMenu.classList.remove("mobile-active");
-        updateBurgerIcon();
-      });
-    });
-
-    document.addEventListener("click", (e) => {
-      if (!navigationMenu.classList.contains("mobile-active")) return;
-
-      const menuRect = navigationMenu.getBoundingClientRect();
-      const clickedOverlayZone = e.clientX < menuRect.left;
-      const clickedInsideMenu = navigationMenu.contains(e.target);
-      const clickedBurger = menuBurger.contains(e.target);
-
-      if (clickedOverlayZone || (!clickedInsideMenu && !clickedBurger)) {
-        navigationMenu.classList.remove("mobile-active");
-        updateBurgerIcon();
-      }
-    });
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        navigationMenu.classList.remove("mobile-active");
-        updateBurgerIcon();
-      }
-    });
-
-    updateBurgerIcon();
-  }
-}
-
 function readLocalArray(key) {
   try {
     const v = JSON.parse(localStorage.getItem(key) || "[]");
@@ -83,6 +33,7 @@ function mergeUniqueByKey(arrA, arrB, keyFn) {
 }
 
 async function updateGlobalStats() {
+  // 1) Lire les signalements (local + backend), puis fusionner sans doublons.
   const localSignalements = readLocalArray("signalements");
   const backendSignalements = await fetchArray("/backend/api/signaler.php");
   const allSignalements = mergeUniqueByKey(
@@ -96,12 +47,14 @@ async function updateGlobalStats() {
       ),
   );
 
+  // 2) Lire les idées (local + backend), puis fusionner sans doublons.
   const localIdees = readLocalArray("idees_page");
   const backendIdees = await fetchArray("/backend/api/idees.php");
   const allIdees = mergeUniqueByKey(backendIdees, localIdees, (i) =>
     String(i?.id || i?.timestamp || i?.titre || ""),
   );
 
+  // 3) Afficher les compteurs dans la page d'accueil.
   const sigEl = document.getElementById("sig-total");
   if (sigEl) sigEl.textContent = String(allSignalements.length);
 

@@ -10,57 +10,6 @@ const DRC_DEFAULT_ZOOM = 6;
 const SIGNAL_VIEW_ZOOM = 18;
 
 /* GESTION MENU BURGER */
-function initMenuBurger() {
-  const menuBurger = document.getElementById("menu-burger");
-  const navigationMenu = document.querySelector(".navigation-menu");
-  if (menuBurger && navigationMenu) {
-    const burgerIcon = menuBurger.querySelector("i");
-    const updateBurgerIcon = () => {
-      if (!burgerIcon) return;
-      const isOpen = navigationMenu.classList.contains("mobile-active");
-      burgerIcon.classList.toggle("bx-menu", !isOpen);
-      burgerIcon.classList.toggle("bx-x", isOpen);
-    };
-
-    menuBurger.addEventListener("click", (e) => {
-      e.stopPropagation();
-      navigationMenu.classList.toggle("mobile-active");
-      updateBurgerIcon();
-    });
-    navigationMenu.querySelectorAll("a").forEach((link) => {
-      link.addEventListener(
-        "click",
-        () => (
-          navigationMenu.classList.remove("mobile-active"),
-          updateBurgerIcon()
-        ),
-      );
-    });
-
-    document.addEventListener("click", (e) => {
-      if (!navigationMenu.classList.contains("mobile-active")) return;
-
-      const menuRect = navigationMenu.getBoundingClientRect();
-      const clickedOverlayZone = e.clientX < menuRect.left;
-      const clickedInsideMenu = navigationMenu.contains(e.target);
-      const clickedBurger = menuBurger.contains(e.target);
-
-      if (clickedOverlayZone || (!clickedInsideMenu && !clickedBurger)) {
-        navigationMenu.classList.remove("mobile-active");
-        updateBurgerIcon();
-      }
-    });
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        navigationMenu.classList.remove("mobile-active");
-        updateBurgerIcon();
-      }
-    });
-
-    updateBurgerIcon();
-  }
-}
 
 let currentFilter = null;
 let markers = [];
@@ -102,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const af = document.getElementById("activeFilter");
   if (af) af.textContent = "Tous";
 
-  // Initialiser la carte avec gestion du global signalements
+  // Charger les données locales, puis afficher carte + liste.
   signalements = JSON.parse(localStorage.getItem("signalements") || "[]");
   initMap();
   loadAndDisplaySignalements();
@@ -161,6 +110,7 @@ async function loadAndDisplaySignalements() {
     backendSignalements = [];
   }
 
+  // Fusion backend + local pour éviter les doublons et tout afficher.
   const localSignalements = JSON.parse(
     localStorage.getItem("signalements") || "[]",
   );
@@ -180,7 +130,7 @@ async function loadAndDisplaySignalements() {
       ),
   );
 
-  // Nettoyer les marqueurs existants
+  // Nettoyer les anciens marqueurs avant de reconstruire l'affichage.
   markers.forEach((m) => {
     try {
       map.removeLayer(m);
@@ -188,7 +138,7 @@ async function loadAndDisplaySignalements() {
   });
   markers = [];
 
-  // Ajouter les marqueurs pour chaque signalement
+  // Ajouter les marqueurs pour chaque signalement.
   signalements.forEach((sig) => {
     addMarkerToMap(sig);
   });

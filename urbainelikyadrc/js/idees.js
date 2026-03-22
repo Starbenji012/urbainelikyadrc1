@@ -1,62 +1,10 @@
-/* IDEES.JS - VERSION INITIALE BASIQUE (localStorage) */
+/* IDEES.JS - VERSION SIMPLE (stockage local) */
 
-/* GESTION MENU BURGER */
-function initMenuBurger() {
-  const menuBurger = document.getElementById("menu-burger");
-  const navigationMenu = document.querySelector(".navigation-menu");
-  if (menuBurger && navigationMenu) {
-    const burgerIcon = menuBurger.querySelector("i");
-    const updateBurgerIcon = () => {
-      if (!burgerIcon) return;
-      const isOpen = navigationMenu.classList.contains("mobile-active");
-      burgerIcon.classList.toggle("bx-menu", !isOpen);
-      burgerIcon.classList.toggle("bx-x", isOpen);
-    };
-
-    menuBurger.addEventListener("click", (e) => {
-      e.stopPropagation();
-      navigationMenu.classList.toggle("mobile-active");
-      updateBurgerIcon();
-    });
-    navigationMenu.querySelectorAll("a").forEach((link) => {
-      link.addEventListener(
-        "click",
-        () => (
-          navigationMenu.classList.remove("mobile-active"),
-          updateBurgerIcon()
-        ),
-      );
-    });
-
-    document.addEventListener("click", (e) => {
-      if (!navigationMenu.classList.contains("mobile-active")) return;
-
-      const menuRect = navigationMenu.getBoundingClientRect();
-      const clickedOverlayZone = e.clientX < menuRect.left;
-      const clickedInsideMenu = navigationMenu.contains(e.target);
-      const clickedBurger = menuBurger.contains(e.target);
-
-      if (clickedOverlayZone || (!clickedInsideMenu && !clickedBurger)) {
-        navigationMenu.classList.remove("mobile-active");
-        updateBurgerIcon();
-      }
-    });
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        navigationMenu.classList.remove("mobile-active");
-        updateBurgerIcon();
-      }
-    });
-
-    updateBurgerIcon();
-  }
-}
-
-let idees = JSON.parse(localStorage.getItem("idees_page") || "[]"); // VERSION PAGE IDÉES
+let idees = JSON.parse(localStorage.getItem("idees_page") || "[]"); // Donnees de la page Idees
 
 document.addEventListener("DOMContentLoaded", () => {
   initMenuBurger();
+  // Affiche les idées déjà sauvegardées au chargement.
   renderIdees();
 
   const form = document.getElementById("formIdee");
@@ -68,6 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function addIdee(e) {
   e.preventDefault();
+  // Lire les informations du formulaire.
   const titre = document.getElementById("titre").value.trim();
   const categorie = document.getElementById("categorie").value;
   const desc = document.getElementById("description").value.trim();
@@ -84,6 +33,7 @@ function addIdee(e) {
     likes: 0,
     timestamp: new Date().toISOString(),
   };
+  // Ajouter en haut de liste puis sauvegarder en local.
   idees.unshift(idee);
   localStorage.setItem("idees_page", JSON.stringify(idees));
   renderIdees();
@@ -94,6 +44,7 @@ function addIdee(e) {
 function renderIdees() {
   const container = document.getElementById("listeIdees");
   if (container) {
+    // Génère les cartes HTML de toutes les idées.
     container.innerHTML =
       idees
         .map(
@@ -125,6 +76,7 @@ function likeIdee(index) {
 }
 
 function deleteIdee(timestamp) {
+  // Supprime uniquement l'idée correspondant au timestamp choisi.
   if (confirm("Supprimer ?")) {
     idees = idees.filter((i) => i.timestamp !== timestamp);
     localStorage.setItem("idees_page", JSON.stringify(idees));
@@ -133,6 +85,7 @@ function deleteIdee(timestamp) {
 }
 
 function clearIdees() {
+  // Vide totalement la liste et le stockage local.
   if (confirm("Vider toutes les idées ?")) {
     idees = [];
     localStorage.removeItem("idees_page");

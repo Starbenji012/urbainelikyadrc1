@@ -1,0 +1,28 @@
+/* VARIABLES GLOBALES PARTAGEES */
+:root {
+  --bleu-nuit-button: #0f2145;
+  --blanc-bg: #ffffff;
+  --gris-clair-bg: #f5f5f5;
+  --gris-fonce-text: #2f2f2f;
+
+  /* Nuances utilitaires (hors palette principale) */
+  --gris-moyen-text: #555555;
+  --gris-secondaire-text: #666666;
+  --gris-muet-text: #999999;
+  --gris-placeholder-text: #aaaaaa;
+  --gris-bordure: #e0e0e0;
+  --gris-bordure-legere: #eeeeee;
+
+  /* Etats et interactions */
+  --vert-like-hover: #2da66a;
+  --rouge-delete-hover: #d32f2f;
+  --etat-info-text: #3a556a;
+  --etat-success-text: #1f7a4f;
+  --etat-error-text: #b22222;
+
+  /* Palette principale */
+  --vert-val: #3dbd7d;
+  --vert-footer: #248154;
+  --orange-avert: #f4a261;
+  --rouge-sign: #e63946;
+}

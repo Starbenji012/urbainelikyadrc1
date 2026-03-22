@@ -1,60 +1,8 @@
-/* COMMUNAUTE.JS - VERSION CORRIGÉE */
+/* COMMUNAUTE.JS - VERSION MISE A JOUR */
 
-/* GESTION MENU BURGER */
-function initMenuBurger() {
-  const menuBurger = document.getElementById("menu-burger");
-  const navigationMenu = document.querySelector(".navigation-menu");
-  if (menuBurger && navigationMenu) {
-    const burgerIcon = menuBurger.querySelector("i");
-    const updateBurgerIcon = () => {
-      if (!burgerIcon) return;
-      const isOpen = navigationMenu.classList.contains("mobile-active");
-      burgerIcon.classList.toggle("bx-menu", !isOpen);
-      burgerIcon.classList.toggle("bx-x", isOpen);
-    };
-
-    menuBurger.addEventListener("click", (e) => {
-      e.stopPropagation();
-      navigationMenu.classList.toggle("mobile-active");
-      updateBurgerIcon();
-    });
-    navigationMenu.querySelectorAll("a").forEach((link) => {
-      link.addEventListener(
-        "click",
-        () => (
-          navigationMenu.classList.remove("mobile-active"),
-          updateBurgerIcon()
-        ),
-      );
-    });
-
-    document.addEventListener("click", (e) => {
-      if (!navigationMenu.classList.contains("mobile-active")) return;
-
-      const menuRect = navigationMenu.getBoundingClientRect();
-      const clickedOverlayZone = e.clientX < menuRect.left;
-      const clickedInsideMenu = navigationMenu.contains(e.target);
-      const clickedBurger = menuBurger.contains(e.target);
-
-      if (clickedOverlayZone || (!clickedInsideMenu && !clickedBurger)) {
-        navigationMenu.classList.remove("mobile-active");
-        updateBurgerIcon();
-      }
-    });
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        navigationMenu.classList.remove("mobile-active");
-        updateBurgerIcon();
-      }
-    });
-
-    updateBurgerIcon();
-  }
-}
-
-// Données locales - VERSION PAGE COMMUNAUTÉ (LIKES SÉPARÉS)
+// Donnees locales - page Communaute (likes separes)
 let idees = JSON.parse(localStorage.getItem("idees_page") || "[]"); // Lecture depuis idées.js
+// Les likes de la communauté sont stockés séparément par timestamp.
 let idees_communaute = idees.map((idee) => ({
   ...idee,
   likes:
@@ -65,12 +13,14 @@ let idees_communaute = idees.map((idee) => ({
 
 document.addEventListener("DOMContentLoaded", () => {
   initMenuBurger();
+  // Afficher les idées dès l'ouverture de la page.
   renderIdees();
 });
 
 function renderIdees() {
   const ideesContainer = document.querySelector(".idees-container");
   if (ideesContainer) {
+    // Affiche un message vide ou la liste des cartes d'idées.
     ideesContainer.innerHTML =
       idees_communaute.length === 0
         ? "<p>Aucune idée.</p>"
@@ -95,13 +45,14 @@ function renderIdees() {
 }
 
 function communauteLikeIdee(timestamp) {
+  // Incrémente le like pour l'idée ciblée et le sauvegarde.
   const likes = JSON.parse(
     localStorage.getItem("idees_communaute_likes") || "{}",
   );
   likes[timestamp] = (likes[timestamp] || 0) + 1;
   localStorage.setItem("idees_communaute_likes", JSON.stringify(likes));
 
-  // Mettre à jour l'affichage
+  // Recalculer la liste avec les nouvelles valeurs puis réafficher.
   idees_communaute = idees.map((idee) => ({
     ...idee,
     likes: likes[idee.timestamp] || 0,

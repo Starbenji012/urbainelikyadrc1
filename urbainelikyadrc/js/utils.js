@@ -11,6 +11,7 @@ function initMenuBurger() {
   const navigationMenu = document.querySelector(".navigation-menu");
   if (menuBurger && navigationMenu) {
     const burgerIcon = menuBurger.querySelector("i");
+    // Garde l'icône synchronisée avec l'état du menu (ouvert/fermé).
     const updateBurgerIcon = () => {
       if (!burgerIcon) return;
       const isOpen = navigationMenu.classList.contains("mobile-active");
@@ -23,6 +24,8 @@ function initMenuBurger() {
       navigationMenu.classList.toggle("mobile-active");
       updateBurgerIcon();
     });
+
+    // Ferme le menu après un clic sur un lien.
     navigationMenu.querySelectorAll("a").forEach((link) => {
       link.addEventListener(
         "click",
@@ -33,6 +36,7 @@ function initMenuBurger() {
       );
     });
 
+    // Clic à gauche du panneau (overlay) ou en dehors => fermeture.
     document.addEventListener("click", (e) => {
       if (!navigationMenu.classList.contains("mobile-active")) return;
 
@@ -47,6 +51,7 @@ function initMenuBurger() {
       }
     });
 
+    // Touche Echap => fermeture rapide du menu.
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         navigationMenu.classList.remove("mobile-active");
