@@ -14,14 +14,51 @@ function initMenuBurger() {
   const menuBurger = document.getElementById("menu-burger");
   const navigationMenu = document.querySelector(".navigation-menu");
   if (menuBurger && navigationMenu) {
-    menuBurger.addEventListener("click", () => {
+    const burgerIcon = menuBurger.querySelector("i");
+    const updateBurgerIcon = () => {
+      if (!burgerIcon) return;
+      const isOpen = navigationMenu.classList.contains("mobile-active");
+      burgerIcon.classList.toggle("bx-menu", !isOpen);
+      burgerIcon.classList.toggle("bx-x", isOpen);
+    };
+
+    menuBurger.addEventListener("click", (e) => {
+      e.stopPropagation();
       navigationMenu.classList.toggle("mobile-active");
+      updateBurgerIcon();
     });
     navigationMenu.querySelectorAll("a").forEach((link) => {
-      link.addEventListener("click", () =>
-        navigationMenu.classList.remove("mobile-active"),
+      link.addEventListener(
+        "click",
+        () => (
+          navigationMenu.classList.remove("mobile-active"),
+          updateBurgerIcon()
+        ),
       );
     });
+
+    document.addEventListener("click", (e) => {
+      if (!navigationMenu.classList.contains("mobile-active")) return;
+
+      const menuRect = navigationMenu.getBoundingClientRect();
+      const clickedOverlayZone = e.clientX < menuRect.left;
+      const clickedInsideMenu = navigationMenu.contains(e.target);
+      const clickedBurger = menuBurger.contains(e.target);
+
+      if (clickedOverlayZone || (!clickedInsideMenu && !clickedBurger)) {
+        navigationMenu.classList.remove("mobile-active");
+        updateBurgerIcon();
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        navigationMenu.classList.remove("mobile-active");
+        updateBurgerIcon();
+      }
+    });
+
+    updateBurgerIcon();
   }
 }
 
@@ -278,13 +315,13 @@ function focusSignalementOnMap(sig) {
  * Obtient l'icône appropriée selon le type
  */
 function getIconForType(typeValue) {
-  const iconBasePath = "/icon-map/";
+  const iconBasePath = "../icon-map/";
 
   const icons = {
     voirie: { url: iconBasePath + "icons8-route-48.png", size: [48, 48] },
     eau: { url: iconBasePath + "icons8-eau-48.png", size: [48, 48] },
     electricite: {
-      url: iconBasePath + "icons8-électricité-32.png",
+      url: iconBasePath + "icons8-%C3%A9lectricit%C3%A9-32.png",
       size: [32, 32],
     },
     insecurite: {

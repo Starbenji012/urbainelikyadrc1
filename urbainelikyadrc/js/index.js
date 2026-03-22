@@ -1,23 +1,54 @@
-/* INDEX.JS - VERSION CORRIGÉE */
+/* INDEX.JS - PAGE D'ACCUEIL */
 
 /* GESTION MENU BURGER */
 function initMenuBurger() {
   const menuBurger = document.getElementById("menu-burger");
   const navigationMenu = document.querySelector(".navigation-menu");
   if (menuBurger && navigationMenu) {
-    menuBurger.addEventListener("click", () => {
+    const burgerIcon = menuBurger.querySelector("i");
+    const updateBurgerIcon = () => {
+      if (!burgerIcon) return;
+      const isOpen = navigationMenu.classList.contains("mobile-active");
+      burgerIcon.classList.toggle("bx-menu", !isOpen);
+      burgerIcon.classList.toggle("bx-x", isOpen);
+    };
+
+    menuBurger.addEventListener("click", (e) => {
+      e.stopPropagation();
       navigationMenu.classList.toggle("mobile-active");
+      updateBurgerIcon();
     });
     navigationMenu.querySelectorAll("a").forEach((link) => {
-      link.addEventListener("click", () =>
-        navigationMenu.classList.remove("mobile-active"),
-      );
+      link.addEventListener("click", () => {
+        navigationMenu.classList.remove("mobile-active");
+        updateBurgerIcon();
+      });
     });
+
+    document.addEventListener("click", (e) => {
+      if (!navigationMenu.classList.contains("mobile-active")) return;
+
+      const menuRect = navigationMenu.getBoundingClientRect();
+      const clickedOverlayZone = e.clientX < menuRect.left;
+      const clickedInsideMenu = navigationMenu.contains(e.target);
+      const clickedBurger = menuBurger.contains(e.target);
+
+      if (clickedOverlayZone || (!clickedInsideMenu && !clickedBurger)) {
+        navigationMenu.classList.remove("mobile-active");
+        updateBurgerIcon();
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        navigationMenu.classList.remove("mobile-active");
+        updateBurgerIcon();
+      }
+    });
+
+    updateBurgerIcon();
   }
 }
-
-// Gestion des témoignages
-let temoignages = JSON.parse(localStorage.getItem("temoignages") || "[]");
 
 function readLocalArray(key) {
   try {
@@ -80,99 +111,5 @@ async function updateGlobalStats() {
 
 document.addEventListener("DOMContentLoaded", () => {
   initMenuBurger();
-
   updateGlobalStats();
-
-  // Temoignages - affichage initial
-  renderTemoignages();
-
-  // Event listeners pour boutons du formulaire
-  const btnAddTemoignage = document.getElementById("btn-add-temoignage");
-  const btnCancelTemoignage = document.getElementById("btn-cancel-temoignage");
-  const formTemoignage = document.getElementById("form-temoignage");
-
-  if (btnAddTemoignage) {
-    btnAddTemoignage.addEventListener("click", () => {
-      formTemoignage.style.display =
-        formTemoignage.style.display === "none" ? "block" : "none";
-    });
-  }
-
-  if (btnCancelTemoignage) {
-    btnCancelTemoignage.addEventListener("click", () => {
-      formTemoignage.style.display = "none";
-      formTemoignage.reset();
-    });
-  }
-
-  if (formTemoignage) {
-    formTemoignage.addEventListener("submit", addTemoignage);
-  }
 });
-
-function addTemoignage(e) {
-  e.preventDefault();
-  const nom = document.getElementById("temoignage-nom").value.trim();
-  const ville = document.getElementById("temoignage-ville").value.trim();
-  const message = document.getElementById("temoignage-message").value.trim();
-
-  if (!nom || !ville || !message) {
-    alert("Tous les champs obligatoires doivent être remplis");
-    return;
-  }
-
-  const temoignage = {
-    nom,
-    ville,
-    message,
-    timestamp: new Date().toISOString(),
-  };
-
-  temoignages.unshift(temoignage);
-  localStorage.setItem("temoignages", JSON.stringify(temoignages));
-  renderTemoignages();
-
-  const form = document.getElementById("form-temoignage");
-  form.style.display = "none";
-  form.reset();
-  alert("Témoignage ajouté avec succès !");
-}
-
-function renderTemoignages() {
-  const container = document.querySelector(".temoignages-contenaire");
-  if (!container) return;
-
-  // Combiner témoignages stockés + démo
-  const demoTemoins = [
-    {
-      message: "Excellente plateforme pour signaler les problèmes !",
-      nom: "Jean K.",
-      ville: "Kinshasa",
-    },
-    {
-      message: "J'ai signalé une route abîmée et ça a été réparé !",
-      nom: "Marie M.",
-      ville: "Lubumbashi",
-    },
-  ];
-
-  const allTemoins = [...temoignages, ...demoTemoins];
-
-  container.innerHTML = allTemoins
-    .map(
-      (t) => `
-    <div class="temoignages-cards">
-      <div class="left-border"></div>
-      <div class="content">
-        <p>"${t.message}"</p>
-        <div class="user-info">
-          <h4>${t.nom}</h4>
-          <p>${t.ville}</p>
-        </div>
-      </div>
-      <img src="../img/logo.png" alt="user" class="profile-picture">
-    </div>
-  `,
-    )
-    .join("");
-}
