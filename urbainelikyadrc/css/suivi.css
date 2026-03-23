@@ -236,15 +236,18 @@ a.btn-connexion:focus {
 .retour-section {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 0 16px;
 }
 .btn-retour {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 12px 20px;
-  margin: 20px 20px 0px 20px;
+  margin: 16px 0 20px;
   background-color: var(--bleu-nuit-button);
   color: var(--blanc-bg);
+  text-decoration: none;
   border: none;
   border-radius: 6px;
   font-size: 1rem;
@@ -258,6 +261,10 @@ a.btn-connexion:focus {
   background-color: var(--vert-val);
   transform: translateX(-4px);
   box-shadow: 0 4px 12px rgba(61, 189, 125, 0.3);
+}
+
+.btn-retour:visited {
+  color: var(--blanc-bg);
 }
 
 .btn-retour:active {
@@ -825,8 +832,9 @@ footer {
   }
 
   .btn-retour {
-    font-size: 0.9rem;
-    padding: 6px 10px;
+    font-size: 0.92rem;
+    padding: 8px 12px;
+    margin-top: 10px;
   }
 }
 
@@ -853,76 +861,6 @@ footer {
 @media (max-width: 800px) {
   body {
     overflow-x: hidden;
-  }
-
-  header {
-    position: relative;
-    z-index: 1100;
-  }
-
-  .navbar {
-    position: relative;
-  }
-
-  ul.navigation-menu {
-    display: none;
-  }
-
-  .menu-burger {
-    display: inline-flex;
-    position: relative;
-    z-index: 1202;
-  }
-
-  ul.navigation-menu.mobile-active {
-    display: flex;
-    position: fixed !important;
-    top: 0;
-    right: 0 !important;
-    bottom: 0;
-    left: auto;
-    width: min(320px, 78vw);
-    background: var(--blanc-bg);
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 4px;
-    padding: 96px 18px 20px;
-    box-shadow: -14px 0 34px rgba(0, 0, 0, 0.14);
-    border-radius: 0;
-    z-index: 1201;
-    overflow-y: auto;
-  }
-
-  ul.navigation-menu.mobile-active::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: min(320px, 78vw);
-    bottom: 0;
-    background: rgba(36, 129, 84, 0.22);
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
-    z-index: -1;
-  }
-
-  ul.navigation-menu.mobile-active > li {
-    width: 100%;
-  }
-
-  ul.navigation-menu.mobile-active > li > a {
-    display: block;
-    width: 100%;
-    padding: 12px 14px;
-    white-space: normal;
-    border-radius: 8px;
-  }
-
-  ul.navigation-menu.mobile-active > li > a.btn-connexion {
-    display: inline-flex;
-    width: auto;
-    margin-top: 10px;
   }
 
   footer {
@@ -977,78 +915,5 @@ footer {
   .navlogo .logo {
     width: 96px;
     height: 96px;
-  }
-
-  ul.navigation-menu.mobile-active {
-    position: fixed !important;
-    right: 0 !important;
-    left: auto !important;
-    width: min(280px, 84vw);
-  }
-
-  ul.navigation-menu.mobile-active::before {
-    right: min(280px, 84vw);
-  }
-}
-
-@media (max-width: 800px) {
-  header .navbar ul.navigation-menu.mobile-active > li > a::before {
-    display: none;
-  }
-
-  header .navbar ul.navigation-menu.mobile-active > li > a {
-    transition:
-      background-color 0.22s ease,
-      color 0.22s ease,
-      transform 0.14s ease,
-      box-shadow 0.22s ease;
-    text-shadow: none;
-  }
-
-  header .navbar ul.navigation-menu.mobile-active > li > a:hover,
-  header .navbar ul.navigation-menu.mobile-active > li > a:focus {
-    background: rgba(15, 33, 69, 0.08);
-    color: var(--bleu-nuit-button);
-    transform: translateX(2px);
-    box-shadow: 0 8px 20px rgba(15, 33, 69, 0.16);
-  }
-
-  header .navbar ul.navigation-menu.mobile-active > li > a.btn-connexion {
-    transition:
-      transform 0.14s ease,
-      box-shadow 0.22s ease,
-      filter 0.12s ease;
-  }
-
-  header .navbar ul.navigation-menu.mobile-active > li > a.btn-connexion:hover,
-  header .navbar ul.navigation-menu.mobile-active > li > a.btn-connexion:focus {
-    background: var(--bleu-nuit-button);
-    color: var(--blanc-bg) !important;
-    transform: translateY(-2px);
-    box-shadow:
-      0 18px 48px rgba(15, 33, 69, 0.3),
-      0 0 26px rgba(61, 189, 125, 0.12);
-    filter: brightness(1.05);
-  }
-}
-
-@media (max-width: 800px) {
-  .navbar {
-    position: relative;
-  }
-
-  .menu-burger {
-    position: absolute !important;
-    top: 50% !important;
-    right: 14px !important;
-    transform: translateY(-50%);
-    z-index: 1302;
-  }
-
-  header:has(.navigation-menu.mobile-active) .menu-burger {
-    position: fixed !important;
-    top: 14px !important;
-    right: 14px !important;
-    transform: none;
   }
 }

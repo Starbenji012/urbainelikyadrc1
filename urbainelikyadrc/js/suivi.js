@@ -1,62 +1,25 @@
-/* Fonction de navigation - Retour direct à l'accueil */
-function goBack() {
-  window.location.href = "./index.html";
-}
-
 let map = null; // Variable globale pour la carte
 let signalements = [];
-const DRC_CENTER = [-2.8797, 23.656];
-const DRC_DEFAULT_ZOOM = 6;
-const SIGNAL_VIEW_ZOOM = 18;
-
-/* GESTION MENU BURGER */
-
-let currentFilter = null;
 let markers = [];
 
-function mergeUniqueByKey(arrA, arrB, keyFn) {
-  const out = [];
-  const seen = new Set();
-  [...arrA, ...arrB].forEach((item) => {
-    const k = keyFn(item);
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push(item);
-  });
-  return out;
-}
+// Endpoints testes dans l'ordre. Si aucun backend ne repond, on bascule en local.
+const SIGNALEMENTS_API_ENDPOINTS = [
+  "/backend/api/signalements/index.php",
+  "../backend/api/signalements/index.php",
+  "backend/api/signalements/index.php",
+];
 
-function normalizeSignalement(sig) {
-  const s = sig || {};
-  return {
-    ...s,
-    type: s.type ? String(s.type).toLowerCase() : "",
-    user_nom: s.user_nom || s.userName || s.nom || "Utilisateur local",
-  };
-}
+let currentFilter = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Initialiser le menu burger
+  // Navigation mobile: logique partagee dans utils.js
   initMenuBurger();
 
-  // Initialiser le bouton retour
-  const btn = document.getElementById("btn-retour");
-  if (btn && !btn._backInstalled) {
-    btn.addEventListener("click", goBack);
-    btn._backInstalled = true;
-  }
-
-  // Initialiser le filtre à null (afficher tous)
-  currentFilter = null;
-  const af = document.getElementById("activeFilter");
-  if (af) af.textContent = "Tous";
-
-  // Charger les données locales, puis afficher carte + liste.
-  signalements = JSON.parse(localStorage.getItem("signalements") || "[]");
+  // Initialiser la carte
   initMap();
+
+  // récupérer les signalements depuis le backend
   loadAndDisplaySignalements();
-  renderSignalementsList();
-  updateCounters();
 
   // Ajouter les écouteurs de filtrage
   addFilterListeners();
@@ -64,10 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Ajouter l'écouteur pour le bouton "Afficher tous"
   const btnShowAll = document.getElementById("btn-show-all");
   if (btnShowAll) {
-    btnShowAll.addEventListener("click", () => {
-      console.log("Bouton 'Afficher tous' cliqué");
-      setFilter(null);
-    });
+    btnShowAll.addEventListener("click", () => setFilter(null));
   }
 });
 
@@ -76,8 +36,8 @@ document.addEventListener("DOMContentLoaded", () => {
  */
 function initMap() {
   try {
-    // Créer la carte centrée sur la RDC
-    map = L.map("map").setView(DRC_CENTER, DRC_DEFAULT_ZOOM);
+    // Créer la carte centrée sur Kinshasa
+    map = L.map("map").setView([-4.0383, 21.7587], 13);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors",
     }).addTo(map);
@@ -90,47 +50,54 @@ function initMap() {
  * Charge et affiche les signalements sur la carte
  */
 async function loadAndDisplaySignalements() {
-  let backendSignalements = [];
-
-  // récupérer les signalements depuis le backend
+  // Recuperer les signalements depuis le backend (avec fallback localStorage).
   try {
-    const resp = await fetch("/backend/api/signaler.php");
-    if (resp.ok) {
-      const rows = await resp.json();
-      backendSignalements = Array.isArray(rows) ? rows : [];
-    } else {
-      console.error(
-        "Erreur HTTP lors du chargement des signalements",
-        resp.status,
-      );
-      backendSignalements = [];
+    let apiData = null;
+
+    for (const endpoint of SIGNALEMENTS_API_ENDPOINTS) {
+      try {
+        const resp = await fetch(endpoint, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
+
+        if (!resp.ok) continue;
+
+        const data = await resp.json();
+        if (Array.isArray(data)) {
+          apiData = data;
+          console.log(`✓ Signalements chargés depuis ${endpoint}:`, data);
+          break;
+        }
+      } catch (endpointError) {
+        // On essaie l'endpoint suivant sans interrompre le chargement.
+      }
     }
+
+    if (Array.isArray(apiData)) {
+      signalements = apiData;
+    } else {
+      // Fallback: utile quand le backend est indisponible dans l'environnement local.
+      signalements = JSON.parse(localStorage.getItem("signalements") || "[]");
+      console.warn(
+        "Backend indisponible: affichage des signalements depuis localStorage.",
+        signalements,
+      );
+    }
+    console.log("Total signalements chargés:", signalements.length);
+    console.log(
+      "Vérification coords:",
+      signalements
+        .slice(0, 2)
+        .map((s) => ({ titre: s.titre, lat: s.lat, lng: s.lng })),
+    );
   } catch (err) {
     console.error("Erreur réseau lors du chargement des signalements", err);
-    backendSignalements = [];
+    signalements = JSON.parse(localStorage.getItem("signalements") || "[]");
   }
 
-  // Fusion backend + local pour éviter les doublons et tout afficher.
-  const localSignalements = JSON.parse(
-    localStorage.getItem("signalements") || "[]",
-  );
-
-  signalements = mergeUniqueByKey(
-    (Array.isArray(backendSignalements) ? backendSignalements : []).map(
-      normalizeSignalement,
-    ),
-    (Array.isArray(localSignalements) ? localSignalements : []).map(
-      normalizeSignalement,
-    ),
-    (s) =>
-      String(
-        s?.id ||
-          s?.timestamp ||
-          `${s?.titre || ""}-${s?.lat || ""}-${s?.lng || ""}`,
-      ),
-  );
-
-  // Nettoyer les anciens marqueurs avant de reconstruire l'affichage.
+  // Nettoyer les marqueurs existants
   markers.forEach((m) => {
     try {
       map.removeLayer(m);
@@ -138,10 +105,12 @@ async function loadAndDisplaySignalements() {
   });
   markers = [];
 
-  // Ajouter les marqueurs pour chaque signalement.
+  // Ajouter les marqueurs pour chaque signalement
+  console.log("Création des marqueurs...");
   signalements.forEach((sig) => {
     addMarkerToMap(sig);
   });
+  console.log("Marqueurs créés:", markers.length);
 
   // Afficher la liste des signalements
   renderSignalementsList();
@@ -169,6 +138,10 @@ function addMarkerToMap(sig) {
 
   // Créer le contenu du popup
   let popupContent = '<div class="carte-signalement popup-signalement">';
+  if (sig.user_nom) {
+    popupContent +=
+      '<div class="carte-signalement-author">Par : ' + sig.user_nom + "</div>";
+  }
   if (sig.adresseTrouvee === false) {
     popupContent +=
       '<div style="color:#b22222;font-weight:bold;margin-bottom:6px;">Adresse non vérifiée</div>';
@@ -184,10 +157,6 @@ function addMarkerToMap(sig) {
   popupContent += "<h3>" + (sig.titre || "Signalement") + "</h3>";
   popupContent +=
     '<p class="carte-signalement-desc">' + (sig.description || "") + "</p>";
-  popupContent +=
-    '<div class="carte-signalement-author">Par : ' +
-    (sig.user_nom || "Utilisateur local") +
-    "</div>";
   if (sig.type)
     popupContent +=
       '<span class="carte-signalement-type">' + sig.type + "</span>";
@@ -203,62 +172,7 @@ function addMarkerToMap(sig) {
   m.bindPopup(popupContent);
   m._sigType = (sig.type || "").toLowerCase();
   m._sigTimestamp = sig.timestamp;
-  m._sigLat = sig.lat;
-  m._sigLng = sig.lng;
   markers.push(m);
-}
-
-function findMarkerForSignalement(sig) {
-  if (!sig) return null;
-
-  let marker = null;
-  if (sig.timestamp) {
-    marker = markers.find((m) => m._sigTimestamp === sig.timestamp) || null;
-  }
-
-  if (!marker && sig.lat != null && sig.lng != null) {
-    marker =
-      markers.find(
-        (m) =>
-          Math.abs(Number(m._sigLat) - Number(sig.lat)) < 0.000001 &&
-          Math.abs(Number(m._sigLng) - Number(sig.lng)) < 0.000001,
-      ) || null;
-  }
-
-  return marker;
-}
-
-function focusSignalementOnMap(sig) {
-  if (!map || !sig || sig.lat == null || sig.lng == null) return;
-
-  const mapEl = document.getElementById("map");
-  if (mapEl) {
-    mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-
-  const marker = findMarkerForSignalement(sig);
-
-  window.setTimeout(() => {
-    try {
-      map.invalidateSize();
-    } catch (e) {}
-
-    if (marker && !map.hasLayer(marker)) {
-      try {
-        map.addLayer(marker);
-      } catch (e) {}
-    }
-
-    map.flyTo([sig.lat, sig.lng], SIGNAL_VIEW_ZOOM, { duration: 1.1 });
-  }, 250);
-
-  if (marker) {
-    window.setTimeout(() => {
-      try {
-        marker.openPopup();
-      } catch (e) {}
-    }, 700);
-  }
 }
 
 /**
@@ -271,7 +185,7 @@ function getIconForType(typeValue) {
     voirie: { url: iconBasePath + "icons8-route-48.png", size: [48, 48] },
     eau: { url: iconBasePath + "icons8-eau-48.png", size: [48, 48] },
     electricite: {
-      url: iconBasePath + "icons8-%C3%A9lectricit%C3%A9-32.png",
+      url: iconBasePath + "icons8-électricité-32.png",
       size: [32, 32],
     },
     insecurite: {
@@ -284,10 +198,7 @@ function getIconForType(typeValue) {
   const key = (typeValue || "").toLowerCase();
   const config = icons[key];
 
-  if (!config) {
-    console.warn("Icon not found for type:", typeValue, "normalized:", key);
-    return null;
-  }
+  if (!config) return null;
 
   const size = config.size;
   return L.icon({
@@ -321,19 +232,10 @@ function addFilterListeners() {
  */
 function setFilter(type) {
   currentFilter = type ? String(type).toLowerCase() : null;
-  console.log(
-    "setFilter appelé avec:",
-    type,
-    "currentFilter est maintenant:",
-    currentFilter,
-  );
 
   // Mettre à jour l'affichage du filtre actif
   const af = document.getElementById("activeFilter");
-  if (af) {
-    af.textContent = currentFilter ? currentFilter : "Tous";
-    console.log("activeFilter mis à jour à:", af.textContent);
-  }
+  if (af) af.textContent = currentFilter ? currentFilter : "Tous";
 
   // Mettre en évidence les icônes de filtre
   document.querySelectorAll(".filter-icon").forEach((img) => {
@@ -352,6 +254,11 @@ function setFilter(type) {
 
   // Mettre à jour les compteurs
   updateCounters();
+
+  // Même logique UX que le bouton "Voir sur carte": focus auto sur le premier résultat.
+  if (currentFilter) {
+    focusFirstFilteredSignalement();
+  }
 }
 
 /**
@@ -397,9 +304,6 @@ function renderSignalementsList() {
     const card = document.createElement("div");
     card.className = "carte-signalement";
     card.dataset.ts = sig.timestamp;
-    if (!sig.photo) {
-      card.classList.add("no-photo");
-    }
 
     if (sig.photo) {
       const img = document.createElement("img");
@@ -425,10 +329,12 @@ function renderSignalementsList() {
       card.appendChild(type);
     }
 
-    const author = document.createElement("p");
-    author.className = "carte-signalement-author";
-    author.textContent = "Par : " + (sig.user_nom || "Utilisateur local");
-    card.appendChild(author);
+    if (sig.user_nom) {
+      const author = document.createElement("p");
+      author.className = "carte-signalement-author";
+      author.textContent = "Par : " + sig.user_nom;
+      card.appendChild(author);
+    }
 
     const location = document.createElement("p");
     location.className = "carte-signalement-location";
@@ -454,7 +360,12 @@ function renderSignalementsList() {
     btnVoirCarte.type = "button";
     btnVoirCarte.className = "btn-voir-carte";
     btnVoirCarte.textContent = "Voir sur carte";
-    btnVoirCarte.addEventListener("click", () => {
+    btnVoirCarte.addEventListener("click", (e) => {
+      e.preventDefault();
+      console.log("Voir sur carte cliqué pour:", sig.titre, {
+        lat: sig.lat,
+        lng: sig.lng,
+      });
       focusSignalementOnMap(sig);
     });
 
@@ -486,4 +397,76 @@ function updateCounters() {
     );
     filteredCountEl.textContent = String(filtered.length || 0);
   }
+}
+
+function focusSignalementOnMap(sig) {
+  console.log("focusSignalementOnMap appelée pour:", sig.titre);
+
+  if (!map) {
+    console.error("❌ Carte non initialisée");
+    alert("La carte n'est pas encore initialisée. Rafraîchissez la page.");
+    return;
+  }
+
+  if (!sig) {
+    console.error("❌ Signalement vide");
+    alert("Signalement invalide.");
+    return;
+  }
+
+  // Convertir les coordonnées au cas où elles viendraient en string
+  const lat = Number(sig.lat);
+  const lng = Number(sig.lng);
+
+  if (isNaN(lat) || isNaN(lng) || sig.lat == null || sig.lng == null) {
+    console.error(
+      `❌ Coordonnées invalides ou manquantes pour "${sig.titre}":`,
+      { lat: sig.lat, lng: sig.lng, parsedLat: lat, parsedLng: lng },
+    );
+    alert(
+      `Ce signalement n'a pas de coordonnées GPS valides.\nAdresse: ${sig.lieu || "inconnue"}`,
+    );
+    return;
+  }
+
+  console.log(`✓ Affichage sur carte pour "${sig.titre}" aux coords:`, [
+    lat,
+    lng,
+  ]);
+
+  // Scroller vers la carte (première)
+  const mapContainer = document.getElementById("map-container");
+  if (mapContainer) {
+    mapContainer.scrollIntoView({ behavior: "smooth", block: "start" });
+    console.log("✓ Scroll vers la carte...");
+  }
+
+  // Recentrer + zoom similaire au bouton "Voir sur carte".
+  map.flyTo([lat, lng], 16, { duration: 1.2 });
+
+  // Ouvrir le popup du marqueur correspondant.
+  const marker = markers.find((m) => m._sigTimestamp === sig.timestamp);
+  if (marker) {
+    console.log("✓ Marqueur trouvé, ouverture du popup...");
+    window.setTimeout(() => {
+      try {
+        marker.openPopup();
+      } catch (e) {
+        console.error("Erreur ouverture popup:", e);
+      }
+    }, 350);
+  } else {
+    console.warn(
+      "⚠ Aucun marqueur trouvé pour ce signalement (coords peut-être absentes lors du chargement initial)",
+    );
+  }
+}
+
+function focusFirstFilteredSignalement() {
+  const filtered = signalements.filter(
+    (s) => !currentFilter || (s.type && s.type.toLowerCase() === currentFilter),
+  );
+
+  if (!filtered.length) return;
+  focusSignalementOnMap(filtered[0]);
 }

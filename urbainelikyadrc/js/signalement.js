@@ -81,6 +81,19 @@ let addressStatusEl = null;
 let addressChosenFromMap = false;
 let currentFilter = null;
 
+// Endpoints backend PHP testes dans l'ordre.
+const SIGNALEMENTS_ENDPOINTS = [
+  "/backend/api/signalements/index.php",
+  "../backend/api/signalements/index.php",
+  "backend/api/signalements/index.php",
+];
+
+const SIGNALEMENTS_DELETE_ENDPOINTS = [
+  "/backend/api/signalements/delete.php",
+  "../backend/api/signalements/delete.php",
+  "backend/api/signalements/delete.php",
+];
+
 async function readPhotoAsDataURL(file) {
   if (!file) return "";
 
@@ -110,6 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initMap();
   renderList();
   renderMap();
+  loadSignalementsFromBackend();
 
   // Soumission du formulaire
   const form = document.getElementById("form-signalement");
@@ -134,6 +148,116 @@ document.addEventListener("DOMContentLoaded", () => {
 
   updateTotalSignalements();
 });
+
+async function loadSignalementsFromBackend() {
+  for (const endpoint of SIGNALEMENTS_ENDPOINTS) {
+    try {
+      const resp = await fetch(endpoint, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!resp.ok) continue;
+
+      const data = await resp.json();
+      if (!Array.isArray(data)) continue;
+
+      // Fusion backend + local pour éviter de perdre des brouillons locaux.
+      const mapByKey = new Map();
+      [...data, ...signalements].forEach((sig) => {
+        const k = String(
+          sig?.id ||
+            sig?.timestamp ||
+            `${sig?.titre || ""}-${sig?.lat || ""}-${sig?.lng || ""}`,
+        );
+        if (!mapByKey.has(k)) {
+          mapByKey.set(k, sig);
+        }
+      });
+
+      signalements = Array.from(mapByKey.values());
+      localStorage.setItem("signalements", JSON.stringify(signalements));
+      renderList();
+      renderMap();
+      updateTotalSignalements();
+      return;
+    } catch (e) {
+      // On essaie le prochain endpoint.
+    }
+  }
+}
+
+async function createSignalementToBackend(sig) {
+  const payload = {
+    titre: sig.titre,
+    type: sig.type,
+    description: sig.description,
+    lieu: sig.lieu,
+    lat: sig.lat,
+    lng: sig.lng,
+    user_nom: sig.user_nom,
+    photo: sig.photo || "",
+  };
+
+  for (const endpoint of SIGNALEMENTS_ENDPOINTS) {
+    try {
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const json = await resp.json().catch(() => ({}));
+
+      if (resp.ok) {
+        return {
+          ok: true,
+          reachable: true,
+          data: json?.data || sig,
+          message: "",
+        };
+      }
+
+      return {
+        ok: false,
+        reachable: true,
+        data: null,
+        message: json?.message || "Erreur de validation côté backend.",
+      };
+    } catch (e) {
+      // On essaie le prochain endpoint.
+    }
+  }
+
+  return {
+    ok: false,
+    reachable: false,
+    data: null,
+    message: "Backend indisponible.",
+  };
+}
+
+async function deleteSignalementFromBackend(id) {
+  for (const endpoint of SIGNALEMENTS_DELETE_ENDPOINTS) {
+    try {
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ id }),
+      });
+      if (resp.ok) return true;
+    } catch (e) {
+      // On essaie le prochain endpoint.
+    }
+  }
+
+  return false;
+}
 
 function ensureAddressStatusElement() {
   if (addressStatusEl && document.body.contains(addressStatusEl)) {
@@ -699,6 +823,7 @@ async function addSignalement(e) {
   }
 
   const sig = {
+    id: `sig_local_${Date.now()}`,
     titre,
     type: String(type || "").toLowerCase(),
     description: desc,
@@ -711,7 +836,16 @@ async function addSignalement(e) {
     timestamp: new Date().toISOString(),
   };
 
-  signalements.unshift(sig); // Add to front
+  // On essaye d'abord de persister sur le backend PHP.
+  const backendSig = await createSignalementToBackend(sig);
+  if (!backendSig.ok && backendSig.reachable) {
+    alert(backendSig.message || "Le backend a refusé le signalement.");
+    return;
+  }
+
+  const finalSig = backendSig.ok ? backendSig.data : sig;
+
+  signalements.unshift(finalSig); // Add to front
   localStorage.setItem("signalements", JSON.stringify(signalements));
 
   renderList();
@@ -720,7 +854,7 @@ async function addSignalement(e) {
 
   // Centrer la carte sur le nouveau signalement
   if (map) {
-    map.flyTo([sig.lat, sig.lng], 16, { duration: 1.2 });
+    map.flyTo([finalSig.lat, finalSig.lng], 16, { duration: 1.2 });
   }
   setAddressStatus("success", `Signalement enregistré: ${geo.displayName}`);
 
@@ -731,7 +865,11 @@ async function addSignalement(e) {
   window.setTimeout(() => {
     setAddressStatus("info", "Saisissez une adresse en RDC pour vérification.");
   }, 900);
-  alert("Signalement ajouté !");
+  alert(
+    backendSig.ok
+      ? "Signalement ajouté (backend) !"
+      : "Signalement ajouté en local (backend indisponible) !",
+  );
 }
 
 function renderList() {
@@ -758,7 +896,7 @@ function renderList() {
 
     const card = document.createElement("div");
     card.className = "carte-signalement";
-    card.dataset.ts = sig.timestamp;
+    card.dataset.ts = sig.id || sig.timestamp;
     if (!sig.photo) {
       card.classList.add("no-photo");
     }
@@ -817,7 +955,7 @@ function renderList() {
     btnVoirCarte.className = "btn-voir-carte";
     btnVoirCarte.textContent = "Voir sur carte";
     btnVoirCarte.addEventListener("click", () => {
-      focusSignalementOnMap(sig.timestamp);
+      focusSignalementOnMap(sig.id || sig.timestamp);
     });
 
     const btnDelete = document.createElement("button");
@@ -825,7 +963,7 @@ function renderList() {
     btnDelete.className = "btn-delete-signalement";
     btnDelete.textContent = "Supprimer";
     btnDelete.addEventListener("click", () => {
-      deleteSignalement(sig.timestamp);
+      deleteSignalement(sig.id || sig.timestamp);
     });
 
     btnContainer.appendChild(btnVoirCarte);
@@ -838,8 +976,8 @@ function renderList() {
   container.appendChild(frag);
 }
 
-function focusSignalementOnMap(timestamp) {
-  const marker = markerByTimestamp.get(timestamp);
+function focusSignalementOnMap(idOrTimestamp) {
+  const marker = markerByTimestamp.get(idOrTimestamp);
   if (!marker || !map) return;
 
   const mapEl = document.getElementById("map");
@@ -874,13 +1012,24 @@ function renderMap() {
   signalements.forEach((sig) => {
     const icon = getIconForType(sig.type);
     const markerOptions = icon ? { icon: icon } : {};
+    const photoMarkup = sig.photo
+      ? `<img src="${sig.photo}" alt="${sig.titre || "Photo du signalement"}" class="popup-photo">`
+      : "";
+
+    const typeLabel = sig.type
+      ? sig.type.charAt(0).toUpperCase() + sig.type.slice(1)
+      : "Type non précisé";
+
     const marker = L.marker([sig.lat, sig.lng], markerOptions).addTo(map)
       .bindPopup(`
-        <b>${sig.titre}</b><br>
-        <strong>${sig.type}</strong><br>
-        ${sig.description}<br>
-        📍 ${sig.lieu}<br>
-        <small>Par : ${sig.user_nom || "Utilisateur local"}</small>
+        <div class="popup-signalement">
+          <b>${sig.titre || "Signalement"}</b>
+          ${photoMarkup}
+          <p><strong>${typeLabel}</strong></p>
+          <p>${sig.description || "Aucune description"}</p>
+          <p>📍 ${sig.lieu || "Adresse non spécifiée"}</p>
+          <p><small>Par : ${sig.user_nom || "Utilisateur local"}</small></p>
+        </div>
       `);
     marker._sigType = String(sig.type || "").toLowerCase();
     marker.on("click", () => {
@@ -893,15 +1042,24 @@ function renderMap() {
       }, 250);
     });
     markers.push(marker);
-    markerByTimestamp.set(sig.timestamp, marker);
+    markerByTimestamp.set(sig.id || sig.timestamp, marker);
   });
 
   updateMarkersVisibility();
 }
 
-function deleteSignalement(timestamp) {
+async function deleteSignalement(idOrTimestamp) {
   if (confirm("Supprimer ce signalement ?")) {
-    signalements = signalements.filter((s) => s.timestamp !== timestamp);
+    const target = signalements.find(
+      (s) => String(s.id || s.timestamp) === String(idOrTimestamp),
+    );
+    if (target && target.id && !String(target.id).startsWith("sig_local_")) {
+      await deleteSignalementFromBackend(target.id);
+    }
+
+    signalements = signalements.filter(
+      (s) => String(s.id || s.timestamp) !== String(idOrTimestamp),
+    );
     localStorage.setItem("signalements", JSON.stringify(signalements));
     renderList();
     renderMap();
@@ -911,6 +1069,7 @@ function deleteSignalement(timestamp) {
 
 function clearSignalements() {
   if (confirm("Vider tous les signalements ?")) {
+    // Pas d'endpoint bulk pour le moment: on vide localement pendant la transition.
     signalements = [];
     localStorage.removeItem("signalements");
     renderList();

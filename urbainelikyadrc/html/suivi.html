@@ -6,10 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href='https://cdn.boxicons.com/fonts/brands/boxicons-brands.min.css' rel='stylesheet'>
     <link rel="shortcut icon" href="../img/logo 2.png">
     <link rel="stylesheet" href="../css/theme.css">
     <link rel="stylesheet" href="../css/suivi.css">
+    <link rel="stylesheet" href="../css/nav-mobile-fix.css">
+    <link rel="stylesheet" href="../css/layout-global-fix.css">
 
     <title>Suivi des Signalements</title>
 </head>
@@ -46,9 +49,9 @@
 
         <section class="retour-section" id="retour-section">
             <!--------Bouton Retour-------->
-            <button class="btn-retour" id="btn-retour">
+            <a class="btn-retour" id="btn-retour" href="index.html">
                 <i class='bx bx-arrow-back'></i> Retour
-            </button>
+            </a>
         </section>
 
 
@@ -124,7 +127,7 @@
                                 <li class="etape">
                                     <div class="etape-info">
                                         <p>Électricité</p>
-                                        <img src="../icon-map/icons8-%C3%A9lectricit%C3%A9-32.png" alt="électricité"
+                                        <img src="../icon-map/icons8-électricité-32.png" alt="électricité"
                                             data-type="electricite" class="filter-icon">
                                     </div>
                                 </li>
@@ -133,8 +136,7 @@
                         </aside>
                         <aside class="bloc-info">
                             <h3>Attention à la part des utilisateurs</h3>
-                            <p> Cliquer sur les icônes marqueurs qui se trouvent sur la map pour voir les détails des
-                                signalements soumis par
+                            <p> Cliquer sur les icônes sur la carte pour voir les détails des signalements soumis par
                                 les
                                 utilisateurs.
                             </p>
@@ -168,9 +170,7 @@
 
         <section id="retour" class="retour">
             <div id="remerciement" class="remerciement">
-                <h2>Merci pour votre visite</h2>
-                <p>Votre engagement citoyen est précieux. Ensemble, construisons des villes plus propres, plus sûres et
-                    plus solidaires.</p>
+                <p>Merci pour votre visite</p>
             </div>
         </section>
     </main>
@@ -208,7 +208,6 @@
 
 </body>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../js/utils.js"></script>
 <script src="../js/suivi.js"></script>
 

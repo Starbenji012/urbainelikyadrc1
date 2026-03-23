@@ -1,5 +1,17 @@
 /* INDEX.JS - PAGE D'ACCUEIL */
 
+const SIGNALEMENTS_ENDPOINTS = [
+  "/backend/api/signalements/index.php",
+  "../backend/api/signalements/index.php",
+  "backend/api/signalements/index.php",
+];
+
+const IDEES_ENDPOINTS = [
+  "/backend/api/idees/index.php",
+  "../backend/api/idees/index.php",
+  "backend/api/idees/index.php",
+];
+
 function readLocalArray(key) {
   try {
     const v = JSON.parse(localStorage.getItem(key) || "[]");
@@ -9,15 +21,18 @@ function readLocalArray(key) {
   }
 }
 
-async function fetchArray(url) {
-  try {
-    const r = await fetch(url);
-    if (!r.ok) return [];
-    const j = await r.json();
-    return Array.isArray(j) ? j : [];
-  } catch (e) {
-    return [];
+async function fetchArray(urls) {
+  for (const url of urls) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) continue;
+      const j = await r.json();
+      if (Array.isArray(j)) return j;
+    } catch (e) {
+      // On essaie l'URL suivante.
+    }
   }
+  return [];
 }
 
 function mergeUniqueByKey(arrA, arrB, keyFn) {
@@ -35,7 +50,7 @@ function mergeUniqueByKey(arrA, arrB, keyFn) {
 async function updateGlobalStats() {
   // 1) Lire les signalements (local + backend), puis fusionner sans doublons.
   const localSignalements = readLocalArray("signalements");
-  const backendSignalements = await fetchArray("/backend/api/signaler.php");
+  const backendSignalements = await fetchArray(SIGNALEMENTS_ENDPOINTS);
   const allSignalements = mergeUniqueByKey(
     backendSignalements,
     localSignalements,
@@ -49,7 +64,7 @@ async function updateGlobalStats() {
 
   // 2) Lire les idées (local + backend), puis fusionner sans doublons.
   const localIdees = readLocalArray("idees_page");
-  const backendIdees = await fetchArray("/backend/api/idees.php");
+  const backendIdees = await fetchArray(IDEES_ENDPOINTS);
   const allIdees = mergeUniqueByKey(backendIdees, localIdees, (i) =>
     String(i?.id || i?.timestamp || i?.titre || ""),
   );
