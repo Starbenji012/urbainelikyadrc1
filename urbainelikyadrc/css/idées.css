@@ -394,16 +394,68 @@ a.btn-connexion:focus {
   max-width: 1200px;
   margin: 0 auto 80px;
   padding: 0 16px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  display: flex;
   gap: 16px;
-  align-items: start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
+  transform: translateZ(0);
+}
+
+.idees-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.idees-grid > p {
+  min-width: 100%;
+  margin: 0;
+}
+
+.carousel-wrapper-idees-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.carousel-btn-idees-page {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: var(--bleu-nuit-button);
+  color: var(--blanc-bg);
+  font-size: 20px;
+  cursor: pointer;
+  flex: 0 0 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(15, 33, 69, 0.2);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.2s ease,
+    filter 0.18s ease;
+}
+
+.carousel-btn-idees-page:hover,
+.carousel-btn-idees-page:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(15, 33, 69, 0.24);
+  filter: brightness(1.05);
 }
 
 /* carte idée — calquée sur le style des témoignages */
 .carte-idee {
   position: relative;
-  width: 100%;
+  width: 300px;
+  min-width: 300px;
+  flex: 0 0 300px;
   background: var(--blanc-bg);
   padding: 14px;
   border-radius: 12px;
@@ -461,8 +513,10 @@ a.btn-connexion:focus {
 /* Photo dans la carte idée */
 .carte-idee-photo {
   width: 100%;
-  height: 200px;
-  object-fit: cover;
+  height: 180px;
+  object-fit: contain;
+  object-position: center;
+  background: var(--gris-clair-bg);
   border-radius: 8px;
   margin-bottom: 8px;
 }
@@ -756,6 +810,20 @@ footer {
 .btn-like:hover {
   background: #2da66a;
   transform: scale(1.05);
+}
+
+@media (max-width: 800px) {
+  .carousel-wrapper-idees-page {
+    padding: 0 4px;
+    gap: 10px;
+  }
+
+  .carousel-btn-idees-page {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    font-size: 18px;
+  }
 }
 
 .btn-like i {

@@ -5,6 +5,15 @@ let likesCommunaute = JSON.parse(
   localStorage.getItem("idees_communaute_likes") || "{}",
 );
 
+const MIN_CARDS_FOR_AUTO_SCROLL = 3;
+const AUTO_SCROLL_STEP_PX = 1;
+const AUTO_SCROLL_TICK_MS = 26;
+const MANUAL_PAUSE_MS = 1400;
+
+let carouselIntervalId = null;
+let pauseUntil = 0;
+let isHoverPaused = false;
+
 const IDEES_ENDPOINTS = [
   "/backend/api/idees/index.php",
   "../backend/api/idees/index.php",
@@ -305,11 +314,12 @@ function renderIdees() {
   const visibleIdees = getVisibleIdees();
   const totalEl = document.getElementById("totalIdees");
   if (totalEl) {
-    totalEl.textContent = profile.connected ? String(idees.length) : "0";
+    totalEl.textContent = profile.connected ? String(visibleIdees.length) : "0";
   }
 
   if (container) {
     if (!profile.connected) {
+      stopInfiniteScrollIdeesPage();
       container.innerHTML =
         '<p style="text-align: center; padding: 40px; color: #666; grid-column: 1 / -1;">Connectez-vous pour voir vos idées personnelles.</p>';
       return;
@@ -336,9 +346,143 @@ function renderIdees() {
     `,
         )
         .join("") || "<p>Aucune idée pour votre compte.</p>";
+
+    setupCarouselIdeesPage();
   }
 
-  // totalIdees reste global (tous utilisateurs), deja mis a jour en debut de fonction.
+  // totalIdees reflète uniquement les idées de l'utilisateur connecté.
+}
+
+function setupCarouselIdeesPage() {
+  const carousel = document.getElementById("listeIdees");
+  const btnPrev = document.getElementById("carouselPrevIdeesPage");
+  const btnNext = document.getElementById("carouselNextIdeesPage");
+
+  if (!carousel) return;
+
+  stopInfiniteScrollIdeesPage();
+  prepareInfiniteCarouselIdeesPage(carousel);
+
+  const baseCount = Number(carousel.dataset.baseCount || 0);
+  const canScroll = baseCount > MIN_CARDS_FOR_AUTO_SCROLL;
+
+  if (btnPrev) btnPrev.disabled = !canScroll;
+  if (btnNext) btnNext.disabled = !canScroll;
+
+  if (!canScroll) {
+    carousel.scrollLeft = 0;
+    return;
+  }
+
+  const step = getCardStepIdeesPage(carousel);
+
+  if (btnPrev && btnPrev.dataset.bound !== "1") {
+    btnPrev.addEventListener("click", () => {
+      pauseUntil = Date.now() + MANUAL_PAUSE_MS;
+      carousel.scrollBy({ left: -step, behavior: "smooth" });
+      setTimeout(() => normalizeInfinitePositionIdeesPage(carousel), 380);
+    });
+    btnPrev.dataset.bound = "1";
+  }
+
+  if (btnNext && btnNext.dataset.bound !== "1") {
+    btnNext.addEventListener("click", () => {
+      pauseUntil = Date.now() + MANUAL_PAUSE_MS;
+      carousel.scrollBy({ left: step, behavior: "smooth" });
+      setTimeout(() => normalizeInfinitePositionIdeesPage(carousel), 380);
+    });
+    btnNext.dataset.bound = "1";
+  }
+
+  if (carousel.dataset.hoverBound !== "1") {
+    carousel.addEventListener("mouseover", (event) => {
+      if (event.target.closest(".carte-idee")) {
+        isHoverPaused = true;
+      }
+    });
+
+    carousel.addEventListener("mouseout", (event) => {
+      const leavingCard = event.target.closest(".carte-idee");
+      const stillInsideCard = event.relatedTarget?.closest?.(".carte-idee");
+      if (leavingCard && !stillInsideCard) {
+        isHoverPaused = false;
+      }
+    });
+
+    carousel.dataset.hoverBound = "1";
+  }
+
+  startInfiniteScrollIdeesPage(carousel);
+}
+
+function prepareInfiniteCarouselIdeesPage(carousel) {
+  const originals = Array.from(carousel.querySelectorAll(".carte-idee"));
+  const originalCount = originals.length;
+  carousel.dataset.baseCount = String(originalCount);
+
+  if (originalCount <= MIN_CARDS_FOR_AUTO_SCROLL) {
+    carousel.dataset.loopSpan = "0";
+    carousel.scrollLeft = 0;
+    return;
+  }
+
+  if (originals.length === 0) return;
+
+  const prependFrag = document.createDocumentFragment();
+  const appendFrag = document.createDocumentFragment();
+
+  originals.forEach((card) => {
+    prependFrag.appendChild(card.cloneNode(true));
+    appendFrag.appendChild(card.cloneNode(true));
+  });
+
+  carousel.prepend(prependFrag);
+  carousel.append(appendFrag);
+
+  const step = getCardStepIdeesPage(carousel);
+  const span = step * originalCount;
+  carousel.dataset.loopSpan = String(span);
+  carousel.scrollLeft = span;
+}
+
+function getCardStepIdeesPage(carousel) {
+  const cards = carousel.querySelectorAll(".carte-idee");
+  if (cards.length >= 2) {
+    const step = cards[1].offsetLeft - cards[0].offsetLeft;
+    if (step > 0) return step;
+  }
+  return 320;
+}
+
+function normalizeInfinitePositionIdeesPage(carousel) {
+  const span = Number(carousel.dataset.loopSpan || 0);
+  if (!span) return;
+
+  if (carousel.scrollLeft >= span * 2) {
+    carousel.scrollLeft -= span;
+  } else if (carousel.scrollLeft < span * 0.5) {
+    carousel.scrollLeft += span;
+  }
+}
+
+function startInfiniteScrollIdeesPage(carousel) {
+  stopInfiniteScrollIdeesPage();
+
+  carouselIntervalId = setInterval(() => {
+    if (!carousel.isConnected) return;
+
+    if (!isHoverPaused && Date.now() >= pauseUntil) {
+      carousel.scrollLeft += AUTO_SCROLL_STEP_PX;
+      normalizeInfinitePositionIdeesPage(carousel);
+    }
+  }, AUTO_SCROLL_TICK_MS);
+}
+
+function stopInfiniteScrollIdeesPage() {
+  if (carouselIntervalId) {
+    clearInterval(carouselIntervalId);
+    carouselIntervalId = null;
+  }
 }
 
 async function deleteIdee(idOrTimestamp) {

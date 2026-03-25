@@ -78,6 +78,15 @@ let addressChosenFromMap = false;
 let selectedMapCoords = null;
 let currentFilter = null;
 
+const MIN_CARDS_FOR_AUTO_SCROLL = 3;
+const AUTO_SCROLL_STEP_PX = 1;
+const AUTO_SCROLL_TICK_MS = 26;
+const MANUAL_PAUSE_MS = 1400;
+
+let carouselIntervalId = null;
+let pauseUntil = 0;
+let isHoverPaused = false;
+
 // Endpoints backend PHP testés dans l'ordre.
 const SIGNALEMENTS_ENDPOINTS = [
   "/backend/api/signalements/index.php",
@@ -345,32 +354,8 @@ function showAllSignalements() {
   renderList();
   updateTotalSignalements();
 
-  // Si la carte est zoomée sur un point, on recadre pour tout revoir.
-  const visibleMarkers = markers.filter((m) => {
-    try {
-      return map.hasLayer(m);
-    } catch (e) {
-      return false;
-    }
-  });
-
-  if (!map || visibleMarkers.length === 0) {
-    if (map) map.setView(DRC_CENTER, DRC_DEFAULT_ZOOM);
-    return;
-  }
-
-  if (visibleMarkers.length === 1) {
-    map.setView(visibleMarkers[0].getLatLng(), 14);
-    return;
-  }
-
-  const group = L.featureGroup(visibleMarkers);
-  const bounds = group.getBounds();
-  if (bounds.isValid()) {
-    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
-  } else {
-    map.setView(DRC_CENTER, DRC_DEFAULT_ZOOM);
-  }
+  // Recentrer de facon explicite sur tous les signalements visibles.
+  focusAllSignalementsOnMap();
 }
 
 function setFilter(type) {
@@ -393,6 +378,12 @@ function setFilter(type) {
   updateMarkersVisibility();
   renderList();
   updateTotalSignalements();
+
+  if (currentFilter) {
+    focusFilteredSignalementsOnMap();
+  } else {
+    focusAllSignalementsOnMap();
+  }
 }
 
 function updateMarkersVisibility() {
@@ -840,11 +831,18 @@ async function addSignalement(e) {
     return;
   }
 
-  const validation = validateAddressInput(lieu);
-  if (!validation.valid) {
-    setAddressStatus("error", validation.message);
-    alert(validation.message);
-    return;
+  const hasValidMapSelection =
+    selectedMapCoords &&
+    isInDRCBounds(Number(selectedMapCoords.lat), Number(selectedMapCoords.lng));
+
+  // Si un point carte valide est déjà choisi, on ne bloque pas sur le texte d'adresse.
+  if (!hasValidMapSelection) {
+    const validation = validateAddressInput(lieu);
+    if (!validation.valid) {
+      setAddressStatus("error", validation.message);
+      alert(validation.message);
+      return;
+    }
   }
 
   let geo = null;
@@ -860,12 +858,12 @@ async function addSignalement(e) {
     geo = await geocodeAddressInDRC(queryForGeocode);
   } catch (error) {
     console.error(error);
-    if (addressChosenFromMap && selectedMapCoords) {
+    if (hasValidMapSelection) {
       geo = {
         lat: selectedMapCoords.lat,
         lng: selectedMapCoords.lng,
-        displayName: lieu,
-        formattedAddress: lieu,
+        displayName: lieu || "Point sélectionné sur la carte (RDC)",
+        formattedAddress: lieu || "Point sélectionné sur la carte (RDC)",
       };
       setAddressStatus(
         "info",
@@ -879,12 +877,12 @@ async function addSignalement(e) {
   }
 
   if (!geo) {
-    if (addressChosenFromMap && selectedMapCoords) {
+    if (hasValidMapSelection) {
       geo = {
         lat: selectedMapCoords.lat,
         lng: selectedMapCoords.lng,
-        displayName: lieu,
-        formattedAddress: lieu,
+        displayName: lieu || "Point sélectionné sur la carte (RDC)",
+        formattedAddress: lieu || "Point sélectionné sur la carte (RDC)",
       };
       setAddressStatus(
         "info",
@@ -902,7 +900,7 @@ async function addSignalement(e) {
     }
   }
 
-  if (addressChosenFromMap) {
+  if (hasValidMapSelection) {
     setAddressStatus(
       "success",
       "Adresse OK: sélectionnée directement depuis la carte.",
@@ -990,6 +988,7 @@ function renderList() {
 
   const profile = readCurrentProfile();
   if (!profile.connected) {
+    stopInfiniteScrollSignalementsPage();
     container.innerHTML =
       '<p style="text-align: center; padding: 40px; color: #666; grid-column: 1 / -1;">Connectez-vous pour voir vos signalements personnels.</p>';
     return;
@@ -998,6 +997,7 @@ function renderList() {
   const visibleSignalements = getVisibleSignalements();
 
   if (visibleSignalements.length === 0) {
+    stopInfiniteScrollSignalementsPage();
     container.innerHTML =
       '<p style="text-align: center; padding: 40px; color: #666; grid-column: 1 / -1;">Aucun signalement pour votre compte.</p>';
     return;
@@ -1093,6 +1093,140 @@ function renderList() {
   });
 
   container.appendChild(frag);
+  setupCarouselSignalementsPage();
+}
+
+function setupCarouselSignalementsPage() {
+  const carousel = document.getElementById("listeSignalements");
+  const btnPrev = document.getElementById("carouselPrevSignalementsPage");
+  const btnNext = document.getElementById("carouselNextSignalementsPage");
+
+  if (!carousel) return;
+
+  stopInfiniteScrollSignalementsPage();
+  prepareInfiniteCarouselSignalementsPage(carousel);
+
+  const baseCount = Number(carousel.dataset.baseCount || 0);
+  const canScroll = baseCount > MIN_CARDS_FOR_AUTO_SCROLL;
+
+  if (btnPrev) btnPrev.disabled = !canScroll;
+  if (btnNext) btnNext.disabled = !canScroll;
+
+  if (!canScroll) {
+    carousel.scrollLeft = 0;
+    return;
+  }
+
+  const step = getCardStepSignalementsPage(carousel);
+
+  if (btnPrev && btnPrev.dataset.bound !== "1") {
+    btnPrev.addEventListener("click", () => {
+      pauseUntil = Date.now() + MANUAL_PAUSE_MS;
+      carousel.scrollBy({ left: -step, behavior: "smooth" });
+      setTimeout(() => normalizeInfinitePositionSignalementsPage(carousel), 380);
+    });
+    btnPrev.dataset.bound = "1";
+  }
+
+  if (btnNext && btnNext.dataset.bound !== "1") {
+    btnNext.addEventListener("click", () => {
+      pauseUntil = Date.now() + MANUAL_PAUSE_MS;
+      carousel.scrollBy({ left: step, behavior: "smooth" });
+      setTimeout(() => normalizeInfinitePositionSignalementsPage(carousel), 380);
+    });
+    btnNext.dataset.bound = "1";
+  }
+
+  if (carousel.dataset.hoverBound !== "1") {
+    carousel.addEventListener("mouseover", (event) => {
+      if (event.target.closest(".carte-signalement")) {
+        isHoverPaused = true;
+      }
+    });
+
+    carousel.addEventListener("mouseout", (event) => {
+      const leavingCard = event.target.closest(".carte-signalement");
+      const stillInsideCard =
+        event.relatedTarget?.closest?.(".carte-signalement");
+      if (leavingCard && !stillInsideCard) {
+        isHoverPaused = false;
+      }
+    });
+
+    carousel.dataset.hoverBound = "1";
+  }
+
+  startInfiniteScrollSignalementsPage(carousel);
+}
+
+function prepareInfiniteCarouselSignalementsPage(carousel) {
+  const originals = Array.from(carousel.querySelectorAll(".carte-signalement"));
+  const originalCount = originals.length;
+  carousel.dataset.baseCount = String(originalCount);
+
+  if (originalCount <= MIN_CARDS_FOR_AUTO_SCROLL) {
+    carousel.dataset.loopSpan = "0";
+    carousel.scrollLeft = 0;
+    return;
+  }
+
+  if (originals.length === 0) return;
+
+  const prependFrag = document.createDocumentFragment();
+  const appendFrag = document.createDocumentFragment();
+
+  originals.forEach((card) => {
+    prependFrag.appendChild(card.cloneNode(true));
+    appendFrag.appendChild(card.cloneNode(true));
+  });
+
+  carousel.prepend(prependFrag);
+  carousel.append(appendFrag);
+
+  const step = getCardStepSignalementsPage(carousel);
+  const span = step * originalCount;
+  carousel.dataset.loopSpan = String(span);
+  carousel.scrollLeft = span;
+}
+
+function getCardStepSignalementsPage(carousel) {
+  const cards = carousel.querySelectorAll(".carte-signalement");
+  if (cards.length >= 2) {
+    const step = cards[1].offsetLeft - cards[0].offsetLeft;
+    if (step > 0) return step;
+  }
+  return 320;
+}
+
+function normalizeInfinitePositionSignalementsPage(carousel) {
+  const span = Number(carousel.dataset.loopSpan || 0);
+  if (!span) return;
+
+  if (carousel.scrollLeft >= span * 2) {
+    carousel.scrollLeft -= span;
+  } else if (carousel.scrollLeft < span * 0.5) {
+    carousel.scrollLeft += span;
+  }
+}
+
+function startInfiniteScrollSignalementsPage(carousel) {
+  stopInfiniteScrollSignalementsPage();
+
+  carouselIntervalId = setInterval(() => {
+    if (!carousel.isConnected) return;
+
+    if (!isHoverPaused && Date.now() >= pauseUntil) {
+      carousel.scrollLeft += AUTO_SCROLL_STEP_PX;
+      normalizeInfinitePositionSignalementsPage(carousel);
+    }
+  }, AUTO_SCROLL_TICK_MS);
+}
+
+function stopInfiniteScrollSignalementsPage() {
+  if (carouselIntervalId) {
+    clearInterval(carouselIntervalId);
+    carouselIntervalId = null;
+  }
 }
 
 function focusSignalementOnMap(idOrTimestamp) {
@@ -1120,6 +1254,43 @@ function focusSignalementOnMap(idOrTimestamp) {
       marker.openPopup();
     } catch (e) {}
   }, 700);
+}
+
+function focusFilteredSignalementsOnMap() {
+  if (!map) return;
+
+  const visibleMarkers = markers.filter((m) => {
+    const t = String(m._sigType || "").toLowerCase();
+    return !currentFilter || t === currentFilter;
+  });
+
+  if (!visibleMarkers.length) {
+    map.flyTo(DRC_CENTER, DRC_DEFAULT_ZOOM, { duration: 0.9 });
+    return;
+  }
+
+  const bounds = L.latLngBounds(visibleMarkers.map((m) => m.getLatLng()));
+  map.flyToBounds(bounds, {
+    padding: [30, 30],
+    maxZoom: 16,
+    duration: 1.1,
+  });
+}
+
+function focusAllSignalementsOnMap() {
+  if (!map) return;
+
+  if (!markers.length) {
+    map.flyTo(DRC_CENTER, DRC_DEFAULT_ZOOM, { duration: 0.9 });
+    return;
+  }
+
+  const bounds = L.latLngBounds(markers.map((m) => m.getLatLng()));
+  map.flyToBounds(bounds, {
+    padding: [30, 30],
+    maxZoom: 16,
+    duration: 1.1,
+  });
 }
 
 function renderMap() {
@@ -1212,7 +1383,7 @@ function updateTotalSignalements() {
     return;
   }
 
-  const allSignalements = signalements;
+  const allSignalements = getVisibleSignalements();
   const el = document.getElementById("totalSignalements");
   if (el) el.textContent = allSignalements.length;
   const elAll = document.getElementById("totalSignalementsAfficheAll");

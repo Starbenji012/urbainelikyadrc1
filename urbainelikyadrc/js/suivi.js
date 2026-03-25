@@ -11,6 +11,16 @@ const SIGNALEMENTS_API_ENDPOINTS = [
 
 let currentFilter = null;
 
+// Carrousel infini pour signalements
+const MIN_CARDS_FOR_AUTO_SCROLL = 3;
+const AUTO_SCROLL_STEP_PX = 1;
+const AUTO_SCROLL_TICK_MS = 26;
+const MANUAL_PAUSE_MS = 1400;
+
+let carouselIntervalId = null;
+let pauseUntil = 0;
+let isHoverPaused = false;
+
 document.addEventListener("DOMContentLoaded", () => {
   // Navigation mobile: logique partagée dans utils.js.
   initMenuBurger();
@@ -100,6 +110,9 @@ async function loadAndDisplaySignalements() {
 
   // Afficher la liste des signalements
   renderSignalementsList();
+
+  // Initialiser le carousel infini
+  setupCarouselSignalements();
 
   // Mettre à jour les compteurs
   updateCounters();
@@ -238,13 +251,23 @@ function setFilter(type) {
   // Rafraîchir la liste
   renderSignalementsList();
 
+  // Réinitialiser le carousel
+  setupCarouselSignalements();
+
   // Mettre à jour les compteurs
   updateCounters();
 
-  // Même logique UX que le bouton "Voir sur carte": focus auto sur le premier résultat.
-  if (currentFilter) {
-    focusFirstFilteredSignalement();
-  }
+  // Defer map animation until after DOM operations complete to prevent jitter
+  // Use double requestAnimationFrame to ensure browser has finished repainting
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (currentFilter) {
+        focusFilteredSignalementsOnMap();
+      } else {
+        focusAllSignalementsOnMap();
+      }
+    });
+  });
 }
 
 /**
@@ -290,6 +313,11 @@ function renderSignalementsList() {
     const card = document.createElement("div");
     card.className = "carte-signalement";
     card.dataset.ts = sig.timestamp;
+
+    // Ajouter la classe no-photo si aucune photo pour compacter la carte.
+    if (!sig.photo) {
+      card.classList.add("no-photo");
+    }
 
     if (sig.photo) {
       const img = document.createElement("img");
@@ -431,11 +459,212 @@ function focusSignalementOnMap(sig) {
   }
 }
 
-function focusFirstFilteredSignalement() {
-  const filtered = signalements.filter(
-    (s) => !currentFilter || (s.type && s.type.toLowerCase() === currentFilter),
-  );
+function focusFilteredSignalementsOnMap() {
+  if (!map) return;
 
-  if (!filtered.length) return;
-  focusSignalementOnMap(filtered[0]);
+  const carousel = document.getElementById("listeSignalements");
+
+  // Pause carousel during map animation to prevent jitter
+  const wasAutoScrolling = carouselIntervalId !== null;
+  if (carouselIntervalId) {
+    stopInfiniteScrollSignalements();
+  }
+
+  const visibleMarkers = markers.filter((m) => {
+    const t = String(m._sigType || "").toLowerCase();
+    return !currentFilter || t === currentFilter;
+  });
+
+  if (!visibleMarkers.length) {
+    // Resume only if it was running before
+    if (wasAutoScrolling) {
+      startInfiniteScrollSignalements(carousel);
+    }
+    return;
+  }
+
+  const bounds = L.latLngBounds(visibleMarkers.map((m) => m.getLatLng()));
+
+  // Resume carousel after map animation completes
+  map.once("moveend", () => {
+    if (wasAutoScrolling) {
+      startInfiniteScrollSignalements(carousel);
+    }
+  });
+
+  map.flyToBounds(bounds, {
+    padding: [35, 35],
+    maxZoom: 16,
+    duration: 1.1,
+  });
+}
+
+function focusAllSignalementsOnMap() {
+  if (!map) return;
+
+  const carousel = document.getElementById("listeSignalements");
+
+  // Pause carousel during map animation to prevent jitter
+  const wasAutoScrolling = carouselIntervalId !== null;
+  if (carouselIntervalId) {
+    stopInfiniteScrollSignalements();
+  }
+
+  if (!markers.length) {
+    // Resume only if it was running before
+    if (wasAutoScrolling) {
+      startInfiniteScrollSignalements(carousel);
+    }
+    return;
+  }
+
+  const bounds = L.latLngBounds(markers.map((m) => m.getLatLng()));
+
+  // Resume carousel after map animation completes
+  map.once("moveend", () => {
+    if (wasAutoScrolling) {
+      startInfiniteScrollSignalements(carousel);
+    }
+  });
+
+  map.flyToBounds(bounds, {
+    padding: [35, 35],
+    maxZoom: 16,
+    duration: 1.1,
+  });
+}
+
+/* ========== CAROUSEL INFINI POUR SIGNALEMENTS ========== */
+
+function setupCarouselSignalements() {
+  const carousel = document.getElementById("listeSignalements");
+  const btnPrev = document.getElementById("carouselPrevSignalements");
+  const btnNext = document.getElementById("carouselNextSignalements");
+
+  if (!carousel) return;
+
+  stopInfiniteScrollSignalements();
+  prepareInfiniteCarouselSignalements(carousel);
+
+  const baseCount = Number(carousel.dataset.baseCount || 0);
+  if (baseCount <= MIN_CARDS_FOR_AUTO_SCROLL) {
+    carousel.scrollLeft = 0;
+    return;
+  }
+
+  const step = getCardStepSignalements(carousel);
+
+  if (btnPrev && btnPrev.dataset.bound !== "1") {
+    btnPrev.addEventListener("click", () => {
+      pauseUntil = Date.now() + MANUAL_PAUSE_MS;
+      carousel.scrollBy({ left: -step, behavior: "smooth" });
+      setTimeout(() => normalizeInfinitePositionSignalements(carousel), 380);
+    });
+    btnPrev.dataset.bound = "1";
+  }
+
+  if (btnNext && btnNext.dataset.bound !== "1") {
+    btnNext.addEventListener("click", () => {
+      pauseUntil = Date.now() + MANUAL_PAUSE_MS;
+      carousel.scrollBy({ left: step, behavior: "smooth" });
+      setTimeout(() => normalizeInfinitePositionSignalements(carousel), 380);
+    });
+    btnNext.dataset.bound = "1";
+  }
+
+  if (carousel.dataset.hoverBound !== "1") {
+    carousel.addEventListener("mouseover", (event) => {
+      if (event.target.closest(".carte-signalement")) {
+        isHoverPaused = true;
+      }
+    });
+
+    carousel.addEventListener("mouseout", (event) => {
+      const leavingCard = event.target.closest(".carte-signalement");
+      const stillInsideCard =
+        event.relatedTarget?.closest?.(".carte-signalement");
+      if (leavingCard && !stillInsideCard) {
+        isHoverPaused = false;
+      }
+    });
+
+    carousel.dataset.hoverBound = "1";
+  }
+
+  startInfiniteScrollSignalements(carousel);
+}
+
+function prepareInfiniteCarouselSignalements(carousel) {
+  const originals = Array.from(carousel.querySelectorAll(".carte-signalement"));
+  const originalCount = originals.length;
+  carousel.dataset.baseCount = String(originalCount);
+
+  if (originalCount <= MIN_CARDS_FOR_AUTO_SCROLL) {
+    carousel.dataset.loopSpan = "0";
+    carousel.scrollLeft = 0;
+    return;
+  }
+
+  if (originals.length === 0) return;
+
+  const prependFrag = document.createDocumentFragment();
+  const appendFrag = document.createDocumentFragment();
+
+  originals.forEach((card) => {
+    prependFrag.appendChild(card.cloneNode(true));
+    appendFrag.appendChild(card.cloneNode(true));
+  });
+
+  carousel.prepend(prependFrag);
+  carousel.append(appendFrag);
+
+  const step = getCardStepSignalements(carousel);
+  const span = step * originalCount;
+  carousel.dataset.loopSpan = String(span);
+  carousel.scrollLeft = span;
+}
+
+function getCardStepSignalements(carousel) {
+  const cards = carousel.querySelectorAll(".carte-signalement");
+  if (cards.length >= 2) {
+    const step = cards[1].offsetLeft - cards[0].offsetLeft;
+    if (step > 0) return step;
+  }
+  return 320;
+}
+
+function normalizeInfinitePositionSignalements(carousel) {
+  const span = Number(carousel.dataset.loopSpan || 0);
+  if (!span) return;
+
+  if (carousel.scrollLeft >= span * 2) {
+    carousel.scrollLeft -= span;
+  } else if (carousel.scrollLeft < span * 0.5) {
+    carousel.scrollLeft += span;
+  }
+}
+
+function startInfiniteScrollSignalements(carousel) {
+  if (!carousel) {
+    carousel = document.getElementById("listeSignalements");
+  }
+  if (!carousel) return;
+
+  stopInfiniteScrollSignalements();
+
+  carouselIntervalId = setInterval(() => {
+    if (!carousel.isConnected) return;
+
+    if (!isHoverPaused && Date.now() >= pauseUntil) {
+      carousel.scrollLeft += AUTO_SCROLL_STEP_PX;
+      normalizeInfinitePositionSignalements(carousel);
+    }
+  }, AUTO_SCROLL_TICK_MS);
+}
+
+function stopInfiniteScrollSignalements() {
+  if (carouselIntervalId) {
+    clearInterval(carouselIntervalId);
+    carouselIntervalId = null;
+  }
 }

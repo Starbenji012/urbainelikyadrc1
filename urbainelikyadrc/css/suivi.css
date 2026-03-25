@@ -360,6 +360,12 @@ a.btn-connexion:focus {
 .bloc-info p {
   margin: 8px 0 12px;
   color: var(--gris-fonce-text);
+  line-height: 1.55;
+}
+.bloc-info li {
+  margin: 0 0 8px;
+  color: var(--gris-fonce-text);
+  line-height: 1.5;
 }
 
 .liste-icones {
@@ -443,7 +449,9 @@ a.btn-connexion:focus {
 .popup-signalement .popup-photo {
   width: 100%;
   height: 120px;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
+  background: var(--gris-clair-bg);
   border-radius: 6px;
   margin-bottom: 8px;
   display: block;
@@ -548,20 +556,33 @@ a.btn-connexion:focus {
   font-weight: 700;
 }
 
-/* Grille des cartes de signalements */
+/* Grille des cartes de signalements — CAROUSEL INFINI */
 .Signalements-grid {
   max-width: 1200px;
-  margin: 0 auto 80px;
-  padding: 0 16px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  margin: 0 auto;
+  padding: 8px 0;
+  display: flex;
   gap: 16px;
+  flex: 1;
+  overflow-x: auto;
+  scroll-behavior: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  align-items: start;
+}
+
+.Signalements-grid::-webkit-scrollbar {
+  display: none;
 }
 
 /* Carte signalement — calquée sur le style des idées */
 .carte-signalement {
   position: relative;
-  width: 100%;
+  flex: 0 0 300px;
+  min-width: 300px;
+  width: 300px;
   background: var(--blanc-bg);
   padding: 14px;
   border-radius: 12px;
@@ -569,16 +590,21 @@ a.btn-connexion:focus {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  align-self: start;
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* Photo dans la carte signalement */
 .carte-signalement-photo {
   width: 100%;
-  height: 200px;
-  object-fit: cover;
+  height: 180px;
+  object-fit: contain;
+  object-position: center;
+  background: var(--gris-clair-bg);
   border-radius: 8px;
   margin-bottom: 8px;
 }
@@ -628,8 +654,7 @@ a.btn-connexion:focus {
 .carte-signalement.no-photo {
   padding: 8px;
   gap: 4px;
-  max-height: 280px;
-  overflow: hidden;
+  min-height: 0;
 }
 
 .carte-signalement.no-photo h3 {
@@ -686,6 +711,54 @@ a.btn-connexion:focus {
 .carte-signalement:hover {
   transform: translateY(-4px);
   box-shadow: 0 10px 30px rgba(138, 231, 178, 0.18);
+}
+
+/* Carousel wrapper et contrôles */
+.carousel-wrapper-suivi {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+  position: relative;
+}
+
+.carousel-btn-suivi {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--bleu-nuit-button);
+  color: var(--blanc-bg);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 24px;
+  transition:
+    background 0.22s ease,
+    transform 0.14s ease,
+    box-shadow 0.22s ease;
+  box-shadow: 0 4px 12px rgba(15, 33, 69, 0.12);
+  z-index: 5;
+}
+
+.carousel-btn-suivi:hover,
+.carousel-btn-suivi:focus {
+  transform: scale(1.08);
+  box-shadow: 0 6px 18px rgba(61, 189, 125, 0.3);
+  background: var(--vert-val);
+  outline: none;
+}
+
+.carousel-btn-prev-suivi {
+  order: -1;
+}
+
+.carousel-btn-next-suivi {
+  order: 3;
 }
 
 .carte-signalement-buttons {

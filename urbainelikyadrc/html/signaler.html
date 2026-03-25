@@ -190,8 +190,9 @@
                                     par type.</li>
                                 <li>le bouton <b><i>Voir sur la carte</i></b> vous permet de visualiser directement sur
                                     la carte là ou le problème est signalé.</li>
-                                <li>Enfin le bouton <b><i>Affiché tous</i></b></b>
-                                <li> vous pouvez de voir tous vos signalements sur la map.
+                                <li>Enfin le bouton <b><i>Afficher tous</i></b></b> vous permet de réinitialiser les
+                                    filtres et de voir tous les signalements sur la carte.</li>
+
                             </p>
                         </aside>
                     </div>
@@ -207,8 +208,16 @@
                 <div class="compteur">Total : <strong id="totalSignalementsAfficheAll">0</strong>
                 </div>
             </div>
-            <div id="listeSignalements" class="Signalements-grid">
+            <div class="carousel-wrapper-signaler-page">
+                <button class="carousel-btn-signaler-page carousel-btn-prev-signaler-page"
+                    id="carouselPrevSignalementsPage" type="button"
+                    aria-label="Défiler les signalements vers la gauche">&#10094;</button>
+                <div id="listeSignalements" class="Signalements-grid">
 
+                </div>
+                <button class="carousel-btn-signaler-page carousel-btn-next-signaler-page"
+                    id="carouselNextSignalementsPage" type="button"
+                    aria-label="Défiler les signalements vers la droite">&#10095;</button>
             </div>
         </section>
 

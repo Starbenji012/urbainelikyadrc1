@@ -13,6 +13,11 @@ $method = strtoupper($_SERVER['REQUEST_METHOD']);
 
 if ($method === 'GET') {
     $idees = read_json_array('idees');
+    $migr = migrate_rows_photo_to_upload_path($idees, 'idees', 'ide');
+    if (!empty($migr['changed'])) {
+        $idees = $migr['rows'];
+        write_json_array('idees', $idees);
+    }
     json_response($idees, 200);
 }
 
@@ -46,16 +51,27 @@ if (!empty($errors)) {
     json_error('Validation echouee.', $errors, 422);
 }
 
+$ideeId = generate_id('ide');
+$photoPath = persist_data_url_image($photo, 'idees', $ideeId);
+if ($photoPath === null) {
+    json_error('Photo invalide. Format accepte: png, jpg, webp, gif (max 5MB).', ['photo' => 'Image invalide.'], 422);
+}
+
 $idees = read_json_array('idees');
+$migr = migrate_rows_photo_to_upload_path($idees, 'idees', 'ide');
+if (!empty($migr['changed'])) {
+    $idees = $migr['rows'];
+    write_json_array('idees', $idees);
+}
 $newIdee = [
-    'id' => generate_id('ide'),
+    'id' => $ideeId,
     'user_id' => $userId !== '' ? $userId : null,
     'user_nom' => $userNom,
     'user_email' => $userEmail !== '' ? $userEmail : null,
     'titre' => $titre,
     'categorie' => $categorie,
     'description' => $description,
-    'photo' => $photo,
+    'photo' => $photoPath,
     'likes' => 0,
     'timestamp' => gmdate('c'),
 ];

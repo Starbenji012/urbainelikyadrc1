@@ -511,7 +511,9 @@ a.btn-connexion:focus {
 .popup-signalement .popup-photo {
   width: 100%;
   height: 120px;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
+  background: var(--gris-clair-bg);
   border-radius: 6px;
   margin-bottom: 8px;
   display: block;
@@ -621,16 +623,68 @@ a.btn-connexion:focus {
   max-width: 1200px;
   margin: 0 auto 80px;
   padding: 0 16px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  display: flex;
   gap: 16px;
-  align-items: start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
+  transform: translateZ(0);
+}
+
+.Signalements-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.Signalements-grid > p {
+  min-width: 100%;
+  margin: 0;
+}
+
+.carousel-wrapper-signaler-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.carousel-btn-signaler-page {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: var(--bleu-nuit-button);
+  color: var(--blanc-bg);
+  font-size: 20px;
+  cursor: pointer;
+  flex: 0 0 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(15, 33, 69, 0.2);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.2s ease,
+    filter 0.18s ease;
+}
+
+.carousel-btn-signaler-page:hover,
+.carousel-btn-signaler-page:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(15, 33, 69, 0.24);
+  filter: brightness(1.05);
 }
 
 /* Carte signalement — calquée sur le style des idées */
 .carte-signalement {
   position: relative;
-  width: 100%;
+  width: 300px;
+  min-width: 300px;
+  flex: 0 0 300px;
   background: var(--blanc-bg);
   padding: 14px;
   border-radius: 12px;
@@ -647,8 +701,10 @@ a.btn-connexion:focus {
 /* Photo dans la carte signalement */
 .carte-signalement-photo {
   width: 100%;
-  height: 200px;
-  object-fit: cover;
+  height: 180px;
+  object-fit: contain;
+  object-position: center;
+  background: var(--gris-clair-bg);
   border-radius: 8px;
   margin-bottom: 8px;
 }
@@ -883,8 +939,16 @@ footer {
     height: 120px;
   }
 
-  .Signalements-grid {
-    grid-template-columns: 1fr;
+  .carousel-wrapper-signaler-page {
+    padding: 0 4px;
+    gap: 10px;
+  }
+
+  .carousel-btn-signaler-page {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    font-size: 18px;
   }
 
   .section-signalement-non-afficher-map {

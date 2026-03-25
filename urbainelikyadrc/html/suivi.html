@@ -136,17 +136,22 @@
                         </aside>
                         <aside class="bloc-info">
                             <h3>Attention à la part des utilisateurs</h3>
-                            <p> Cliquer sur les icônes sur la carte pour voir les détails des signalements soumis par
-                                les
-                                utilisateurs.
-                            </p>
                             <p>
-                                Aussi, en cliquant sur les icônes ici presentées, vous pouvez filtrer les signalements
-                                qui
-                                afficheras seulement sur la carte, les signalements correspondants à la catégorie
-                                sélectionnée.
+                                <li>En cliquant sur les icônes qui sont sur la map vous pouvez voir les détails des
+                                    signalements soumis par
+                                    les
+                                    utilisateurs.</li>
+                                <li> Aussi, en cliquant sur les icônes de catégorie ici presentées, vous pouvez filtrer
+                                    les
+                                    signalements
+                                    qui
+                                    afficheras seulement sur la carte, les signalements correspondants à la catégorie
+                                    sélectionnée.</li>
+                                <li>le bouton <b><i>Voir sur la carte</i></b> vous permet de visualiser directement sur
+                                    la carte là ou le problème est signalé.</li>
+                                <li>Enfin le bouton <b><i>Afficher tous</i></b></b> vous permet de réinitialiser les
+                                    filtres et de voir tous les signalements sur la carte.</li>
                             </p>
-
                         </aside>
                     </div>
                 </div>
@@ -161,8 +166,17 @@
                 <div class="compteur">Total : <strong id="totalSignalementsAfficheAll">0</strong>
                 </div>
             </div>
-            <div id="listeSignalements" class="Signalements-grid">
-
+            <div class="carousel-wrapper-suivi">
+                <button class="carousel-btn-suivi carousel-btn-prev-suivi" id="carouselPrevSignalements"
+                    aria-label="Signalement précédent">
+                    <i class='bx bx-chevron-left'></i>
+                </button>
+                <div id="listeSignalements" class="Signalements-grid">
+                </div>
+                <button class="carousel-btn-suivi carousel-btn-next-suivi" id="carouselNextSignalements"
+                    aria-label="Signalement suivant">
+                    <i class='bx bx-chevron-right'></i>
+                </button>
             </div>
         </section>
 

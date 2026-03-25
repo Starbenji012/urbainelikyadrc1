@@ -13,6 +13,11 @@ $method = strtoupper($_SERVER['REQUEST_METHOD']);
 
 if ($method === 'GET') {
     $signalements = read_json_array('signalements');
+    $migr = migrate_rows_photo_to_upload_path($signalements, 'signalements', 'sig');
+    if (!empty($migr['changed'])) {
+        $signalements = $migr['rows'];
+        write_json_array('signalements', $signalements);
+    }
     json_response($signalements, 200);
 }
 
@@ -59,10 +64,21 @@ if (!empty($errors)) {
     json_error('Validation echouee.', $errors, 422);
 }
 
+$signalementId = generate_id('sig');
+$photoPath = persist_data_url_image($photo, 'signalements', $signalementId);
+if ($photoPath === null) {
+    json_error('Photo invalide. Format accepte: png, jpg, webp, gif (max 5MB).', ['photo' => 'Image invalide.'], 422);
+}
+
 $signalements = read_json_array('signalements');
+$migr = migrate_rows_photo_to_upload_path($signalements, 'signalements', 'sig');
+if (!empty($migr['changed'])) {
+    $signalements = $migr['rows'];
+    write_json_array('signalements', $signalements);
+}
 
 $newSignalement = [
-    'id' => generate_id('sig'),
+    'id' => $signalementId,
     'user_id' => null,
     'user_nom' => $userNom,
     'user_email' => $userEmail !== '' ? $userEmail : null,
@@ -72,7 +88,7 @@ $newSignalement = [
     'lieu' => $lieu,
     'lat' => $lat,
     'lng' => $lng,
-    'photo' => $photo,
+    'photo' => $photoPath,
     'status' => 'nouveau',
     'timestamp' => gmdate('c'),
 ];
