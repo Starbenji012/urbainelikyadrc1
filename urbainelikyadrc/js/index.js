@@ -1,4 +1,4 @@
-/* INDEX.JS - PAGE D'ACCUEIL */
+/* INDEX.JS - Page d'accueil */
 
 const SIGNALEMENTS_ENDPOINTS = [
   "/backend/api/signalements/index.php",

@@ -1,4 +1,4 @@
-/* CONNEXION.JS - VERSION INITIALE BASIQUE */
+/* CONNEXION.JS - Connexion utilisateur (backend + fallback local) */
 
 const AUTH_LOGIN_ENDPOINTS = [
   "/backend/api/auth/login.php",
@@ -7,7 +7,7 @@ const AUTH_LOGIN_ENDPOINTS = [
 ];
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Navigation mobile: logique partagee dans utils.js
+  // Navigation mobile: logique partagée dans utils.js.
   initMenuBurger();
 
   const formConnexion = document.getElementById("formCon");
@@ -58,7 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Switch forms
+  // Gestion d'un éventuel basculement de formulaire.
   document.querySelectorAll(".Switch").forEach((btn) => {
     btn.addEventListener("click", () => {
       document

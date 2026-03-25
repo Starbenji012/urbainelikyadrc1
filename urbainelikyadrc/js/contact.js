@@ -1,6 +1,6 @@
-/* CONTACT.JS - backend PHP + fallback localStorage */
+/* CONTACT.JS - Formulaire de contact (backend + fallback local) */
 
-// On teste plusieurs chemins pour s'adapter au contexte d'ouverture de la page.
+// On teste plusieurs chemins selon le contexte d'ouverture de la page.
 const CONTACT_ENDPOINTS = [
   "/backend/api/messages/contact.php",
   "../backend/api/messages/contact.php",

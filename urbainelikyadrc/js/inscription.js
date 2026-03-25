@@ -1,4 +1,4 @@
-/* INSCRIPTION.JS - backend PHP + fallback localStorage */
+/* INSCRIPTION.JS - Inscription utilisateur (backend + fallback local) */
 
 const AUTH_REGISTER_ENDPOINTS = buildRegisterEndpoints();
 
@@ -17,7 +17,7 @@ function buildRegisterEndpoints() {
   const localHosts = ["localhost", "127.0.0.1"];
   const ports = [8000, 8080];
 
-  // Priorite absolue: backend PHP local (evite les 405 du serveur frontend 5500).
+  // Priorité absolue: backend PHP local (évite les 405 du serveur frontend 5500).
   for (const host of localHosts) {
     for (const port of ports) {
       endpoints.push(`http://${host}:${port}/backend/api/auth/register.php`);
@@ -25,21 +25,21 @@ function buildRegisterEndpoints() {
     }
   }
 
-  // Si le frontend tourne sur http(s), on teste aussi les URLs absolues du meme host.
+  // Si le frontend tourne sur http(s), on teste aussi les URLs absolues du même host.
   if (protocol === "http:" || protocol === "https:") {
     const origin = window.location.origin;
     endpoints.push(`${origin}/backend/api/auth/register.php`);
     endpoints.push(`${origin}/api/auth/register.php`);
   }
 
-  // Enfin, on essaie les chemins relatifs pour compatibilite selon le mode de lancement.
+  // Enfin, on essaie les chemins relatifs pour compatibilité selon le mode de lancement.
   endpoints.push(...relativePaths);
 
   return Array.from(new Set(endpoints));
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Navigation mobile: logique partagee dans utils.js
+  // Navigation mobile: logique partagée dans utils.js.
   initMenuBurger();
 
   const formInscription = document.getElementById("formIns");
@@ -61,7 +61,7 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
-        // On essaie d'abord le backend PHP.
+        // Tentative backend en priorité.
         const result = await registerToBackend(payload);
         if (!result.ok) {
           if (result.reachable) {
@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
           }
 
-          // Fallback local pour ne pas bloquer l'utilisateur pendant la transition.
+          // Fallback local pour éviter de bloquer l'utilisateur pendant la transition.
           saveLocalUser(payload);
           alert(
             "Inscription locale réussie (backend indisponible). Vérifiez que le serveur PHP tourne et que l'URL frontend pointe vers lui.",
@@ -85,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Switch forms
+  // Gestion d'un éventuel basculement de formulaire.
   document.querySelectorAll(".Switch").forEach((btn) => {
     btn.addEventListener("click", () => {
       document
@@ -205,7 +205,7 @@ function parseApiJson(raw) {
   try {
     return JSON.parse(raw);
   } catch (e) {
-    // Tolere une sortie PHP polluee (warnings/notices avant/apres le JSON).
+    // Tolère une sortie PHP polluée (warnings/notices avant/après le JSON).
     const firstBrace = raw.indexOf("{");
     const lastBrace = raw.lastIndexOf("}");
     if (firstBrace >= 0 && lastBrace > firstBrace) {

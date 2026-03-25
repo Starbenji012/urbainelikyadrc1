@@ -1,17 +1,6 @@
-/**
- * Fonction pour retourner à la page précédente
- */
-function goBack() {
-  if (window.history.length > 1) {
-    window.history.back();
-  } else {
-    window.location.href = "index.html";
-  }
-}
+/* A-PROPOS.JS - Initialisation légère de la page */
 
-/* ============================================
-   GESTION DU MENU BURGER
-   ============================================ */
+// goBack est fourni globalement par utils.js.
 document.addEventListener("DOMContentLoaded", () => {
   initMenuBurger();
 });

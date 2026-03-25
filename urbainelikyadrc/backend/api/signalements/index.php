@@ -28,6 +28,7 @@ $description = as_clean_string($input['description'] ?? '');
 $lieu = as_clean_string($input['lieu'] ?? '');
 $photo = as_clean_string($input['photo'] ?? '');
 $userNom = as_clean_string($input['user_nom'] ?? 'Utilisateur local');
+$userEmail = strtolower(as_clean_string($input['user_email'] ?? ''));
 $latRaw = $input['lat'] ?? null;
 $lngRaw = $input['lng'] ?? null;
 $lat = is_numeric($latRaw) ? (float)$latRaw : null;
@@ -64,6 +65,7 @@ $newSignalement = [
     'id' => generate_id('sig'),
     'user_id' => null,
     'user_nom' => $userNom,
+    'user_email' => $userEmail !== '' ? $userEmail : null,
     'titre' => $titre,
     'type' => $type,
     'description' => $description,

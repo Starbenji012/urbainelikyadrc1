@@ -2,7 +2,7 @@ let map = null; // Variable globale pour la carte
 let signalements = [];
 let markers = [];
 
-// Endpoints testes dans l'ordre. Si aucun backend ne repond, on bascule en local.
+// Endpoints testés dans l'ordre. Si aucun backend ne répond, on bascule en local.
 const SIGNALEMENTS_API_ENDPOINTS = [
   "/backend/api/signalements/index.php",
   "../backend/api/signalements/index.php",
@@ -12,19 +12,19 @@ const SIGNALEMENTS_API_ENDPOINTS = [
 let currentFilter = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Navigation mobile: logique partagee dans utils.js
+  // Navigation mobile: logique partagée dans utils.js.
   initMenuBurger();
 
   // Initialiser la carte
   initMap();
 
-  // récupérer les signalements depuis le backend
+  // Récupération des signalements depuis le backend.
   loadAndDisplaySignalements();
 
-  // Ajouter les écouteurs de filtrage
+  // Ajout des écouteurs de filtrage.
   addFilterListeners();
 
-  // Ajouter l'écouteur pour le bouton "Afficher tous"
+  // Écouteur du bouton "Afficher tous".
   const btnShowAll = document.getElementById("btn-show-all");
   if (btnShowAll) {
     btnShowAll.addEventListener("click", () => setFilter(null));
@@ -67,7 +67,6 @@ async function loadAndDisplaySignalements() {
         const data = await resp.json();
         if (Array.isArray(data)) {
           apiData = data;
-          console.log(`✓ Signalements chargés depuis ${endpoint}:`, data);
           break;
         }
       } catch (endpointError) {
@@ -80,18 +79,7 @@ async function loadAndDisplaySignalements() {
     } else {
       // Fallback: utile quand le backend est indisponible dans l'environnement local.
       signalements = JSON.parse(localStorage.getItem("signalements") || "[]");
-      console.warn(
-        "Backend indisponible: affichage des signalements depuis localStorage.",
-        signalements,
-      );
     }
-    console.log("Total signalements chargés:", signalements.length);
-    console.log(
-      "Vérification coords:",
-      signalements
-        .slice(0, 2)
-        .map((s) => ({ titre: s.titre, lat: s.lat, lng: s.lng })),
-    );
   } catch (err) {
     console.error("Erreur réseau lors du chargement des signalements", err);
     signalements = JSON.parse(localStorage.getItem("signalements") || "[]");
@@ -106,11 +94,9 @@ async function loadAndDisplaySignalements() {
   markers = [];
 
   // Ajouter les marqueurs pour chaque signalement
-  console.log("Création des marqueurs...");
   signalements.forEach((sig) => {
     addMarkerToMap(sig);
   });
-  console.log("Marqueurs créés:", markers.length);
 
   // Afficher la liste des signalements
   renderSignalementsList();
@@ -362,10 +348,6 @@ function renderSignalementsList() {
     btnVoirCarte.textContent = "Voir sur carte";
     btnVoirCarte.addEventListener("click", (e) => {
       e.preventDefault();
-      console.log("Voir sur carte cliqué pour:", sig.titre, {
-        lat: sig.lat,
-        lng: sig.lng,
-      });
       focusSignalementOnMap(sig);
     });
 
@@ -400,8 +382,6 @@ function updateCounters() {
 }
 
 function focusSignalementOnMap(sig) {
-  console.log("focusSignalementOnMap appelée pour:", sig.titre);
-
   if (!map) {
     console.error("❌ Carte non initialisée");
     alert("La carte n'est pas encore initialisée. Rafraîchissez la page.");
@@ -429,16 +409,10 @@ function focusSignalementOnMap(sig) {
     return;
   }
 
-  console.log(`✓ Affichage sur carte pour "${sig.titre}" aux coords:`, [
-    lat,
-    lng,
-  ]);
-
   // Scroller vers la carte (première)
   const mapContainer = document.getElementById("map-container");
   if (mapContainer) {
     mapContainer.scrollIntoView({ behavior: "smooth", block: "start" });
-    console.log("✓ Scroll vers la carte...");
   }
 
   // Recentrer + zoom similaire au bouton "Voir sur carte".
@@ -447,7 +421,6 @@ function focusSignalementOnMap(sig) {
   // Ouvrir le popup du marqueur correspondant.
   const marker = markers.find((m) => m._sigTimestamp === sig.timestamp);
   if (marker) {
-    console.log("✓ Marqueur trouvé, ouverture du popup...");
     window.setTimeout(() => {
       try {
         marker.openPopup();
@@ -455,10 +428,6 @@ function focusSignalementOnMap(sig) {
         console.error("Erreur ouverture popup:", e);
       }
     }, 350);
-  } else {
-    console.warn(
-      "⚠ Aucun marqueur trouvé pour ce signalement (coords peut-être absentes lors du chargement initial)",
-    );
   }
 }
 

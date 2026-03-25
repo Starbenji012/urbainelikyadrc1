@@ -1,6 +1,9 @@
-/* IDEES.JS - backend PHP + fallback localStorage */
+/* IDEES.JS - Backend PHP avec fallback localStorage */
 
 let idees = JSON.parse(localStorage.getItem("idees_page") || "[]");
+let likesCommunaute = JSON.parse(
+  localStorage.getItem("idees_communaute_likes") || "{}",
+);
 
 const IDEES_ENDPOINTS = [
   "/backend/api/idees/index.php",
@@ -8,17 +11,68 @@ const IDEES_ENDPOINTS = [
   "backend/api/idees/index.php",
 ];
 
-const IDEES_LIKE_ENDPOINTS = [
-  "/backend/api/idees/like.php",
-  "../backend/api/idees/like.php",
-  "backend/api/idees/like.php",
-];
-
 const IDEES_DELETE_ENDPOINTS = [
   "/backend/api/idees/delete.php",
   "../backend/api/idees/delete.php",
   "backend/api/idees/delete.php",
 ];
+
+function resolveCurrentUserName() {
+  const candidates = [
+    localStorage.getItem("user_nom"),
+    localStorage.getItem("username"),
+    localStorage.getItem("nom"),
+    localStorage.getItem("display_name"),
+  ]
+    .map((v) => String(v || "").trim())
+    .filter(Boolean);
+
+  return candidates[0] || "Utilisateur local";
+}
+
+function resolveCurrentUserEmail() {
+  return String(localStorage.getItem("user_email") || "")
+    .trim()
+    .toLowerCase();
+}
+
+function readCurrentProfile() {
+  const nom = resolveCurrentUserName();
+  const email = resolveCurrentUserEmail();
+  const connected =
+    String(localStorage.getItem("auth_connected") || "") === "1";
+  return { connected, nom, email };
+}
+
+function isOwnedByCurrentUser(item) {
+  const profile = readCurrentProfile();
+  if (!profile.connected) return false;
+
+  const itemEmail = String(item?.user_email || "")
+    .trim()
+    .toLowerCase();
+  const itemNom = String(item?.user_nom || "")
+    .trim()
+    .toLowerCase();
+  const profileNom = String(profile.nom || "")
+    .trim()
+    .toLowerCase();
+
+  if (profile.email && itemEmail) return itemEmail === profile.email;
+  return Boolean(profileNom && itemNom && itemNom === profileNom);
+}
+
+function getVisibleIdees() {
+  return idees.filter((idee) => isOwnedByCurrentUser(idee));
+}
+
+function getIdeeLikeCount(idee) {
+  // La page Idées affiche la valeur la plus recente entre backend et Communauté.
+  const key = String(idee?.id || idee?.timestamp || "");
+  const communityLikes = Number(likesCommunaute[key] || 0);
+  const persistedLikes = Number(idee?.likes || 0);
+  return Math.max(communityLikes, persistedLikes);
+}
 
 async function readPhotoAsDataURL(file) {
   if (!file) return "";
@@ -37,7 +91,7 @@ async function readPhotoAsDataURL(file) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Navigation mobile: logique partagee dans utils.js
+  // Navigation mobile: logique partagée dans utils.js.
   initMenuBurger();
   renderIdees();
   loadIdeesFromBackend();
@@ -47,7 +101,60 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const btnVider = document.getElementById("btnViderIdees");
   if (btnVider) btnVider.addEventListener("click", clearIdees);
+
+  // Synchronise l'affichage des likes quand la page Communauté en ajoute.
+  window.addEventListener("storage", (evt) => {
+    if (evt.key === "idees_communaute_likes") {
+      likesCommunaute = JSON.parse(
+        localStorage.getItem("idees_communaute_likes") || "{}",
+      );
+      renderIdees();
+    }
+  });
 });
+
+function validateIdeePayload(idee) {
+  if (!idee.titre || idee.titre.length < 3 || idee.titre.length > 150) {
+    return "Le titre doit contenir entre 3 et 150 caractères.";
+  }
+
+  if (
+    !idee.description ||
+    idee.description.length < 5 ||
+    idee.description.length > 2000
+  ) {
+    return "La description doit contenir entre 5 et 2000 caractères.";
+  }
+
+  const allowedCategories = [
+    "infrastructure",
+    "environnement",
+    "services-publics",
+    "transport",
+    "autre",
+  ];
+
+  if (!allowedCategories.includes(String(idee.categorie || "").toLowerCase())) {
+    return "Catégorie invalide.";
+  }
+
+  return "";
+}
+
+function extractBackendErrorMessage(json) {
+  if (json?.errors && typeof json.errors === "object") {
+    const first = Object.values(json.errors).find(
+      (v) => typeof v === "string" && v.trim().length > 0,
+    );
+    if (first) return String(first);
+  }
+
+  if (typeof json?.message === "string" && json.message.trim()) {
+    return json.message;
+  }
+
+  return "Le backend a refusé la requête.";
+}
 
 async function addIdee(e) {
   e.preventDefault();
@@ -75,6 +182,8 @@ async function addIdee(e) {
 
   const idee = {
     id: `ide_local_${Date.now()}`,
+    user_nom: resolveCurrentUserName(),
+    user_email: resolveCurrentUserEmail(),
     titre,
     categorie,
     description: desc,
@@ -87,7 +196,13 @@ async function addIdee(e) {
 }
 
 async function submitIdeeWithFallback(idee, formEl) {
-  // On envoie au backend d'abord; fallback seulement si backend injoignable.
+  const localValidationError = validateIdeePayload(idee);
+  if (localValidationError) {
+    alert(localValidationError);
+    return;
+  }
+
+  // Envoi backend d'abord; fallback local seulement si backend injoignable.
   const backendCreated = await createIdeeToBackend(idee);
   if (backendCreated.ok) {
     idees.unshift(backendCreated.data);
@@ -144,6 +259,8 @@ async function createIdeeToBackend(idee) {
     titre: idee.titre,
     categorie: idee.categorie,
     description: idee.description,
+    user_nom: idee.user_nom || resolveCurrentUserName(),
+    user_email: idee.user_email || resolveCurrentUserEmail(),
     photo: idee.photo || "",
   };
 
@@ -167,7 +284,7 @@ async function createIdeeToBackend(idee) {
         ok: false,
         reachable: true,
         data: null,
-        message: json?.message || "Erreur de validation côté backend.",
+        message: extractBackendErrorMessage(json),
       };
     } catch (e) {
       // On essaie un autre endpoint.
@@ -184,48 +301,44 @@ async function createIdeeToBackend(idee) {
 
 function renderIdees() {
   const container = document.getElementById("listeIdees");
+  const profile = readCurrentProfile();
+  const visibleIdees = getVisibleIdees();
+  const totalEl = document.getElementById("totalIdees");
+  if (totalEl) {
+    totalEl.textContent = profile.connected ? String(idees.length) : "0";
+  }
+
   if (container) {
+    if (!profile.connected) {
+      container.innerHTML =
+        '<p style="text-align: center; padding: 40px; color: #666; grid-column: 1 / -1;">Connectez-vous pour voir vos idées personnelles.</p>';
+      return;
+    }
+
     container.innerHTML =
-      idees
+      visibleIdees
         .map(
-          (idee, index) => `
-      <div class="carte-idee">
+          (idee) => `
+      <div class="carte-idee ${idee.photo ? "" : "no-photo"}">
         ${idee.photo ? `<img src="${idee.photo}" alt="Photo idée" class="carte-idee-photo">` : ""}
         <h3>${idee.titre}</h3>
         <p>${idee.description}</p>
+        ${idee.user_nom ? `<p class="carte-idee-author">Par : ${idee.user_nom}</p>` : ""}
         <span class="categorie-badge">${idee.categorie}</span>
         <small>${new Date(idee.timestamp).toLocaleString()}</small>
         <div class="carte-actions">
-          <button class="btn-like" onclick="likeIdee(${index})">
-            <i class='bx bx-heart'></i> <span class="like-count">${idee.likes}</span>
+          <button class="btn-like" type="button" disabled title="Le like se fait dans la page Communauté">
+            <i class='bx bx-heart'></i> <span class="like-count">${getIdeeLikeCount(idee)}</span>
           </button>
-          <button class="btn-delete" onclick="deleteIdee('${idee.id || idee.timestamp}')">Supprimer</button>
+          <button class="btn-delete-idee" onclick="deleteIdee('${idee.id || idee.timestamp}')">Supprimer</button>
         </div>
       </div>
     `,
         )
-        .join("") || "<p>Aucune idée.</p>";
+        .join("") || "<p>Aucune idée pour votre compte.</p>";
   }
 
-  const totalEl = document.getElementById("totalIdees");
-  if (totalEl) totalEl.textContent = idees.length;
-}
-
-async function likeIdee(index) {
-  if (index >= 0 && index < idees.length) {
-    const target = idees[index];
-    const likedFromBackend =
-      target && target.id ? await likeIdeeToBackend(target.id) : false;
-
-    // Même si backend indisponible, on garde l'incrément local pour l'UX.
-    idees[index].likes = (idees[index].likes || 0) + 1;
-    localStorage.setItem("idees_page", JSON.stringify(idees));
-    renderIdees();
-
-    if (!likedFromBackend) {
-      console.warn("Like backend indisponible, sauvegarde locale appliquée.");
-    }
-  }
+  // totalIdees reste global (tous utilisateurs), deja mis a jour en debut de fonction.
 }
 
 async function deleteIdee(idOrTimestamp) {
@@ -233,6 +346,11 @@ async function deleteIdee(idOrTimestamp) {
     const target = idees.find(
       (i) => String(i.id || i.timestamp) === String(idOrTimestamp),
     );
+
+    if (!target || !isOwnedByCurrentUser(target)) {
+      alert("Vous ne pouvez supprimer que vos propres idées.");
+      return;
+    }
 
     if (target && target.id) {
       await deleteIdeeToBackend(target.id);
@@ -248,29 +366,10 @@ async function deleteIdee(idOrTimestamp) {
 
 function clearIdees() {
   if (confirm("Vider toutes les idées ?")) {
-    idees = [];
-    localStorage.removeItem("idees_page");
+    idees = idees.filter((idee) => !isOwnedByCurrentUser(idee));
+    localStorage.setItem("idees_page", JSON.stringify(idees));
     renderIdees();
   }
-}
-
-async function likeIdeeToBackend(id) {
-  for (const endpoint of IDEES_LIKE_ENDPOINTS) {
-    try {
-      const resp = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ id }),
-      });
-      if (resp.ok) return true;
-    } catch (e) {
-      // On essaie l'endpoint suivant.
-    }
-  }
-  return false;
 }
 
 async function deleteIdeeToBackend(id) {

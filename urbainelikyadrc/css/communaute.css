@@ -300,6 +300,15 @@ a.btn-connexion:focus {
   flex-direction: column;
 }
 
+.carte-idee.no-photo {
+  padding: 10px 12px;
+}
+
+.carte-idee.no-photo h3,
+.carte-idee.no-photo p {
+  margin: 0;
+}
+
 .carte-idee:hover {
   transform: translateY(-4px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);

@@ -1,4 +1,4 @@
-/* COMMUNAUTE.JS - VERSION CORRIGEE */
+/* COMMUNAUTE.JS - Affichage global et likes communautaires */
 
 const IDEES_ENDPOINTS = [
   "/backend/api/idees/index.php",
@@ -12,16 +12,16 @@ const IDEES_LIKE_ENDPOINTS = [
   "backend/api/idees/like.php",
 ];
 
-// Données locales des idées
+// Données locales des idées.
 let idees = JSON.parse(localStorage.getItem("idees_page") || "[]");
 
-// Likes communautaires séparés de la page idées
+// Likes communautaires séparés de la page Idées.
 let likesCommunaute = JSON.parse(
   localStorage.getItem("idees_communaute_likes") || "{}",
 );
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Navigation mobile: logique partagee dans utils.js
+  // Navigation mobile: logique partagée dans utils.js.
   initMenuBurger();
   renderIdees();
   loadIdeesFromBackend();
@@ -36,10 +36,11 @@ function renderIdees() {
         : idees
             .map(
               (idee) => `
-      <div class="carte-idee">
+      <div class="carte-idee ${idee.photo ? "" : "no-photo"}">
         ${idee.photo ? `<img src="${idee.photo}" alt="Photo idée" class="carte-idee-photo">` : ""}
         <h3>${idee.titre}</h3>
         <p>${idee.description}</p>
+        ${idee.user_nom ? `<p class="carte-idee-author">Par : ${idee.user_nom}</p>` : ""}
         <span class="categorie-badge">${idee.categorie}</span>
         <small>${new Date(idee.timestamp).toLocaleString()}</small>
         <div class="carte-actions">

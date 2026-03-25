@@ -1,8 +1,4 @@
-/* SIGNALEMENT.JS - VERSION SIMPLE (stockage local, sans geocodage serveur) */
-
-/* ============================================
-   GESTION DU MENU BURGER
-   ============================================ */
+/* SIGNALEMENT.JS - Backend PHP avec fallback localStorage */
 
 let map;
 let markers = [];
@@ -79,9 +75,10 @@ let addressPreviewTimer = null;
 let previewRequestId = 0;
 let addressStatusEl = null;
 let addressChosenFromMap = false;
+let selectedMapCoords = null;
 let currentFilter = null;
 
-// Endpoints backend PHP testes dans l'ordre.
+// Endpoints backend PHP testés dans l'ordre.
 const SIGNALEMENTS_ENDPOINTS = [
   "/backend/api/signalements/index.php",
   "../backend/api/signalements/index.php",
@@ -113,13 +110,13 @@ async function readPhotoAsDataURL(file) {
 document.addEventListener("DOMContentLoaded", () => {
   initMenuBurger();
 
-  // Chargement initial: récupérer les signalements déjà enregistrés.
+  // Chargement initial: récupération des signalements déjà enregistrés.
   const saved = localStorage.getItem("signalements");
   if (saved) {
     signalements = JSON.parse(saved);
   }
 
-  // Initialiser la carte + l'affichage liste/carte.
+  // Initialisation de la carte et de l'affichage liste/carte.
   initMap();
   renderList();
   renderMap();
@@ -196,6 +193,7 @@ async function createSignalementToBackend(sig) {
     lat: sig.lat,
     lng: sig.lng,
     user_nom: sig.user_nom,
+    user_email: sig.user_email || "",
     photo: sig.photo || "",
   };
 
@@ -278,6 +276,42 @@ function resolveCurrentUserName() {
     .filter(Boolean);
 
   return candidates[0] || "Utilisateur local";
+}
+
+function resolveCurrentUserEmail() {
+  return String(localStorage.getItem("user_email") || "")
+    .trim()
+    .toLowerCase();
+}
+
+function readCurrentProfile() {
+  const nom = resolveCurrentUserName();
+  const email = resolveCurrentUserEmail();
+  const connected =
+    String(localStorage.getItem("auth_connected") || "") === "1";
+  return { connected, nom, email };
+}
+
+function isOwnedByCurrentUser(item) {
+  const profile = readCurrentProfile();
+  if (!profile.connected) return false;
+
+  const itemEmail = String(item?.user_email || "")
+    .trim()
+    .toLowerCase();
+  const itemNom = String(item?.user_nom || "")
+    .trim()
+    .toLowerCase();
+  const profileNom = String(profile.nom || "")
+    .trim()
+    .toLowerCase();
+
+  if (profile.email && itemEmail) return itemEmail === profile.email;
+  return Boolean(profileNom && itemNom && itemNom === profileNom);
+}
+
+function getVisibleSignalements() {
+  return signalements.filter((sig) => isOwnedByCurrentUser(sig));
 }
 
 function addFilterListeners() {
@@ -525,6 +559,7 @@ function installAddressLivePreview() {
 
   const schedulePreviewAfterManualEdit = () => {
     addressChosenFromMap = false;
+    selectedMapCoords = null;
     clearResolvedAddressCache(lieuInput);
     schedulePreview();
   };
@@ -617,6 +652,39 @@ function formatCompleteDRCAddress(addressObj, fallbackDisplayName) {
   return parts.join(", ");
 }
 
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function fetchNominatimJson(url, maxAttempts = 3) {
+  let lastStatus = 0;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (response.ok) {
+      return response.json();
+    }
+
+    lastStatus = response.status;
+    const canRetry = response.status === 429 || response.status >= 500;
+    if (!canRetry || attempt === maxAttempts) {
+      break;
+    }
+
+    // Backoff progressif simple pour eviter le rate-limit.
+    await wait(500 * attempt);
+  }
+
+  throw new Error(
+    `Le service de géolocalisation est indisponible (${lastStatus}).`,
+  );
+}
+
 async function geocodeAddressInDRC(rawAddress) {
   const normalized = normalizeText(rawAddress);
   const query = encodeURIComponent(normalized);
@@ -628,17 +696,7 @@ async function geocodeAddressInDRC(rawAddress) {
     "&q=" +
     query;
 
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Le service de géolocalisation est indisponible.");
-  }
-
-  const rows = await response.json();
+  const rows = await fetchNominatimJson(url, 3);
   if (!Array.isArray(rows) || rows.length === 0) {
     return null;
   }
@@ -668,23 +726,16 @@ async function reverseGeocodeInDRC(lat, lng) {
   if (!isInDRCBounds(lat, lng)) return null;
 
   const url =
-    "https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1" +
+    "https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18" +
     `&lat=${encodeURIComponent(String(lat))}` +
     `&lon=${encodeURIComponent(String(lng))}`;
 
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-    },
-  });
+  const row = await fetchNominatimJson(url, 3);
+  if (!row || typeof row !== "object") return null;
 
-  if (!response.ok) {
-    throw new Error("Le service de géolocalisation est indisponible.");
-  }
-
-  const row = await response.json();
-  const countryCode = String(row?.address?.country_code || "").toLowerCase();
-  if (countryCode !== "cd") return null;
+  // On accepte la reponse si le point clique est deja valide en RDC (controle fait avant l'appel).
+  const hasAddressData = row.address || row.display_name;
+  if (!hasAddressData) return null;
 
   return {
     displayName: row.display_name || null,
@@ -704,13 +755,35 @@ function initMap() {
     const lieuInput = document.getElementById("lieu");
     if (!lieuInput) return;
 
+    selectedMapCoords = { lat: e.latlng.lat, lng: e.latlng.lng };
+
+    if (!isInDRCBounds(e.latlng.lat, e.latlng.lng)) {
+      setAddressStatus(
+        "error",
+        "Point hors RDC. Cliquez dans les limites de la RDC.",
+      );
+      addressChosenFromMap = false;
+      return;
+    }
+
     setAddressStatus("info", "Recherche de l'adresse depuis la carte...");
     try {
       const reverse = await reverseGeocodeInDRC(e.latlng.lat, e.latlng.lng);
       if (!reverse || !reverse.formattedAddress) {
+        const fallbackAddress =
+          "Adresse approximative: point sélectionné en RDC";
+        lieuInput.value = fallbackAddress;
+        setResolvedAddressCache(
+          lieuInput,
+          fallbackAddress,
+          fallbackAddress,
+          e.latlng.lat,
+          e.latlng.lng,
+        );
+        addressChosenFromMap = true;
         setAddressStatus(
-          "error",
-          "Adresse inexistante sur la carte pour ce point en RDC.",
+          "info",
+          "Adresse approximative enregistrée (adresse détaillée indisponible).",
         );
         return;
       }
@@ -729,9 +802,19 @@ function initMap() {
         "Adresse OK: sélectionnée directement depuis la carte.",
       );
     } catch (err) {
+      const fallbackAddress = "Adresse approximative: point sélectionné en RDC";
+      lieuInput.value = fallbackAddress;
+      setResolvedAddressCache(
+        lieuInput,
+        fallbackAddress,
+        fallbackAddress,
+        e.latlng.lat,
+        e.latlng.lng,
+      );
+      addressChosenFromMap = true;
       setAddressStatus(
-        "error",
-        "Impossible de récupérer l'adresse depuis la carte.",
+        "info",
+        "Adresse approximative enregistrée (service d'adresse temporairement indisponible).",
       );
     }
   });
@@ -777,20 +860,46 @@ async function addSignalement(e) {
     geo = await geocodeAddressInDRC(queryForGeocode);
   } catch (error) {
     console.error(error);
-    setAddressStatus("error", "Service de géolocalisation indisponible.");
-    alert("Impossible de vérifier l'adresse pour le moment. Réessayez.");
-    return;
+    if (addressChosenFromMap && selectedMapCoords) {
+      geo = {
+        lat: selectedMapCoords.lat,
+        lng: selectedMapCoords.lng,
+        displayName: lieu,
+        formattedAddress: lieu,
+      };
+      setAddressStatus(
+        "info",
+        "Adresse détaillée indisponible, adresse approximative utilisée.",
+      );
+    } else {
+      setAddressStatus("error", "Service de géolocalisation indisponible.");
+      alert("Impossible de vérifier l'adresse pour le moment. Réessayez.");
+      return;
+    }
   }
 
   if (!geo) {
-    setAddressStatus(
-      "error",
-      "Adresse inexistante sur la carte ou hors RDC. Vérifiez l'adresse.",
-    );
-    alert(
-      "Adresse inexistante sur la carte ou hors RDC. Vérifiez rue/avenue, quartier, commune et ville.",
-    );
-    return;
+    if (addressChosenFromMap && selectedMapCoords) {
+      geo = {
+        lat: selectedMapCoords.lat,
+        lng: selectedMapCoords.lng,
+        displayName: lieu,
+        formattedAddress: lieu,
+      };
+      setAddressStatus(
+        "info",
+        "Adresse approximative utilisée (adresse introuvable automatiquement).",
+      );
+    } else {
+      setAddressStatus(
+        "error",
+        "Adresse inexistante sur la carte ou hors RDC. Vérifiez l'adresse.",
+      );
+      alert(
+        "Adresse inexistante sur la carte ou hors RDC. Vérifiez rue/avenue, quartier, commune et ville.",
+      );
+      return;
+    }
   }
 
   if (addressChosenFromMap) {
@@ -832,6 +941,7 @@ async function addSignalement(e) {
     lng: geo.lng,
     adresseVerifiee: geo.displayName,
     user_nom: resolveCurrentUserName(),
+    user_email: resolveCurrentUserEmail(),
     photo: photoDataUrl,
     timestamp: new Date().toISOString(),
   };
@@ -878,15 +988,24 @@ function renderList() {
 
   container.innerHTML = "";
 
-  if (signalements.length === 0) {
+  const profile = readCurrentProfile();
+  if (!profile.connected) {
     container.innerHTML =
-      '<p style="text-align: center; padding: 40px; color: #666; grid-column: 1 / -1;">Aucun signalement.</p>';
+      '<p style="text-align: center; padding: 40px; color: #666; grid-column: 1 / -1;">Connectez-vous pour voir vos signalements personnels.</p>';
+    return;
+  }
+
+  const visibleSignalements = getVisibleSignalements();
+
+  if (visibleSignalements.length === 0) {
+    container.innerHTML =
+      '<p style="text-align: center; padding: 40px; color: #666; grid-column: 1 / -1;">Aucun signalement pour votre compte.</p>';
     return;
   }
 
   const frag = document.createDocumentFragment();
 
-  signalements.forEach((sig) => {
+  visibleSignalements.forEach((sig) => {
     if (
       currentFilter &&
       String(sig.type || "").toLowerCase() !== String(currentFilter)
@@ -1009,7 +1128,9 @@ function renderMap() {
   markers = [];
   markerByTimestamp.clear();
 
-  signalements.forEach((sig) => {
+  const visibleSignalements = getVisibleSignalements();
+
+  visibleSignalements.forEach((sig) => {
     const icon = getIconForType(sig.type);
     const markerOptions = icon ? { icon: icon } : {};
     const photoMarkup = sig.photo
@@ -1069,9 +1190,9 @@ async function deleteSignalement(idOrTimestamp) {
 
 function clearSignalements() {
   if (confirm("Vider tous les signalements ?")) {
-    // Pas d'endpoint bulk pour le moment: on vide localement pendant la transition.
-    signalements = [];
-    localStorage.removeItem("signalements");
+    // En page personnelle: on ne retire que les signalements du compte connecté.
+    signalements = signalements.filter((sig) => !isOwnedByCurrentUser(sig));
+    localStorage.setItem("signalements", JSON.stringify(signalements));
     renderList();
     renderMap();
     updateTotalSignalements();
@@ -1079,11 +1200,24 @@ function clearSignalements() {
 }
 
 function updateTotalSignalements() {
+  const profile = readCurrentProfile();
+  if (!profile.connected) {
+    const totalElDisconnected = document.getElementById("totalSignalements");
+    if (totalElDisconnected) totalElDisconnected.textContent = "0";
+
+    const filteredElDisconnected = document.getElementById(
+      "totalSignalementsAfficheAll",
+    );
+    if (filteredElDisconnected) filteredElDisconnected.textContent = "0";
+    return;
+  }
+
+  const allSignalements = signalements;
   const el = document.getElementById("totalSignalements");
-  if (el) el.textContent = signalements.length;
+  if (el) el.textContent = allSignalements.length;
   const elAll = document.getElementById("totalSignalementsAfficheAll");
   if (elAll) {
-    const filtered = signalements.filter(
+    const filtered = allSignalements.filter(
       (s) =>
         !currentFilter || String(s.type || "").toLowerCase() === currentFilter,
     );
@@ -1115,7 +1249,7 @@ function getIconForType(typeValue) {
   const config = icons[key];
 
   if (!config) {
-    console.warn("Icon not found for type:", typeValue, "normalized:", key);
+    // Type inconnu: Leaflet utilisera l'icone standard du marqueur.
     return null;
   }
 

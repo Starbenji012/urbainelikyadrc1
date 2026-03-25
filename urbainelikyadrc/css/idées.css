@@ -397,6 +397,7 @@ a.btn-connexion:focus {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
+  align-items: start;
 }
 
 /* carte idée — calquée sur le style des témoignages */
@@ -410,9 +411,51 @@ a.btn-connexion:focus {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  align-self: start;
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease;
+}
+
+.carte-idee.no-photo {
+  padding: 8px;
+  gap: 4px;
+  min-height: 0;
+}
+
+.carte-idee.no-photo h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.carte-idee.no-photo p {
+  margin: 0;
+}
+
+.carte-idee.no-photo .carte-idee-author {
+  font-size: 0.84rem;
+}
+
+.carte-idee.no-photo > p {
+  font-size: 0.88rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.carte-idee.no-photo .categorie-badge,
+.carte-idee.no-photo small {
+  font-size: 0.82rem;
+}
+
+.carte-idee.no-photo .carte-actions {
+  margin-top: 2px;
+}
+
+.carte-idee.no-photo small {
+  margin-top: 2px;
 }
 
 /* Photo dans la carte idée */
@@ -460,6 +503,11 @@ a.btn-connexion:focus {
   background: transparent;
   border: 1px solid rgba(15, 33, 69, 0.06);
   cursor: pointer;
+}
+
+.carte-idee .btn-like:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
 }
 
 .carte-idee:hover {

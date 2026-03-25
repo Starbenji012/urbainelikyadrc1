@@ -26,6 +26,8 @@ $categorie = strtolower(as_clean_string($input['categorie'] ?? 'autre'));
 $description = as_clean_string($input['description'] ?? '');
 $photo = as_clean_string($input['photo'] ?? '');
 $userId = as_clean_string($input['user_id'] ?? '');
+$userNom = as_clean_string($input['user_nom'] ?? 'Utilisateur local');
+$userEmail = strtolower(as_clean_string($input['user_email'] ?? ''));
 
 $allowedCategories = ['infrastructure', 'environnement', 'services-publics', 'transport', 'autre'];
 $errors = [];
@@ -48,6 +50,8 @@ $idees = read_json_array('idees');
 $newIdee = [
     'id' => generate_id('ide'),
     'user_id' => $userId !== '' ? $userId : null,
+    'user_nom' => $userNom,
+    'user_email' => $userEmail !== '' ? $userEmail : null,
     'titre' => $titre,
     'categorie' => $categorie,
     'description' => $description,

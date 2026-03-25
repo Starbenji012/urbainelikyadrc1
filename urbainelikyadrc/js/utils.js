@@ -1,4 +1,4 @@
-/* UTILS.JS - Fonctions Partagées */
+/* UTILS.JS - Fonctions partagées */
 
 const AUTH_LOGOUT_ENDPOINTS = [
   "/backend/api/auth/logout.php",
@@ -6,12 +6,12 @@ const AUTH_LOGOUT_ENDPOINTS = [
   "backend/api/auth/logout.php",
 ];
 
-/* Fonction de navigation */
+/* Navigation simple */
 function goBack() {
   window.location.href = "./index.html";
 }
 
-/* GESTION MENU BURGER - Fonction Partagée */
+/* Menu burger et état d'authentification */
 function initMenuBurger() {
   const menuBurger = document.getElementById("menu-burger");
   const navigationMenu = document.querySelector(".navigation-menu");
@@ -68,7 +68,7 @@ function initMenuBurger() {
     updateBurgerIcon();
   }
 
-  // Met a jour le bouton "Connexion" selon l'etat de session local.
+  // Met à jour le bouton "Connexion" selon l'état de session local.
   initAuthNav();
 }
 
@@ -104,7 +104,7 @@ async function logoutFromBackendIfPossible() {
       });
       if (resp.ok) return true;
     } catch (e) {
-      // On ignore l'erreur reseau et on continue la deconnexion locale.
+      // On ignore l'erreur réseau et on continue la déconnexion locale.
     }
   }
 
