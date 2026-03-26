@@ -12,6 +12,10 @@ const IDEES_LIKE_ENDPOINTS = [
   "backend/api/idees/like.php",
 ];
 
+const COMMUNAUTE_TEXT = {
+  noIdeas: "Aucune idée.",
+};
+
 // Données locales des idées.
 let idees = JSON.parse(localStorage.getItem("idees_page") || "[]");
 
@@ -34,12 +38,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // Navigation mobile: logique partagée dans utils.js.
   initMenuBurger();
 
-  // Charger depuis le backend ou initialiser avec des données de test
+  // Charger les idées depuis le backend, puis afficher la page.
   loadIdeesFromBackend().then(() => {
-    // Si aucune donnée après le backend, utiliser des données de test
-    if (idees.length === 0) {
-      initializeTestData();
-    }
     renderIdees();
     setupCarousel();
   });
@@ -177,7 +177,7 @@ function renderIdees() {
   if (ideesContainer) {
     ideesContainer.innerHTML =
       idees.length === 0
-        ? "<p>Aucune idée.</p>"
+        ? `<p>${COMMUNAUTE_TEXT.noIdeas}</p>`
         : idees
             .map(
               (idee) => `
@@ -246,52 +246,6 @@ async function loadIdeesFromBackend() {
       // On essaie le prochain endpoint.
     }
   }
-}
-
-function initializeTestData() {
-  idees = [
-    {
-      id: 1,
-      titre: "Améliorer les espaces verts",
-      description: "Créer plus de parcs et jardins publics pour les habitants.",
-      categorie: "Environnement",
-      user_nom: "Jean",
-      timestamp: new Date().toISOString(),
-    },
-    {
-      id: 2,
-      titre: "Transport en commun écologique",
-      description: "Implémenter un système de bus électriques dans la ville.",
-      categorie: "Transport",
-      user_nom: "Marie",
-      timestamp: new Date().toISOString(),
-    },
-    {
-      id: 3,
-      titre: "Zones piétonnes sécurisées",
-      description: "Développer des avenues sans voitures pour les piétons.",
-      categorie: "Urbanisme",
-      user_nom: "Paul",
-      timestamp: new Date().toISOString(),
-    },
-    {
-      id: 4,
-      titre: "Éclairage public moderne",
-      description: "Remplacer l'ancienne signalétique par des LED.",
-      categorie: "Infrastructure",
-      user_nom: "Sophie",
-      timestamp: new Date().toISOString(),
-    },
-    {
-      id: 5,
-      titre: "Gestion des déchets efficace",
-      description: "Mettre en place un système de recyclage communautaire.",
-      categorie: "Environnement",
-      user_nom: "Luc",
-      timestamp: new Date().toISOString(),
-    },
-  ];
-  localStorage.setItem("idees_page", JSON.stringify(idees));
 }
 
 async function likeIdeeToBackend(id) {

@@ -8,5 +8,25 @@
     "password_hash": "$2y$12$oxzBATtu9qaf4.SLFyFTaOP/x1cYJPm9nKaZlDBqHm6/.YRXS6AVa",
     "role": "citoyen",
     "created_at": "2026-03-23T23:46:42+00:00"
+  },
+  {
+    "id": "usr_20260326_fc5c7437",
+    "nom": "binda",
+    "prenom": "anna",
+    "surnom": "cours de cassation",
+    "email": "bindandindaanna04@gmail.com",
+    "password_hash": "$2y$12$EeF6kUKERgx6WywYs4r1L.zMsY5uEqsTP6V2kQiAan1hLpEi.nll.",
+    "role": "citoyen",
+    "created_at": "2026-03-26T18:21:59+00:00"
+  },
+  {
+    "id": "usr_20260326_5e6a0265",
+    "nom": "inaka",
+    "prenom": "la joie",
+    "surnom": "",
+    "email": "inakalajoie@gmail.com",
+    "password_hash": "$2y$12$Ww28BFRzjf5toAFTz8.uIOs8G8YwYqswekCmJDgePgiu7D6RSH3Gq",
+    "role": "citoyen",
+    "created_at": "2026-03-26T18:33:30+00:00"
   }
 ]

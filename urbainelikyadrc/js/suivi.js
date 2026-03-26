@@ -8,6 +8,13 @@ const SIGNALEMENTS_API_ENDPOINTS = [
   "../backend/api/signalements/index.php",
   "backend/api/signalements/index.php",
 ];
+const SUIVI_TEXT = {
+  mapNotReady: "La carte n'est pas encore initialisée. Rafraîchissez la page.",
+  invalidSignalement: "Signalement invalide.",
+  invalidGpsPrefix: "Ce signalement n'a pas de coordonnées GPS valides.",
+  unknownAddress: "inconnue",
+  unknownDate: "Date inconnue",
+};
 
 let currentFilter = null;
 
@@ -257,8 +264,8 @@ function setFilter(type) {
   // Mettre à jour les compteurs
   updateCounters();
 
-  // Defer map animation until after DOM operations complete to prevent jitter
-  // Use double requestAnimationFrame to ensure browser has finished repainting
+  // Reporter l'animation de carte après les mises à jour DOM pour éviter les saccades.
+  // Utiliser un double requestAnimationFrame pour laisser le navigateur terminer le repaint.
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       if (currentFilter) {
@@ -362,7 +369,7 @@ function renderSignalementsList() {
         const dt = new Date(sig.timestamp).toLocaleString("fr-FR");
         meta.textContent = dt;
       } catch (e) {
-        meta.textContent = "Date inconnue";
+        meta.textContent = SUIVI_TEXT.unknownDate;
       }
     }
     card.appendChild(meta);
@@ -412,13 +419,13 @@ function updateCounters() {
 function focusSignalementOnMap(sig) {
   if (!map) {
     console.error("❌ Carte non initialisée");
-    alert("La carte n'est pas encore initialisée. Rafraîchissez la page.");
+    alert(SUIVI_TEXT.mapNotReady);
     return;
   }
 
   if (!sig) {
     console.error("❌ Signalement vide");
-    alert("Signalement invalide.");
+    alert(SUIVI_TEXT.invalidSignalement);
     return;
   }
 
@@ -432,7 +439,7 @@ function focusSignalementOnMap(sig) {
       { lat: sig.lat, lng: sig.lng, parsedLat: lat, parsedLng: lng },
     );
     alert(
-      `Ce signalement n'a pas de coordonnées GPS valides.\nAdresse: ${sig.lieu || "inconnue"}`,
+      `${SUIVI_TEXT.invalidGpsPrefix}\nAdresse: ${sig.lieu || SUIVI_TEXT.unknownAddress}`,
     );
     return;
   }
@@ -464,7 +471,7 @@ function focusFilteredSignalementsOnMap() {
 
   const carousel = document.getElementById("listeSignalements");
 
-  // Pause carousel during map animation to prevent jitter
+  // Mettre en pause le carrousel pendant l'animation de carte pour éviter les saccades.
   const wasAutoScrolling = carouselIntervalId !== null;
   if (carouselIntervalId) {
     stopInfiniteScrollSignalements();
@@ -476,7 +483,7 @@ function focusFilteredSignalementsOnMap() {
   });
 
   if (!visibleMarkers.length) {
-    // Resume only if it was running before
+    // Reprendre uniquement s'il était actif avant.
     if (wasAutoScrolling) {
       startInfiniteScrollSignalements(carousel);
     }
@@ -485,7 +492,7 @@ function focusFilteredSignalementsOnMap() {
 
   const bounds = L.latLngBounds(visibleMarkers.map((m) => m.getLatLng()));
 
-  // Resume carousel after map animation completes
+  // Reprendre le carrousel après la fin de l'animation de carte.
   map.once("moveend", () => {
     if (wasAutoScrolling) {
       startInfiniteScrollSignalements(carousel);
@@ -504,14 +511,14 @@ function focusAllSignalementsOnMap() {
 
   const carousel = document.getElementById("listeSignalements");
 
-  // Pause carousel during map animation to prevent jitter
+  // Mettre en pause le carrousel pendant l'animation de carte pour éviter les saccades.
   const wasAutoScrolling = carouselIntervalId !== null;
   if (carouselIntervalId) {
     stopInfiniteScrollSignalements();
   }
 
   if (!markers.length) {
-    // Resume only if it was running before
+    // Reprendre uniquement s'il était actif avant.
     if (wasAutoScrolling) {
       startInfiniteScrollSignalements(carousel);
     }
@@ -520,7 +527,7 @@ function focusAllSignalementsOnMap() {
 
   const bounds = L.latLngBounds(markers.map((m) => m.getLatLng()));
 
-  // Resume carousel after map animation completes
+  // Reprendre le carrousel après la fin de l'animation de carte.
   map.once("moveend", () => {
     if (wasAutoScrolling) {
       startInfiniteScrollSignalements(carousel);

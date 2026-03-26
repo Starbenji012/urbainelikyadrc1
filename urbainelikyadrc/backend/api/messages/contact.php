@@ -6,8 +6,9 @@ require_once dirname(__DIR__, 2) . '/core/bootstrap.php';
 require_once BACKEND_ROOT . '/core/response.php';
 require_once BACKEND_ROOT . '/core/request.php';
 require_once BACKEND_ROOT . '/core/validator.php';
-require_once BACKEND_ROOT . '/core/storage.php';
 require_once BACKEND_ROOT . '/core/id.php';
+require_once BACKEND_ROOT . '/core/db.php';
+require_once BACKEND_ROOT . '/core/logger.php';
 
 require_method('POST');
 $input = get_json_input();
@@ -35,7 +36,6 @@ if (!empty($errors)) {
     json_error('Validation echouee.', $errors, 422);
 }
 
-$messages = read_json_array('messages');
 $newMessage = [
     'id' => generate_id('msg'),
     'nom' => $nom,
@@ -45,9 +45,24 @@ $newMessage = [
     'timestamp' => gmdate('c'),
 ];
 
-array_unshift($messages, $newMessage);
-if (!write_json_array('messages', $messages)) {
+try {
+    $pdo = db_get_pdo();
+    $stmt = $pdo->prepare(
+        'INSERT INTO messages_contact (id_message, nom, email, sujet, message, created_at)
+         VALUES (:id_message, :nom, :email, :sujet, :message, NOW())'
+    );
+    $stmt->execute([
+        ':id_message' => $newMessage['id'],
+        ':nom' => $newMessage['nom'],
+        ':email' => $newMessage['email'],
+        ':sujet' => $newMessage['sujet'],
+        ':message' => $newMessage['message'],
+    ]);
+
+    $responseData = $newMessage;
+    $responseData['timestamp'] = gmdate('c');
+    json_ok('Message de contact enregistre.', $responseData, 201);
+} catch (Throwable $e) {
+    app_log('error', 'Contact MySQL error: ' . $e->getMessage());
     json_error('Erreur serveur pendant l envoi du message.', [], 500);
 }
-
-json_ok('Message de contact enregistre.', $newMessage, 201);

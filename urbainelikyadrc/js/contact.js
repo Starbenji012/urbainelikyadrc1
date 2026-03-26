@@ -7,6 +7,12 @@ const CONTACT_ENDPOINTS = [
   "backend/api/messages/contact.php",
 ];
 
+const CONTACT_TEXT = {
+  requiredFields: "Veuillez remplir tous les champs",
+  savedLocal: "Message enregistré en local (backend indisponible).",
+  sentSuccess: "Message envoyé avec succès !",
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   initMenuBurger();
 
@@ -25,7 +31,7 @@ async function handleContactSubmit(e) {
   const message = document.getElementById("message").value.trim();
 
   if (!nom || !email || !sujet || !message) {
-    alert("Veuillez remplir tous les champs");
+    alert(CONTACT_TEXT.requiredFields);
     return;
   }
 
@@ -35,9 +41,9 @@ async function handleContactSubmit(e) {
   if (!sent) {
     // Fallback: garder une trace locale quand le backend est indisponible.
     saveContactLocally(payload);
-    alert("Message enregistré en local (backend indisponible).");
+    alert(CONTACT_TEXT.savedLocal);
   } else {
-    alert("Message envoyé avec succès !");
+    alert(CONTACT_TEXT.sentSuccess);
   }
 
   e.target.reset();

@@ -26,6 +26,29 @@ const IDEES_DELETE_ENDPOINTS = [
   "backend/api/idees/delete.php",
 ];
 
+const IDEE_TEXT = {
+  defaultUser: "Utilisateur local",
+  photoTooLarge: "La photo dépasse 5MB.",
+  photoReadError: "Impossible de lire la photo.",
+  titleLength: "Le titre doit contenir entre 3 et 150 caractères.",
+  descriptionLength: "La description doit contenir entre 5 et 2000 caractères.",
+  invalidCategory: "Catégorie invalide.",
+  backendRefused: "Le backend a refusé la requête.",
+  mustBeConnected:
+    "Vous devez être connecté pour proposer une idée. Veuillez vous connecter d'abord.",
+  requiredFields: "Titre et description requis",
+  invalidPhoto: "Photo invalide.",
+  createdBackend: "Idée ajoutée (backend) !",
+  createdLocal: "Idée ajoutée en local (backend indisponible) !",
+  backendUnavailable: "Backend indisponible.",
+  mustLoginToView: "Connectez-vous pour voir vos idées personnelles.",
+  noIdeasForAccount: "Aucune idée pour votre compte.",
+  likeOnCommunity: "Le like se fait dans la page Communauté",
+  confirmDelete: "Supprimer ?",
+  deleteDenied: "Vous ne pouvez supprimer que vos propres idées.",
+  confirmClear: "Vider toutes les idées ?",
+};
+
 function resolveCurrentUserName() {
   const candidates = [
     localStorage.getItem("user_nom"),
@@ -36,7 +59,7 @@ function resolveCurrentUserName() {
     .map((v) => String(v || "").trim())
     .filter(Boolean);
 
-  return candidates[0] || "Utilisateur local";
+  return candidates[0] || IDEE_TEXT.defaultUser;
 }
 
 function resolveCurrentUserEmail() {
@@ -76,7 +99,7 @@ function getVisibleIdees() {
 }
 
 function getIdeeLikeCount(idee) {
-  // La page Idées affiche la valeur la plus recente entre backend et Communauté.
+  // La page Idées affiche la valeur la plus récente entre backend et Communauté.
   const key = String(idee?.id || idee?.timestamp || "");
   const communityLikes = Number(likesCommunaute[key] || 0);
   const persistedLikes = Number(idee?.likes || 0);
@@ -88,13 +111,13 @@ async function readPhotoAsDataURL(file) {
 
   const maxBytes = 5 * 1024 * 1024;
   if (file.size > maxBytes) {
-    throw new Error("La photo dépasse 5MB.");
+    throw new Error(IDEE_TEXT.photoTooLarge);
   }
 
   return await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Impossible de lire la photo."));
+    reader.onerror = () => reject(new Error(IDEE_TEXT.photoReadError));
     reader.readAsDataURL(file);
   });
 }
@@ -124,7 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function validateIdeePayload(idee) {
   if (!idee.titre || idee.titre.length < 3 || idee.titre.length > 150) {
-    return "Le titre doit contenir entre 3 et 150 caractères.";
+    return IDEE_TEXT.titleLength;
   }
 
   if (
@@ -132,7 +155,7 @@ function validateIdeePayload(idee) {
     idee.description.length < 5 ||
     idee.description.length > 2000
   ) {
-    return "La description doit contenir entre 5 et 2000 caractères.";
+    return IDEE_TEXT.descriptionLength;
   }
 
   const allowedCategories = [
@@ -144,7 +167,7 @@ function validateIdeePayload(idee) {
   ];
 
   if (!allowedCategories.includes(String(idee.categorie || "").toLowerCase())) {
-    return "Catégorie invalide.";
+    return IDEE_TEXT.invalidCategory;
   }
 
   return "";
@@ -162,11 +185,20 @@ function extractBackendErrorMessage(json) {
     return json.message;
   }
 
-  return "Le backend a refusé la requête.";
+  return IDEE_TEXT.backendRefused;
 }
 
 async function addIdee(e) {
   e.preventDefault();
+
+  // Vérifier que l'utilisateur est connecté
+  const profile = readCurrentProfile();
+  if (!profile.connected) {
+    alert(IDEE_TEXT.mustBeConnected);
+    window.location.href = "connexion.html";
+    return;
+  }
+
   const titre = document.getElementById("titre").value.trim();
   const categorie = document.getElementById("categorie").value;
   const desc = document.getElementById("description").value.trim();
@@ -177,7 +209,7 @@ async function addIdee(e) {
       : null;
 
   if (!titre || !desc) {
-    alert("Titre et description requis");
+    alert(IDEE_TEXT.requiredFields);
     return;
   }
 
@@ -185,7 +217,7 @@ async function addIdee(e) {
   try {
     photoDataUrl = await readPhotoAsDataURL(photoFile);
   } catch (error) {
-    alert(error.message || "Photo invalide.");
+    alert(error.message || IDEE_TEXT.invalidPhoto);
     return;
   }
 
@@ -218,12 +250,12 @@ async function submitIdeeWithFallback(idee, formEl) {
     localStorage.setItem("idees_page", JSON.stringify(idees));
     renderIdees();
     formEl.reset();
-    alert("Idée ajoutée (backend) !");
+    alert(IDEE_TEXT.createdBackend);
     return;
   }
 
   if (backendCreated.reachable) {
-    alert(backendCreated.message || "Le backend a refusé la requête.");
+    alert(backendCreated.message || IDEE_TEXT.backendRefused);
     return;
   }
 
@@ -231,7 +263,7 @@ async function submitIdeeWithFallback(idee, formEl) {
   localStorage.setItem("idees_page", JSON.stringify(idees));
   renderIdees();
   formEl.reset();
-  alert("Idée ajoutée en local (backend indisponible) !");
+  alert(IDEE_TEXT.createdLocal);
 }
 
 async function loadIdeesFromBackend() {
@@ -304,7 +336,7 @@ async function createIdeeToBackend(idee) {
     ok: false,
     reachable: false,
     data: null,
-    message: "Backend indisponible.",
+    message: IDEE_TEXT.backendUnavailable,
   };
 }
 
@@ -320,8 +352,7 @@ function renderIdees() {
   if (container) {
     if (!profile.connected) {
       stopInfiniteScrollIdeesPage();
-      container.innerHTML =
-        '<p style="text-align: center; padding: 40px; color: #666; grid-column: 1 / -1;">Connectez-vous pour voir vos idées personnelles.</p>';
+      container.innerHTML = `<p style="text-align: center; padding: 40px; color: #666; grid-column: 1 / -1;">${IDEE_TEXT.mustLoginToView}</p>`;
       return;
     }
 
@@ -337,7 +368,7 @@ function renderIdees() {
         <span class="categorie-badge">${idee.categorie}</span>
         <small>${new Date(idee.timestamp).toLocaleString()}</small>
         <div class="carte-actions">
-          <button class="btn-like" type="button" disabled title="Le like se fait dans la page Communauté">
+          <button class="btn-like" type="button" disabled title="${IDEE_TEXT.likeOnCommunity}">
             <i class='bx bx-heart'></i> <span class="like-count">${getIdeeLikeCount(idee)}</span>
           </button>
           <button class="btn-delete-idee" onclick="deleteIdee('${idee.id || idee.timestamp}')">Supprimer</button>
@@ -345,7 +376,7 @@ function renderIdees() {
       </div>
     `,
         )
-        .join("") || "<p>Aucune idée pour votre compte.</p>";
+        .join("") || `<p>${IDEE_TEXT.noIdeasForAccount}</p>`;
 
     setupCarouselIdeesPage();
   }
@@ -486,13 +517,13 @@ function stopInfiniteScrollIdeesPage() {
 }
 
 async function deleteIdee(idOrTimestamp) {
-  if (confirm("Supprimer ?")) {
+  if (confirm(IDEE_TEXT.confirmDelete)) {
     const target = idees.find(
       (i) => String(i.id || i.timestamp) === String(idOrTimestamp),
     );
 
     if (!target || !isOwnedByCurrentUser(target)) {
-      alert("Vous ne pouvez supprimer que vos propres idées.");
+      alert(IDEE_TEXT.deleteDenied);
       return;
     }
 
@@ -509,7 +540,7 @@ async function deleteIdee(idOrTimestamp) {
 }
 
 function clearIdees() {
-  if (confirm("Vider toutes les idées ?")) {
+  if (confirm(IDEE_TEXT.confirmClear)) {
     idees = idees.filter((idee) => !isOwnedByCurrentUser(idee));
     localStorage.setItem("idees_page", JSON.stringify(idees));
     renderIdees();

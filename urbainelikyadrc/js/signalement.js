@@ -15,6 +15,44 @@ const DRC_BOUNDS = {
   east: 31.5,
 };
 
+const ADDRESS_STATUS_TEXT = {
+  prompt: "Saisissez une adresse en RDC pour vérification.",
+  alreadyValidated: "Adresse déjà reconnue et validée.",
+  checking: "Vérification de l'adresse en cours...",
+  finalChecking: "Vérification finale de l'adresse...",
+  serviceUnavailable: "Service de géolocalisation indisponible.",
+  notFoundInDRC:
+    "Adresse inexistante sur la carte en RDC. Vérifiez l'orthographe.",
+  recognizedValidated: "Adresse reconnue et validée.",
+  recognizedAutocompleted: "Adresse reconnue et complétée automatiquement.",
+  searchingFromMap: "Recherche de l'adresse depuis la carte...",
+  outOfDRC: "Point hors RDC. Cliquez dans les limites de la RDC.",
+  approxSavedNoDetails:
+    "Adresse approximative enregistrée (adresse détaillée indisponible).",
+  approxSavedServiceDown:
+    "Adresse approximative enregistrée (service d'adresse temporairement indisponible).",
+  mapSelectedOk: "Adresse OK: sélectionnée directement depuis la carte.",
+  knownLocal: "Adresse déjà enregistrée reconnue localement.",
+  approxUsedNoMatch:
+    "Adresse approximative utilisée (adresse introuvable automatiquement).",
+  approxUsedServiceDown:
+    "Adresse détaillée indisponible, adresse approximative utilisée.",
+  notFoundOrOutOfDRC:
+    "Adresse inexistante sur la carte ou hors RDC. Vérifiez l'adresse.",
+};
+
+const SIGNALEMENT_TEXT = {
+  mustBeConnected:
+    "Vous devez être connecté pour signaler un problème. Veuillez vous connecter d'abord.",
+  requiredFields: "Titre et description requis",
+  geocodeRetry: "Impossible de vérifier l'adresse pour le moment. Réessayez.",
+  notFoundDetails:
+    "Adresse inexistante sur la carte ou hors RDC. Vérifiez rue/avenue, quartier, commune et ville.",
+  confirmDelete: "Supprimer ce signalement ?",
+  confirmClear: "Vider tous les signalements ?",
+  approximateMapAddress: "Adresse approximative: point sélectionné en RDC",
+};
+
 const FORBIDDEN_COUNTRIES = [
   "france",
   "belgique",
@@ -74,7 +112,6 @@ const FORBIDDEN_COUNTRIES = [
 let addressPreviewTimer = null;
 let previewRequestId = 0;
 let addressStatusEl = null;
-let addressChosenFromMap = false;
 let selectedMapCoords = null;
 let currentFilter = null;
 
@@ -131,13 +168,13 @@ document.addEventListener("DOMContentLoaded", () => {
   renderMap();
   loadSignalementsFromBackend();
 
-  // Soumission du formulaire
+  // Soumission du formulaire.
   const form = document.getElementById("form-signalement");
   if (form) {
     form.addEventListener("submit", addSignalement);
   }
 
-  // Vider tous les signalements
+  // Vider tous les signalements.
   const btnVider = document.getElementById("btnViderSignalements");
   if (btnVider) {
     btnVider.addEventListener("click", clearSignalements);
@@ -150,7 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   installAddressLivePreview();
   addFilterListeners();
-  setAddressStatus("info", "Saisissez une adresse en RDC pour vérification.");
+  setAddressStatus("info", ADDRESS_STATUS_TEXT.prompt);
 
   updateTotalSignalements();
 });
@@ -354,7 +391,7 @@ function showAllSignalements() {
   renderList();
   updateTotalSignalements();
 
-  // Recentrer de facon explicite sur tous les signalements visibles.
+  // Recentrer de façon explicite sur tous les signalements visibles.
   focusAllSignalementsOnMap();
 }
 
@@ -426,6 +463,16 @@ function setResolvedAddressCache(
   }
 }
 
+function isAddressMatchingResolvedCache(lieuInput, rawValue) {
+  if (!lieuInput || !lieuInput.dataset) return false;
+  if (!lieuInput.dataset.geocodeQuery) return false;
+
+  const value = normalizeText(rawValue);
+  const formatted = normalizeText(lieuInput.dataset.formattedAddress || "");
+  const query = normalizeText(lieuInput.dataset.geocodeQuery || "");
+  return Boolean(value) && (value === formatted || value === query);
+}
+
 function setAddressStatus(state, text) {
   const el = ensureAddressStatusElement();
   if (!el) return;
@@ -471,6 +518,108 @@ function validateAddressInput(rawAddress) {
   return { valid: true, normalized: normalized };
 }
 
+function tokenizeAddress(value) {
+  return normalizeText(value)
+    .split(" ")
+    .map((v) => v.trim())
+    .filter((v) => v.length >= 3);
+}
+
+function scoreAddressSimilarity(a, b) {
+  const na = normalizeText(a);
+  const nb = normalizeText(b);
+  if (!na || !nb) return 0;
+
+  if (na === nb) return 1;
+  if (na.includes(nb) || nb.includes(na)) return 0.9;
+
+  const ta = tokenizeAddress(na);
+  const tb = tokenizeAddress(nb);
+  if (!ta.length || !tb.length) return 0;
+
+  const setB = new Set(tb);
+  let common = 0;
+  ta.forEach((t) => {
+    if (setB.has(t)) common += 1;
+  });
+
+  return common / Math.max(ta.length, tb.length);
+}
+
+function findKnownAddressFromSignalements(rawAddress) {
+  const needle = String(rawAddress || "").trim();
+  if (!needle) return null;
+
+  let best = null;
+  let bestScore = 0;
+
+  for (const sig of signalements) {
+    const label = String(sig?.lieu || "").trim();
+    const lat = Number(sig?.lat);
+    const lng = Number(sig?.lng);
+
+    if (!label || !isInDRCBounds(lat, lng)) continue;
+
+    const score = scoreAddressSimilarity(label, needle);
+    if (score > bestScore) {
+      bestScore = score;
+      best = {
+        lat,
+        lng,
+        displayName: label,
+        formattedAddress: label,
+      };
+    }
+  }
+
+  // Seuil souple pour accepter une adresse déjà enregistrée malgré de petites variations.
+  return bestScore >= 0.45 ? best : null;
+}
+
+function findExactKnownAddressFromSignalements(rawAddress) {
+  const needle = normalizeText(rawAddress);
+  if (!needle) return null;
+
+  for (const sig of signalements) {
+    const label = String(sig?.lieu || "").trim();
+    const lat = Number(sig?.lat);
+    const lng = Number(sig?.lng);
+
+    if (!label || !isInDRCBounds(lat, lng)) continue;
+    if (normalizeText(label) !== needle) continue;
+
+    return {
+      lat,
+      lng,
+      displayName: label,
+      formattedAddress: label,
+    };
+  }
+
+  return null;
+}
+
+function shouldApplyAutocomplete(rawInput, formattedAddress) {
+  const input = String(rawInput || "").trim();
+  const formatted = String(formattedAddress || "").trim();
+  if (!input || !formatted) return false;
+
+  const nInput = normalizeText(input);
+  const nFormatted = normalizeText(formatted);
+  if (!nInput || !nFormatted) return false;
+  if (nInput === nFormatted) return false;
+
+  // Évite de modifier une adresse déjà complète (souvent collée).
+  const commaCount = (input.match(/,/g) || []).length;
+  if (commaCount >= 3) return false;
+
+  // Compléter seulement si la saisie ressemble déjà clairement à l'adresse résolue.
+  const similarity = scoreAddressSimilarity(input, formatted);
+  if (similarity < 0.45) return false;
+
+  return input.length < formatted.length;
+}
+
 function installAddressLivePreview() {
   const lieuInput = document.getElementById("lieu");
   if (!lieuInput || lieuInput._mapPreviewInstalled) return;
@@ -478,17 +627,14 @@ function installAddressLivePreview() {
   const runPreview = async () => {
     const value = lieuInput.value.trim();
     if (!value) {
-      setAddressStatus(
-        "info",
-        "Saisissez une adresse en RDC pour vérification.",
-      );
+      setAddressStatus("info", ADDRESS_STATUS_TEXT.prompt);
       return;
     }
 
-    const hasCachedResolvedAddress =
-      lieuInput.dataset &&
-      lieuInput.dataset.formattedAddress === value &&
-      Boolean(lieuInput.dataset.geocodeQuery);
+    const hasCachedResolvedAddress = isAddressMatchingResolvedCache(
+      lieuInput,
+      value,
+    );
     if (hasCachedResolvedAddress) {
       const cachedLat = Number.parseFloat(lieuInput.dataset.geocodeLat || "");
       const cachedLng = Number.parseFloat(lieuInput.dataset.geocodeLng || "");
@@ -497,7 +643,7 @@ function installAddressLivePreview() {
           duration: 0.7,
         });
       }
-      setAddressStatus("success", "Adresse déjà reconnue et validée.");
+      setAddressStatus("success", ADDRESS_STATUS_TEXT.alreadyValidated);
       return;
     }
 
@@ -508,36 +654,40 @@ function installAddressLivePreview() {
     }
 
     const requestId = ++previewRequestId;
-    setAddressStatus("info", "Vérification de l'adresse en cours...");
+    setAddressStatus("info", ADDRESS_STATUS_TEXT.checking);
     try {
-      const geo = await geocodeAddressInDRC(value);
+      let geo = findExactKnownAddressFromSignalements(value);
+      if (!geo) {
+        geo = await geocodeAddressInDRC(value);
+      }
       if (requestId !== previewRequestId) return;
 
       if (!geo) {
-        setAddressStatus(
-          "error",
-          "Adresse inexistante sur la carte en RDC. Vérifiez l'orthographe.",
-        );
+        // Fallback local: si cette adresse existe déjà dans les signalements, on la valide.
+        geo = findKnownAddressFromSignalements(value);
+      }
+
+      if (!geo) {
+        setAddressStatus("error", ADDRESS_STATUS_TEXT.notFoundInDRC);
         return;
       }
 
       if (!map) return;
       map.flyTo([geo.lat, geo.lng], ADDRESS_PREVIEW_ZOOM, { duration: 0.9 });
       const formatted = geo.formattedAddress || geo.displayName;
-      lieuInput.value = formatted;
-      setResolvedAddressCache(
-        lieuInput,
-        geo.displayName || value,
-        formatted,
-        geo.lat,
-        geo.lng,
-      );
+      const willAutocomplete = shouldApplyAutocomplete(value, formatted);
+      if (willAutocomplete) {
+        lieuInput.value = formatted;
+      }
+      setResolvedAddressCache(lieuInput, value, formatted, geo.lat, geo.lng);
       setAddressStatus(
         "success",
-        "Adresse reconnue et complétée automatiquement.",
+        willAutocomplete
+          ? ADDRESS_STATUS_TEXT.recognizedAutocompleted
+          : ADDRESS_STATUS_TEXT.recognizedValidated,
       );
     } catch (e) {
-      setAddressStatus("error", "Service de géolocalisation indisponible.");
+      setAddressStatus("error", ADDRESS_STATUS_TEXT.serviceUnavailable);
     }
   };
 
@@ -549,7 +699,6 @@ function installAddressLivePreview() {
   };
 
   const schedulePreviewAfterManualEdit = () => {
-    addressChosenFromMap = false;
     selectedMapCoords = null;
     clearResolvedAddressCache(lieuInput);
     schedulePreview();
@@ -667,7 +816,7 @@ async function fetchNominatimJson(url, maxAttempts = 3) {
       break;
     }
 
-    // Backoff progressif simple pour eviter le rate-limit.
+    // Backoff progressif simple pour éviter le rate-limit.
     await wait(500 * attempt);
   }
 
@@ -724,7 +873,7 @@ async function reverseGeocodeInDRC(lat, lng) {
   const row = await fetchNominatimJson(url, 3);
   if (!row || typeof row !== "object") return null;
 
-  // On accepte la reponse si le point clique est deja valide en RDC (controle fait avant l'appel).
+  // On accepte la réponse si le point cliqué est déjà valide en RDC (contrôle fait avant l'appel).
   const hasAddressData = row.address || row.display_name;
   if (!hasAddressData) return null;
 
@@ -741,7 +890,7 @@ function initMap() {
     attribution: "© OpenStreetMap contributors",
   }).addTo(map);
 
-  // Click to set location
+  // Cliquer sur la carte pour sélectionner la position.
   map.on("click", async function (e) {
     const lieuInput = document.getElementById("lieu");
     if (!lieuInput) return;
@@ -749,20 +898,15 @@ function initMap() {
     selectedMapCoords = { lat: e.latlng.lat, lng: e.latlng.lng };
 
     if (!isInDRCBounds(e.latlng.lat, e.latlng.lng)) {
-      setAddressStatus(
-        "error",
-        "Point hors RDC. Cliquez dans les limites de la RDC.",
-      );
-      addressChosenFromMap = false;
+      setAddressStatus("error", ADDRESS_STATUS_TEXT.outOfDRC);
       return;
     }
 
-    setAddressStatus("info", "Recherche de l'adresse depuis la carte...");
+    setAddressStatus("info", ADDRESS_STATUS_TEXT.searchingFromMap);
     try {
       const reverse = await reverseGeocodeInDRC(e.latlng.lat, e.latlng.lng);
       if (!reverse || !reverse.formattedAddress) {
-        const fallbackAddress =
-          "Adresse approximative: point sélectionné en RDC";
+        const fallbackAddress = SIGNALEMENT_TEXT.approximateMapAddress;
         lieuInput.value = fallbackAddress;
         setResolvedAddressCache(
           lieuInput,
@@ -771,11 +915,7 @@ function initMap() {
           e.latlng.lat,
           e.latlng.lng,
         );
-        addressChosenFromMap = true;
-        setAddressStatus(
-          "info",
-          "Adresse approximative enregistrée (adresse détaillée indisponible).",
-        );
+        setAddressStatus("info", ADDRESS_STATUS_TEXT.approxSavedNoDetails);
         return;
       }
 
@@ -787,13 +927,9 @@ function initMap() {
         e.latlng.lat,
         e.latlng.lng,
       );
-      addressChosenFromMap = true;
-      setAddressStatus(
-        "success",
-        "Adresse OK: sélectionnée directement depuis la carte.",
-      );
+      setAddressStatus("success", ADDRESS_STATUS_TEXT.mapSelectedOk);
     } catch (err) {
-      const fallbackAddress = "Adresse approximative: point sélectionné en RDC";
+      const fallbackAddress = SIGNALEMENT_TEXT.approximateMapAddress;
       lieuInput.value = fallbackAddress;
       setResolvedAddressCache(
         lieuInput,
@@ -802,11 +938,7 @@ function initMap() {
         e.latlng.lat,
         e.latlng.lng,
       );
-      addressChosenFromMap = true;
-      setAddressStatus(
-        "info",
-        "Adresse approximative enregistrée (service d'adresse temporairement indisponible).",
-      );
+      setAddressStatus("info", ADDRESS_STATUS_TEXT.approxSavedServiceDown);
     }
   });
 
@@ -815,6 +947,15 @@ function initMap() {
 
 async function addSignalement(e) {
   e.preventDefault();
+
+  // Vérifier que l'utilisateur est connecté.
+  const profile = readCurrentProfile();
+  if (!profile.connected) {
+    alert(SIGNALEMENT_TEXT.mustBeConnected);
+    window.location.href = "connexion.html";
+    return;
+  }
+
   const titre = document.getElementById("titre-probleme").value.trim();
   const type = document.getElementById("type-probleme").value;
   const desc = document.getElementById("description").value.trim();
@@ -827,7 +968,7 @@ async function addSignalement(e) {
       : null;
 
   if (!titre || !desc) {
-    alert("Titre et description requis");
+    alert(SIGNALEMENT_TEXT.requiredFields);
     return;
   }
 
@@ -846,16 +987,45 @@ async function addSignalement(e) {
   }
 
   let geo = null;
+  const exactKnownAddress = findExactKnownAddressFromSignalements(lieu);
+  const knownAddress = findKnownAddressFromSignalements(lieu);
+
+  const hasCachedResolvedAddress = isAddressMatchingResolvedCache(
+    lieuInput,
+    lieu,
+  );
+  if (hasCachedResolvedAddress) {
+    const cachedLat = Number.parseFloat(lieuInput.dataset.geocodeLat || "");
+    const cachedLng = Number.parseFloat(lieuInput.dataset.geocodeLng || "");
+    if (isInDRCBounds(cachedLat, cachedLng)) {
+      geo = {
+        lat: cachedLat,
+        lng: cachedLng,
+        displayName: lieuInput.dataset.geocodeQuery || lieu,
+        formattedAddress:
+          lieuInput.dataset.formattedAddress ||
+          lieuInput.dataset.geocodeQuery ||
+          lieu,
+      };
+    }
+  }
+
+  if (!geo && !hasValidMapSelection && exactKnownAddress) {
+    geo = exactKnownAddress;
+  }
+
   const queryForGeocode =
+    hasCachedResolvedAddress &&
     lieuInput &&
     lieuInput.dataset &&
-    lieuInput.dataset.formattedAddress === lieu &&
     lieuInput.dataset.geocodeQuery
       ? lieuInput.dataset.geocodeQuery
       : lieu;
-  setAddressStatus("info", "Vérification finale de l'adresse...");
+  setAddressStatus("info", ADDRESS_STATUS_TEXT.finalChecking);
   try {
-    geo = await geocodeAddressInDRC(queryForGeocode);
+    if (!geo) {
+      geo = await geocodeAddressInDRC(queryForGeocode);
+    }
   } catch (error) {
     console.error(error);
     if (hasValidMapSelection) {
@@ -865,13 +1035,13 @@ async function addSignalement(e) {
         displayName: lieu || "Point sélectionné sur la carte (RDC)",
         formattedAddress: lieu || "Point sélectionné sur la carte (RDC)",
       };
-      setAddressStatus(
-        "info",
-        "Adresse détaillée indisponible, adresse approximative utilisée.",
-      );
+      setAddressStatus("info", ADDRESS_STATUS_TEXT.approxUsedServiceDown);
+    } else if (knownAddress) {
+      geo = knownAddress;
+      setAddressStatus("info", ADDRESS_STATUS_TEXT.knownLocal);
     } else {
-      setAddressStatus("error", "Service de géolocalisation indisponible.");
-      alert("Impossible de vérifier l'adresse pour le moment. Réessayez.");
+      setAddressStatus("error", ADDRESS_STATUS_TEXT.serviceUnavailable);
+      alert(SIGNALEMENT_TEXT.geocodeRetry);
       return;
     }
   }
@@ -884,41 +1054,25 @@ async function addSignalement(e) {
         displayName: lieu || "Point sélectionné sur la carte (RDC)",
         formattedAddress: lieu || "Point sélectionné sur la carte (RDC)",
       };
-      setAddressStatus(
-        "info",
-        "Adresse approximative utilisée (adresse introuvable automatiquement).",
-      );
+      setAddressStatus("info", ADDRESS_STATUS_TEXT.approxUsedNoMatch);
+    } else if (knownAddress) {
+      geo = knownAddress;
+      setAddressStatus("info", ADDRESS_STATUS_TEXT.knownLocal);
     } else {
-      setAddressStatus(
-        "error",
-        "Adresse inexistante sur la carte ou hors RDC. Vérifiez l'adresse.",
-      );
-      alert(
-        "Adresse inexistante sur la carte ou hors RDC. Vérifiez rue/avenue, quartier, commune et ville.",
-      );
+      setAddressStatus("error", ADDRESS_STATUS_TEXT.notFoundOrOutOfDRC);
+      alert(SIGNALEMENT_TEXT.notFoundDetails);
       return;
     }
   }
 
   if (hasValidMapSelection) {
-    setAddressStatus(
-      "success",
-      "Adresse OK: sélectionnée directement depuis la carte.",
-    );
+    setAddressStatus("success", ADDRESS_STATUS_TEXT.mapSelectedOk);
   } else {
     if (lieuInput) {
       const formatted = geo.formattedAddress || geo.displayName || lieu;
-      lieuInput.value = formatted;
-      setResolvedAddressCache(
-        lieuInput,
-        geo.displayName || queryForGeocode,
-        formatted,
-      );
+      setResolvedAddressCache(lieuInput, lieu, formatted, geo.lat, geo.lng);
     }
-    setAddressStatus(
-      "success",
-      "Adresse reconnue et complétée automatiquement.",
-    );
+    setAddressStatus("success", ADDRESS_STATUS_TEXT.recognizedValidated);
   }
 
   let photoDataUrl = "";
@@ -960,18 +1114,17 @@ async function addSignalement(e) {
   renderMap();
   updateTotalSignalements();
 
-  // Centrer la carte sur le nouveau signalement
+  // Centrer la carte sur le nouveau signalement.
   if (map) {
     map.flyTo([finalSig.lat, finalSig.lng], 16, { duration: 1.2 });
   }
   setAddressStatus("success", `Signalement enregistré: ${geo.displayName}`);
 
   e.target.reset();
-  addressChosenFromMap = false;
   document.getElementById("lieu").value = "";
   clearResolvedAddressCache(lieuInput);
   window.setTimeout(() => {
-    setAddressStatus("info", "Saisissez une adresse en RDC pour vérification.");
+    setAddressStatus("info", ADDRESS_STATUS_TEXT.prompt);
   }, 900);
   alert(
     backendSig.ok
@@ -1123,7 +1276,10 @@ function setupCarouselSignalementsPage() {
     btnPrev.addEventListener("click", () => {
       pauseUntil = Date.now() + MANUAL_PAUSE_MS;
       carousel.scrollBy({ left: -step, behavior: "smooth" });
-      setTimeout(() => normalizeInfinitePositionSignalementsPage(carousel), 380);
+      setTimeout(
+        () => normalizeInfinitePositionSignalementsPage(carousel),
+        380,
+      );
     });
     btnPrev.dataset.bound = "1";
   }
@@ -1132,7 +1288,10 @@ function setupCarouselSignalementsPage() {
     btnNext.addEventListener("click", () => {
       pauseUntil = Date.now() + MANUAL_PAUSE_MS;
       carousel.scrollBy({ left: step, behavior: "smooth" });
-      setTimeout(() => normalizeInfinitePositionSignalementsPage(carousel), 380);
+      setTimeout(
+        () => normalizeInfinitePositionSignalementsPage(carousel),
+        380,
+      );
     });
     btnNext.dataset.bound = "1";
   }
@@ -1294,7 +1453,7 @@ function focusAllSignalementsOnMap() {
 }
 
 function renderMap() {
-  // Clear existing markers
+  // Nettoyer les marqueurs existants.
   markers.forEach((m) => map.removeLayer(m));
   markers = [];
   markerByTimestamp.clear();
@@ -1341,7 +1500,7 @@ function renderMap() {
 }
 
 async function deleteSignalement(idOrTimestamp) {
-  if (confirm("Supprimer ce signalement ?")) {
+  if (confirm(SIGNALEMENT_TEXT.confirmDelete)) {
     const target = signalements.find(
       (s) => String(s.id || s.timestamp) === String(idOrTimestamp),
     );
@@ -1360,7 +1519,7 @@ async function deleteSignalement(idOrTimestamp) {
 }
 
 function clearSignalements() {
-  if (confirm("Vider tous les signalements ?")) {
+  if (confirm(SIGNALEMENT_TEXT.confirmClear)) {
     // En page personnelle: on ne retire que les signalements du compte connecté.
     signalements = signalements.filter((sig) => !isOwnedByCurrentUser(sig));
     localStorage.setItem("signalements", JSON.stringify(signalements));

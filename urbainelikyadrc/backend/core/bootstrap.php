@@ -26,5 +26,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // Racine du backend pour inclure facilement d'autres fichiers.
 define('BACKEND_ROOT', dirname(__DIR__));
-define('DATA_DIR', BACKEND_ROOT . DIRECTORY_SEPARATOR . 'data');
 define('LOG_FILE', BACKEND_ROOT . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR . 'app.log');

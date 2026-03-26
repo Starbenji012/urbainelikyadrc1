@@ -6,33 +6,68 @@ require_once dirname(__DIR__, 2) . '/core/bootstrap.php';
 require_once BACKEND_ROOT . '/core/response.php';
 require_once BACKEND_ROOT . '/core/request.php';
 require_once BACKEND_ROOT . '/core/validator.php';
-require_once BACKEND_ROOT . '/core/storage.php';
 require_once BACKEND_ROOT . '/core/id.php';
+require_once BACKEND_ROOT . '/core/auth.php';
+require_once BACKEND_ROOT . '/core/db.php';
+require_once BACKEND_ROOT . '/core/uploads.php';
+require_once BACKEND_ROOT . '/core/logger.php';
 
 $method = strtoupper($_SERVER['REQUEST_METHOD']);
 
 if ($method === 'GET') {
-    $idees = read_json_array('idees');
-    $migr = migrate_rows_photo_to_upload_path($idees, 'idees', 'ide');
-    if (!empty($migr['changed'])) {
-        $idees = $migr['rows'];
-        write_json_array('idees', $idees);
+    try {
+        $pdo = db_get_pdo();
+        $stmt = $pdo->query(
+            'SELECT i.id_idee AS id,
+                    i.id_utilisateur AS user_id,
+                    u.nom AS user_nom_nom,
+                    u.prenom AS user_nom_prenom,
+                    u.email AS user_email,
+                    i.titre,
+                    i.categorie,
+                    i.description,
+                    i.photo_path AS photo,
+                    COUNT(li.id_like) AS likes,
+                          DATE_FORMAT(i.created_at, \'%Y-%m-%dT%H:%i:%sZ\') AS timestamp
+             FROM idees i
+             LEFT JOIN utilisateurs u ON u.id_utilisateur = i.id_utilisateur
+             LEFT JOIN likes_idee li ON li.id_idee = i.id_idee
+             GROUP BY i.id_idee, i.id_utilisateur, u.nom, u.prenom, u.email, i.titre, i.categorie, i.description, i.photo_path, i.created_at
+             ORDER BY i.created_at DESC'
+        );
+        $rows = $stmt->fetchAll();
+        foreach ($rows as &$row) {
+            $row['likes'] = (int)($row['likes'] ?? 0);
+            $row['user_nom'] = trim(
+                (string)($row['user_nom_prenom'] ?? '') . ' ' . (string)($row['user_nom_nom'] ?? '')
+            );
+            if ($row['user_nom'] === '') {
+                $row['user_nom'] = 'Utilisateur local';
+            }
+            unset($row['user_nom_nom'], $row['user_nom_prenom']);
+        }
+        unset($row);
+        json_response($rows, 200);
+    } catch (Throwable $e) {
+        app_log('error', 'Idees GET MySQL error: ' . $e->getMessage());
+        json_error('Erreur serveur pendant la lecture des idees.', [], 500);
     }
-    json_response($idees, 200);
 }
 
 if ($method !== 'POST') {
     json_error('Methode HTTP non autorisee.', [], 405);
 }
 
+$authUser = require_auth_user();
+
 $input = get_json_input();
 $titre = as_clean_string($input['titre'] ?? '');
 $categorie = strtolower(as_clean_string($input['categorie'] ?? 'autre'));
 $description = as_clean_string($input['description'] ?? '');
 $photo = as_clean_string($input['photo'] ?? '');
-$userId = as_clean_string($input['user_id'] ?? '');
-$userNom = as_clean_string($input['user_nom'] ?? 'Utilisateur local');
-$userEmail = strtolower(as_clean_string($input['user_email'] ?? ''));
+$userId = as_clean_string($input['user_id'] ?? (string)($authUser['id'] ?? ''));
+$userNom = as_clean_string($input['user_nom'] ?? trim((string)(($authUser['nom'] ?? '') . ' ' . ($authUser['prenom'] ?? ''))));
+$userEmail = strtolower(as_clean_string($input['user_email'] ?? (string)($authUser['email'] ?? '')));
 
 $allowedCategories = ['infrastructure', 'environnement', 'services-publics', 'transport', 'autre'];
 $errors = [];
@@ -56,13 +91,6 @@ $photoPath = persist_data_url_image($photo, 'idees', $ideeId);
 if ($photoPath === null) {
     json_error('Photo invalide. Format accepte: png, jpg, webp, gif (max 5MB).', ['photo' => 'Image invalide.'], 422);
 }
-
-$idees = read_json_array('idees');
-$migr = migrate_rows_photo_to_upload_path($idees, 'idees', 'ide');
-if (!empty($migr['changed'])) {
-    $idees = $migr['rows'];
-    write_json_array('idees', $idees);
-}
 $newIdee = [
     'id' => $ideeId,
     'user_id' => $userId !== '' ? $userId : null,
@@ -76,9 +104,23 @@ $newIdee = [
     'timestamp' => gmdate('c'),
 ];
 
-array_unshift($idees, $newIdee);
-if (!write_json_array('idees', $idees)) {
+try {
+    $pdo = db_get_pdo();
+    $stmt = $pdo->prepare(
+        'INSERT INTO idees (id_idee, id_utilisateur, titre, categorie, description, photo_path, created_at)
+         VALUES (:id, :user_id, :titre, :categorie, :description, :photo, NOW())'
+    );
+    $stmt->execute([
+        ':id' => $newIdee['id'],
+        ':user_id' => $newIdee['user_id'],
+        ':titre' => $newIdee['titre'],
+        ':categorie' => $newIdee['categorie'],
+        ':description' => $newIdee['description'],
+        ':photo' => $newIdee['photo'] !== '' ? $newIdee['photo'] : null,
+    ]);
+
+    json_ok('Idee enregistree.', $newIdee, 201);
+} catch (Throwable $e) {
+    app_log('error', 'Idees POST MySQL error: ' . $e->getMessage());
     json_error('Erreur serveur pendant la creation de l idee.', [], 500);
 }
-
-json_ok('Idee enregistree.', $newIdee, 201);

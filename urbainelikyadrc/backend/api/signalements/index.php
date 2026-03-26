@@ -6,24 +6,59 @@ require_once dirname(__DIR__, 2) . '/core/bootstrap.php';
 require_once BACKEND_ROOT . '/core/response.php';
 require_once BACKEND_ROOT . '/core/request.php';
 require_once BACKEND_ROOT . '/core/validator.php';
-require_once BACKEND_ROOT . '/core/storage.php';
 require_once BACKEND_ROOT . '/core/id.php';
+require_once BACKEND_ROOT . '/core/auth.php';
+require_once BACKEND_ROOT . '/core/db.php';
+require_once BACKEND_ROOT . '/core/uploads.php';
+require_once BACKEND_ROOT . '/core/logger.php';
 
 $method = strtoupper($_SERVER['REQUEST_METHOD']);
 
 if ($method === 'GET') {
-    $signalements = read_json_array('signalements');
-    $migr = migrate_rows_photo_to_upload_path($signalements, 'signalements', 'sig');
-    if (!empty($migr['changed'])) {
-        $signalements = $migr['rows'];
-        write_json_array('signalements', $signalements);
+    try {
+        $pdo = db_get_pdo();
+        $stmt = $pdo->query(
+            'SELECT s.id_signalement AS id,
+                    s.id_utilisateur AS user_id,
+                    u.nom AS user_nom_nom,
+                    u.prenom AS user_nom_prenom,
+                    u.email AS user_email,
+                    s.titre,
+                    s.type,
+                    s.description,
+                    s.lieu,
+                    CAST(s.latitude AS DOUBLE) AS lat,
+                    CAST(s.longitude AS DOUBLE) AS lng,
+                    s.photo_path AS photo,
+                    s.status,
+                    DATE_FORMAT(s.created_at, \'%Y-%m-%dT%H:%i:%sZ\') AS timestamp
+             FROM signalements s
+             LEFT JOIN utilisateurs u ON u.id_utilisateur = s.id_utilisateur
+             ORDER BY s.created_at DESC'
+        );
+        $rows = $stmt->fetchAll();
+        foreach ($rows as &$row) {
+            $row['user_nom'] = trim(
+                (string)($row['user_nom_prenom'] ?? '') . ' ' . (string)($row['user_nom_nom'] ?? '')
+            );
+            if ($row['user_nom'] === '') {
+                $row['user_nom'] = 'Utilisateur local';
+            }
+            unset($row['user_nom_nom'], $row['user_nom_prenom']);
+        }
+        unset($row);
+        json_response($rows, 200);
+    } catch (Throwable $e) {
+        app_log('error', 'Signalements GET MySQL error: ' . $e->getMessage());
+        json_error('Erreur serveur pendant la lecture des signalements.', [], 500);
     }
-    json_response($signalements, 200);
 }
 
 if ($method !== 'POST') {
     json_error('Methode HTTP non autorisee.', [], 405);
 }
+
+$authUser = require_auth_user();
 
 $input = get_json_input();
 
@@ -32,8 +67,8 @@ $type = strtolower(as_clean_string($input['type'] ?? ($input['type-probleme'] ??
 $description = as_clean_string($input['description'] ?? '');
 $lieu = as_clean_string($input['lieu'] ?? '');
 $photo = as_clean_string($input['photo'] ?? '');
-$userNom = as_clean_string($input['user_nom'] ?? 'Utilisateur local');
-$userEmail = strtolower(as_clean_string($input['user_email'] ?? ''));
+$userNom = as_clean_string($input['user_nom'] ?? trim((string)(($authUser['nom'] ?? '') . ' ' . ($authUser['prenom'] ?? ''))));
+$userEmail = strtolower(as_clean_string($input['user_email'] ?? (string)($authUser['email'] ?? '')));
 $latRaw = $input['lat'] ?? null;
 $lngRaw = $input['lng'] ?? null;
 $lat = is_numeric($latRaw) ? (float)$latRaw : null;
@@ -70,16 +105,9 @@ if ($photoPath === null) {
     json_error('Photo invalide. Format accepte: png, jpg, webp, gif (max 5MB).', ['photo' => 'Image invalide.'], 422);
 }
 
-$signalements = read_json_array('signalements');
-$migr = migrate_rows_photo_to_upload_path($signalements, 'signalements', 'sig');
-if (!empty($migr['changed'])) {
-    $signalements = $migr['rows'];
-    write_json_array('signalements', $signalements);
-}
-
 $newSignalement = [
     'id' => $signalementId,
-    'user_id' => null,
+    'user_id' => (string)($authUser['id'] ?? ''),
     'user_nom' => $userNom,
     'user_email' => $userEmail !== '' ? $userEmail : null,
     'titre' => $titre,
@@ -93,9 +121,27 @@ $newSignalement = [
     'timestamp' => gmdate('c'),
 ];
 
-array_unshift($signalements, $newSignalement);
-if (!write_json_array('signalements', $signalements)) {
+try {
+    $pdo = db_get_pdo();
+    $stmt = $pdo->prepare(
+        'INSERT INTO signalements (id_signalement, id_utilisateur, titre, type, description, lieu, latitude, longitude, photo_path, status, created_at)
+         VALUES (:id, :user_id, :titre, :type, :description, :lieu, :lat, :lng, :photo, :status, NOW())'
+    );
+    $stmt->execute([
+        ':id' => $newSignalement['id'],
+        ':user_id' => $newSignalement['user_id'],
+        ':titre' => $newSignalement['titre'],
+        ':type' => $newSignalement['type'],
+        ':description' => $newSignalement['description'],
+        ':lieu' => $newSignalement['lieu'],
+        ':lat' => $newSignalement['lat'],
+        ':lng' => $newSignalement['lng'],
+        ':photo' => $newSignalement['photo'] !== '' ? $newSignalement['photo'] : null,
+        ':status' => $newSignalement['status'],
+    ]);
+
+    json_ok('Signalement enregistre.', $newSignalement, 201);
+} catch (Throwable $e) {
+    app_log('error', 'Signalements POST MySQL error: ' . $e->getMessage());
     json_error('Erreur serveur pendant la creation du signalement.', [], 500);
 }
-
-json_ok('Signalement enregistre.', $newSignalement, 201);

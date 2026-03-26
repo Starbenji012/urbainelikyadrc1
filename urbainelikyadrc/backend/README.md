@@ -1,4 +1,7 @@
-# Backend PHP (sans framework) + JSON (base de test)
+# Backend PHP (sans framework) - MySQL pur
+
+> Mise a jour (mars 2026): le backend runtime n'utilise plus `core/storage.php` ni les lectures/ecritures JSON.
+> Les fichiers `backend/data/*.json` sont conserves uniquement comme archives de migration.
 
 Ce document propose une structure backend claire pour ton projet UrbainElikyaDRC, en respectant tes contraintes:
 
@@ -227,6 +230,54 @@ ou en erreur:
 - interdire execution dans `uploads/` (config serveur)
 - ecriture JSON avec `flock()` pour eviter corruption concurrente
 
+### 5.3b Protection Double Couche d'Authentification
+
+**Qu'est-ce que c'est ?**
+
+La "protection double couche" signifie qu'une meme protection est appliquee a deux niveaux:
+
+- **Niveau 1 (Frontend)**: Verification JavaScript avant envoyer la donnee
+- **Niveau 2 (Backend)**: Verification PHP en recevant la donnee
+
+**Pourquoi ?**
+
+- **Frontend**: Empeche les clics inutiles, redirige vite l'utilisateur
+- **Backend**: Refuse les requetes "piratees" ou envoyees directement sans passer par le frontend
+
+**Exemple concret: Proposer une Idee**
+
+#### Avant la protection (non securise)
+
+```
+Non authentifie -> Clique "Soumettre" -> Formulaire s'envoie
+-> Backend accepte (pas de verification) -> Idee creee par un faux utilisateur
+```
+
+#### Avec protection double couche (securise)
+
+```
+Non authentifie -> Clique "Soumettre"
+-> NIVEAU 1: Frontend verifie `localStorage.auth_connected`
+  Si non: alert "Connectez-vous d'abord" + redirection vers connexion.html
+  Si oui: Continue -> Envoie la requete
+-> NIVEAU 2: Backend appelle `require_auth_user()`
+  Si pas connecte: Retourne erreur 401 "Authentification requise"
+  Si connecte: Continue -> Cree l'idee
+```
+
+**Fichiers concernes:**
+
+- Frontend: `js/idees.js` (fonction `addIdee`) et `js/signalement.js` (fonction `addSignalement`)
+  - Verificat: `const profile = readCurrentProfile(); if (!profile.connected) { alert(...) }`
+- Backend: `backend/api/idees/index.php` et `backend/api/signalements/index.php`
+  - Verificat: `require_auth_user()` qui lit `$_SESSION['auth_user']`
+
+**Benefices:**
+
+1. **Meilleure UX**: L'utilisateur sait tout de suite qu'il doit se connecter
+2. **Securite**: Les requetes pirateees sont bloquees au backend aussi
+3. **Fiabilite**: Si le JavaScript est desactive chez l'utilisateur, le PHP bloque quand meme
+
 ### 5.4 Concurrence sur JSON
 
 Comme JSON n'est pas une vraie base transactionnelle:
@@ -235,7 +286,53 @@ Comme JSON n'est pas une vraie base transactionnelle:
 - faire des sauvegardes dans `data/_archive/`
 - journaliser les erreurs dans `logs/app.log`
 
-## 6) Mapping avec tes pages actuelles
+## 6) Authentification et Sessions
+
+### 6.1 Comment fonctionnent les sessions PHP
+
+Quand un utilisateur se connecte (login):
+
+```php
+$_SESSION['auth_user'] = ['id' => 'usr_...', 'email' => 'test@example.com', ...];
+```
+
+Cette donnee reste en memoire du serveur tant que:
+
+- L'utilisateur n'a pas fait logout
+- La session n'a pas expire (par defaut 24 min en PHP)
+
+Pour verifier si quelqu'un est connecte:
+
+```php
+$user = $_SESSION['auth_user'] ?? null;
+if (!is_array($user)) {
+  // Pas connecte
+}
+```
+
+### 6.2 La fonction `require_auth_user()`
+
+Elle est dans `backend/core/auth.php` et fait:
+
+```php
+function require_auth_user(): array
+{
+    $user = $_SESSION['auth_user'] ?? null;
+    if (!is_array($user)) {
+        json_error('Authentification requise.', [], 401);
+    }
+    return $user;
+}
+```
+
+Explique: Si `$_SESSION['auth_user']` n'existe pas ou n'est pas un array, on envoie une erreur 401 au client et on arrete tout.
+
+C'est utilise dans les endpoints sensibles:
+
+- `api/idees/index.php` (POST) - on appelle `require_auth_user()` avant de creer une idee
+- `api/signalements/index.php` (POST) - on appelle `require_auth_user()` avant de creer un signalement
+
+## 7) Mapping avec tes pages actuelles
 
 - `html/inscription.html` + `js/inscription.js` -> `auth/register.php`
 - `html/connexion.html` + `js/connexion.js` -> `auth/login.php`
@@ -244,7 +341,7 @@ Comme JSON n'est pas une vraie base transactionnelle:
 - `html/contact.html` + `js/contact.js` -> `messages/contact.php`
 - `html/suivi.html` + `js/suivi.js` -> `signalements/index.php` (GET)
 
-## 7) Convention de migration future vers vraie DB
+## 8) Convention de migration future vers vraie DB
 
 Quand tu passeras de JSON vers MySQL/PostgreSQL:
 
@@ -255,7 +352,7 @@ Quand tu passeras de JSON vers MySQL/PostgreSQL:
 
 Ainsi, le frontend change tres peu.
 
-## 8) Plan de mise en place (sans execution pour l'instant)
+## 9) Plan de mise en place (sans execution pour l'instant)
 
 1. Creer les dossiers `api`, `core`, `data`, `uploads`, `logs`.
 2. Initialiser les fichiers JSON avec `[]`.
@@ -273,7 +370,7 @@ Statut actuel du projet:
 - Les helpers dans `core/` sont deja en place.
 - Les fichiers JSON de test sont initialises.
 
-## 9) Limites connues de JSON (important)
+## 10) Limites connues de JSON (important)
 
 JSON est tres bien pour test/prototype, mais limite si:
 
@@ -283,7 +380,7 @@ JSON est tres bien pour test/prototype, mais limite si:
 
 Conclusion: JSON est parfait pour ta phase actuelle de test, mais prevois une migration SQL des que l'usage reel augmente.
 
-## 10) Guide debutant (ordre simple pour apprendre)
+## 11) Guide debutant (ordre simple pour apprendre)
 
 Si tu debutes en PHP, lis les fichiers dans cet ordre:
 
@@ -424,6 +521,256 @@ Astuce pratique:
 - Statut HTTP 401: non authentifie (pas connecte).
 - Statut HTTP 404: ressource introuvable.
 - Statut HTTP 422: donnees invalides (erreur de validation).
+
+## 16) Migration MySQL avec methode Merise (MCD, MLD, MPD)
+
+Objectif: passer de la base JSON vers une base relationnelle MySQL en gardant la logique actuelle de ton projet.
+
+### 16.1 MCD (Modele Conceptuel de Donnees)
+
+Entites principales:
+
+- UTILISATEUR
+  - id_utilisateur
+  - nom
+  - prenom
+  - surnom
+  - email
+  - mot_de_passe_hash
+  - role
+  - created_at
+
+- SIGNALEMENT
+  - id_signalement
+  - titre
+  - type
+  - description
+  - lieu
+  - latitude
+  - longitude
+  - photo_path
+  - status
+  - created_at
+
+- IDEE
+  - id_idee
+  - titre
+  - categorie
+  - description
+  - photo_path
+  - created_at
+
+- LIKE_IDEE
+  - id_like
+  - created_at
+
+- MESSAGE_CONTACT
+  - id_message
+  - nom
+  - email
+  - sujet
+  - message
+  - created_at
+
+Associations + cardinalites:
+
+- UTILISATEUR (0,N) -- "cree" -- (1,1) SIGNALEMENT
+- UTILISATEUR (0,N) -- "propose" -- (1,1) IDEE
+- UTILISATEUR (0,N) -- "like" -- (1,1) LIKE_IDEE -- (1,1) IDEE (0,N)
+- MESSAGE_CONTACT est independante (pas d'authentification obligatoire)
+
+Remarque: le champ numerique `likes` dans le JSON est remplace par la table `LIKE_IDEE` pour eviter les doublons et tracer qui a aime quoi.
+
+### 16.2 MLD (Modele Logique de Donnees)
+
+Relations:
+
+- UTILISATEUR(
+  id_utilisateur PK,
+  nom,
+  prenom,
+  surnom,
+  email UQ,
+  mot_de_passe_hash,
+  role,
+  created_at
+  )
+
+- SIGNALEMENT(
+  id_signalement PK,
+  id_utilisateur FK -> UTILISATEUR.id_utilisateur,
+  titre,
+  type,
+  description,
+  lieu,
+  latitude,
+  longitude,
+  photo_path,
+  status,
+  created_at
+  )
+
+- IDEE(
+  id_idee PK,
+  id_utilisateur FK -> UTILISATEUR.id_utilisateur,
+  titre,
+  categorie,
+  description,
+  photo_path,
+  created_at
+  )
+
+- LIKE_IDEE(
+  id_like PK,
+  id_idee FK -> IDEE.id_idee,
+  id_utilisateur FK -> UTILISATEUR.id_utilisateur,
+  created_at,
+  UQ(id_idee, id_utilisateur)
+  )
+
+- MESSAGE_CONTACT(
+  id_message PK,
+  nom,
+  email,
+  sujet,
+  message,
+  created_at
+  )
+
+### 16.3 MPD MySQL (script SQL complet)
+
+```sql
+CREATE DATABASE IF NOT EXISTS urbainelikya_drc
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+USE urbainelikya_drc;
+
+CREATE TABLE IF NOT EXISTS utilisateurs (
+  id_utilisateur VARCHAR(50) PRIMARY KEY,
+  nom VARCHAR(100) NOT NULL,
+  prenom VARCHAR(100) NOT NULL,
+  surnom VARCHAR(100) NULL,
+  email VARCHAR(190) NOT NULL,
+  mot_de_passe_hash VARCHAR(255) NOT NULL,
+  role ENUM('citoyen', 'admin') NOT NULL DEFAULT 'citoyen',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_utilisateurs_email (email)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS signalements (
+  id_signalement VARCHAR(50) PRIMARY KEY,
+  id_utilisateur VARCHAR(50) NOT NULL,
+  titre VARCHAR(150) NOT NULL,
+  type ENUM('voirie', 'eau', 'electricite', 'insecurite', 'dechet') NOT NULL,
+  description TEXT NOT NULL,
+  lieu VARCHAR(255) NOT NULL,
+  latitude DECIMAL(10,7) NOT NULL,
+  longitude DECIMAL(10,7) NOT NULL,
+  photo_path VARCHAR(255) NULL,
+  status ENUM('nouveau', 'en_cours', 'resolu') NOT NULL DEFAULT 'nouveau',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_signalements_utilisateur
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateurs(id_utilisateur)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  KEY idx_signalements_status_created (status, created_at),
+  KEY idx_signalements_type (type)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS idees (
+  id_idee VARCHAR(50) PRIMARY KEY,
+  id_utilisateur VARCHAR(50) NOT NULL,
+  titre VARCHAR(150) NOT NULL,
+  categorie ENUM('infrastructure', 'environnement', 'services-publics', 'transport', 'autre') NOT NULL,
+  description TEXT NOT NULL,
+  photo_path VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_idees_utilisateur
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateurs(id_utilisateur)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  KEY idx_idees_categorie_created (categorie, created_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS likes_idee (
+  id_like BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  id_idee VARCHAR(50) NOT NULL,
+  id_utilisateur VARCHAR(50) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_likes_idee_idee
+    FOREIGN KEY (id_idee) REFERENCES idees(id_idee)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_likes_idee_utilisateur
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateurs(id_utilisateur)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  UNIQUE KEY uq_like_unique (id_idee, id_utilisateur),
+  KEY idx_likes_idee_created (created_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS messages_contact (
+  id_message VARCHAR(50) PRIMARY KEY,
+  nom VARCHAR(120) NOT NULL,
+  email VARCHAR(190) NOT NULL,
+  sujet VARCHAR(180) NOT NULL,
+  message TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_messages_contact_created (created_at)
+) ENGINE=InnoDB;
+```
+
+### 16.4 Mapping JSON -> SQL
+
+- `data/users.json` -> `utilisateurs`
+- `data/signalements.json` -> `signalements`
+- `data/idees.json` -> `idees`
+- `data/messages.json` -> `messages_contact`
+
+Notes de mapping:
+
+- `timestamp` JSON devient `created_at` (DATETIME)
+- `photo` JSON devient `photo_path`
+- `password_hash` JSON devient `mot_de_passe_hash`
+- `likes` (compteur) devient `COUNT(*)` sur `likes_idee`
+
+### 16.5 Requetes utiles (equivalent endpoints)
+
+Compter les likes d'une idee:
+
+```sql
+SELECT i.id_idee, i.titre, COUNT(li.id_like) AS likes
+FROM idees i
+LEFT JOIN likes_idee li ON li.id_idee = i.id_idee
+GROUP BY i.id_idee, i.titre;
+```
+
+Recuperer les signalements d'un utilisateur:
+
+```sql
+SELECT s.*
+FROM signalements s
+WHERE s.id_utilisateur = ?
+ORDER BY s.created_at DESC;
+```
+
+Dashboard rapide:
+
+```sql
+SELECT
+  (SELECT COUNT(*) FROM utilisateurs) AS total_utilisateurs,
+  (SELECT COUNT(*) FROM signalements) AS total_signalements,
+  (SELECT COUNT(*) FROM idees) AS total_idees,
+  (SELECT COUNT(*) FROM messages_contact) AS total_messages;
+```
+
+### 16.6 Etapes de migration conseillees
+
+1. Creer la base MySQL avec le script MPD ci-dessus.
+2. Ecrire un script PHP de migration JSON -> MySQL (import initial).
+3. Adapter `core/storage.php` pour utiliser PDO MySQL.
+4. Garder les memes endpoints API pour ne pas casser le frontend.
+5. Tester endpoint par endpoint (auth, signalements, idees, contact).
+
+### 16.7 Complements utiles
+
 - Statut HTTP 500: erreur interne serveur.
 - `require_once`: importer un fichier PHP une seule fois.
 - `array_unshift`: ajouter un element au debut d'un tableau.
@@ -437,7 +784,7 @@ Regle simple pour apprendre vite:
   - Sauvegarde (JSON)
   - Sortie (reponse JSON)
 
-## 16) Schema visuel simple (ASCII)
+## 18) Schema visuel simple (ASCII)
 
 ```text
 [Utilisateur]
@@ -478,7 +825,41 @@ Version courte a memoriser:
 Formulaire -> fetch -> API PHP -> Validation -> JSON -> Reponse -> Ecran
 ```
 
-## 17) Transition frontend JS -> backend PHP (deja faite)
+## 17) Statut actuel (MySQL pur)
+
+Mise a jour: le backend est passe en mode **MySQL pur** pour les endpoints principaux.
+
+Endpoints en MySQL pur (sans fallback JSON):
+
+- `api/auth/register.php`
+- `api/auth/login.php`
+- `api/messages/contact.php`
+- `api/signalements/index.php` (GET + POST)
+- `api/signalements/show.php`
+- `api/signalements/delete.php`
+- `api/idees/index.php` (GET + POST)
+- `api/idees/like.php`
+- `api/idees/delete.php`
+- `api/stats/dashboard.php`
+
+Nettoyage backend applique:
+
+- `core/storage.php` supprime (obsolete en runtime).
+- `core/uploads.php` ajoute pour gerer `persist_data_url_image()`.
+- `require_once .../core/storage.php` retire des endpoints encore references.
+- Dossier vide `data/_archive/` supprime.
+
+Comportement actuel:
+
+- Si MySQL est disponible: reponse normale.
+- Si MySQL est indisponible: le backend renvoie une erreur serveur (plus de fallback local JSON cote backend).
+
+Important:
+
+- Les sections suivantes sur le fallback servent d'historique de migration.
+- Le mode recommande en production est maintenant MySQL uniquement.
+
+## 18) Transition frontend JS -> backend PHP (historique)
 
 Objectif de cette transition:
 
@@ -583,7 +964,7 @@ Fichier: `js/index.js`
   - `api/idees/index.php`
 - Fusion backend + local pour afficher des compteurs robustes
 
-## 18) Pourquoi garder le fallback pendant la transition
+## 19) Pourquoi garder le fallback pendant la transition
 
 - Tu peux continuer de tester le frontend meme si le backend n'est pas encore deploye partout.
 - Tu evites une coupure brutale de fonctionnalites.
@@ -591,7 +972,7 @@ Fichier: `js/index.js`
 
 Quand tout sera stable, tu pourras supprimer progressivement les fallback localStorage.
 
-## 19) Depannage rapide (problemes frequents)
+## 20) Depannage rapide (problemes frequents)
 
 ### 19.1 Message "enregistre en local (backend indisponible)"
 
@@ -628,7 +1009,7 @@ Note:
 - La page Idees affiche des cartes (cards), pas une carte geographique Leaflet.
 - La carte geographique est utilisee pour les Signalements.
 
-## 20) Bouton Connexion dynamique (Connecte / Deconnexion)
+## 21) Bouton Connexion dynamique (Connecte / Deconnexion)
 
 Comportement ajoute:
 
@@ -656,6 +1037,87 @@ Fichiers concernes:
 - `js/utils.js`: logique globale du bouton nav et panneau utilisateur
 - `js/connexion.js`: memorisation des infos de session locale apres login
 
+## 22) Comment relier ton travail a SQL (MySQL Workbench)
+
+But: connecter ton backend PHP actuel (JSON) a une base MySQL sans casser ton frontend.
+
+### 21.1 Etape 1 - Creer la connexion dans MySQL Workbench
+
+1. Ouvrir MySQL Workbench.
+2. Cliquer sur `+` dans `MySQL Connections`.
+3. Renseigner:
+   - Connection Name: `urbainelikya-local`
+   - Hostname: `127.0.0.1`
+   - Port: `3306`
+   - Username: `root` (ou ton utilisateur MySQL)
+4. Cliquer `Test Connection` puis `OK`.
+
+### 21.2 Etape 2 - Creer la base et les tables
+
+1. Ouvrir une nouvelle requete SQL dans Workbench.
+2. Copier le script de la section `16.3 MPD MySQL`.
+3. Executer tout le script (icône eclair).
+4. Verifier ensuite avec:
+
+```sql
+USE urbainelikya_drc;
+SHOW TABLES;
+```
+
+Si tu vois `utilisateurs`, `signalements`, `idees`, `likes_idee`, `messages_contact`, le schema est en place.
+
+### 21.3 Etape 3 - Configurer PHP pour parler a MySQL (PDO)
+
+Ton projet doit remplacer progressivement la lecture JSON par des requetes SQL.
+
+Exemple minimal de connexion PDO:
+
+```php
+<?php
+$dsn = 'mysql:host=127.0.0.1;port=3306;dbname=urbainelikya_drc;charset=utf8mb4';
+$user = 'root';
+$pass = '';
+
+$pdo = new PDO($dsn, $user, $pass, [
+  PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+  PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+]);
+```
+
+Conseil pratique:
+
+- cree un fichier dedie (exemple: `core/db.php`) qui retourne `$pdo`
+- reutilise cette connexion dans les endpoints
+
+### 21.4 Etape 4 - Migrer sans tout casser
+
+Ordre recommande:
+
+1. Garder les endpoints actuels (`api/...`) et changer seulement la couche stockage.
+2. Commencer par `messages/contact.php` (plus simple).
+3. Migrer `auth/register.php` et `auth/login.php`.
+4. Migrer `signalements/index.php` (GET puis POST).
+5. Migrer `idees/index.php` puis `idees/like.php`.
+
+### 21.5 Etape 5 - Verifications a faire
+
+- Inscription: l'utilisateur apparait dans `utilisateurs`.
+- Connexion: la session PHP fonctionne toujours.
+- Signalement: insertion dans `signalements` avec `id_utilisateur` valide.
+- Idee: insertion dans `idees` avec FK utilisateur.
+- Like: insertion dans `likes_idee` et respect de l'unicite `(id_idee, id_utilisateur)`.
+
+### 21.6 Erreurs frequentes et solutions rapides
+
+- `Access denied for user`: mauvais username/password MySQL.
+- `Connection refused`: MySQL serveur non demarre.
+- `Base unknown`: `urbainelikya_drc` non creee ou faute de nom.
+- Erreur accents/caracteres: verifier `charset=utf8mb4` dans DSN.
+
+Resultat attendu: ton frontend ne change presque pas, mais les donnees ne dependent plus de fichiers JSON.
+
 ---
 
-Prochaine etape recommandee: connecter progressivement tes fichiers JS frontend a ces endpoints PHP (en gardant un fallback local si tu veux).
+Prochaine etape recommandee: finaliser la suppression des fallback localStorage cote frontend pour aligner toute l'application sur MySQL pur.
+
+php -S 127.0.0.1:8000 -t .

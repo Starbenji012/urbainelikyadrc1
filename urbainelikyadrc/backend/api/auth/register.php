@@ -6,9 +6,9 @@ require_once dirname(__DIR__, 2) . '/core/bootstrap.php';
 require_once BACKEND_ROOT . '/core/response.php';
 require_once BACKEND_ROOT . '/core/request.php';
 require_once BACKEND_ROOT . '/core/validator.php';
-require_once BACKEND_ROOT . '/core/storage.php';
 require_once BACKEND_ROOT . '/core/id.php';
 require_once BACKEND_ROOT . '/core/logger.php';
+require_once BACKEND_ROOT . '/core/db.php';
 
 require_method('POST');
 $input = get_json_input();
@@ -40,13 +40,6 @@ if (!empty($errors)) {
     json_error('Validation echouee.', $errors, 422);
 }
 
-$users = read_json_array('users');
-foreach ($users as $user) {
-    if (strtolower((string)($user['email'] ?? '')) === $email) {
-        json_error('Cet email est deja utilise.', ['email' => 'Email deja pris.'], 409);
-    }
-}
-
 $newUser = [
     'id' => generate_id('usr'),
     'nom' => $nom,
@@ -58,13 +51,33 @@ $newUser = [
     'created_at' => gmdate('c'),
 ];
 
-$users[] = $newUser;
-if (!write_json_array('users', $users)) {
-    app_log('error', 'Impossible de sauvegarder users.json pendant register.');
+try {
+    $pdo = db_get_pdo();
+
+    $checkStmt = $pdo->prepare('SELECT id_utilisateur FROM utilisateurs WHERE email = :email LIMIT 1');
+    $checkStmt->execute([':email' => $email]);
+    if ($checkStmt->fetch()) {
+        json_error('Cet email est deja utilise.', ['email' => 'Email deja pris.'], 409);
+    }
+
+    $insertStmt = $pdo->prepare(
+        'INSERT INTO utilisateurs (id_utilisateur, nom, prenom, surnom, email, mot_de_passe_hash, role, created_at)
+         VALUES (:id, :nom, :prenom, :surnom, :email, :password_hash, :role, NOW())'
+    );
+    $insertStmt->execute([
+        ':id' => $newUser['id'],
+        ':nom' => $newUser['nom'],
+        ':prenom' => $newUser['prenom'],
+        ':surnom' => $newUser['surnom'] !== '' ? $newUser['surnom'] : null,
+        ':email' => $newUser['email'],
+        ':password_hash' => $newUser['password_hash'],
+        ':role' => $newUser['role'],
+    ]);
+
+    $responseUser = $newUser;
+    unset($responseUser['password_hash']);
+    json_ok('Inscription reussie.', $responseUser, 201);
+} catch (Throwable $e) {
+    app_log('error', 'Register MySQL error: ' . $e->getMessage());
     json_error('Erreur serveur pendant l inscription.', [], 500);
 }
-
-// On evite de renvoyer le hash du mot de passe au frontend.
-unset($newUser['password_hash']);
-
-json_ok('Inscription reussie.', $newUser, 201);

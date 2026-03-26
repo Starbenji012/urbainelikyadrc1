@@ -5,20 +5,23 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/core/bootstrap.php';
 require_once BACKEND_ROOT . '/core/response.php';
 require_once BACKEND_ROOT . '/core/request.php';
-require_once BACKEND_ROOT . '/core/storage.php';
+require_once BACKEND_ROOT . '/core/db.php';
 
 require_method('GET');
 
-$users = read_json_array('users');
-$signalements = read_json_array('signalements');
-$idees = read_json_array('idees');
-$messages = read_json_array('messages');
+$pdo = db_get_pdo();
+
+// Compter les enregistrements globaux depuis la base MySQL.
+$usersTotal = (int)$pdo->query('SELECT COUNT(*) FROM utilisateurs')->fetchColumn();
+$signalementsTotal = (int)$pdo->query('SELECT COUNT(*) FROM signalements')->fetchColumn();
+$ideesTotal = (int)$pdo->query('SELECT COUNT(*) FROM idees')->fetchColumn();
+$messagesTotal = (int)$pdo->query('SELECT COUNT(*) FROM messages_contact')->fetchColumn();
 
 $data = [
-    'users_total' => count($users),
-    'signalements_total' => count($signalements),
-    'idees_total' => count($idees),
-    'messages_total' => count($messages),
+    'users_total' => $usersTotal,
+    'signalements_total' => $signalementsTotal,
+    'idees_total' => $ideesTotal,
+    'messages_total' => $messagesTotal,
 ];
 
 json_ok('Statistiques globales.', $data);

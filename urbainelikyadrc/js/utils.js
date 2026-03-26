@@ -6,6 +6,16 @@ const AUTH_LOGOUT_ENDPOINTS = [
   "backend/api/auth/logout.php",
 ];
 
+const AUTH_NAV_TEXT = {
+  defaultUser: "Utilisateur",
+  login: "Connexion",
+  connected: "Connecté",
+  identityPrefix: "Identité: ",
+  emailPrefix: "Email: ",
+  emailMissing: "Email: non renseigné",
+  logout: "Déconnexion",
+};
+
 /* Navigation simple */
 function goBack() {
   window.location.href = "./index.html";
@@ -81,7 +91,7 @@ function readAuthState() {
 
   return {
     connected,
-    nom: nom || "Utilisateur",
+    nom: nom || AUTH_NAV_TEXT.defaultUser,
     email,
   };
 }
@@ -129,19 +139,19 @@ function createAuthDropdown(profile, onLogout) {
   const identity = document.createElement("p");
   identity.style.margin = "0 0 8px 0";
   identity.style.fontWeight = "600";
-  identity.textContent = `Identite: ${profile.nom}`;
+  identity.textContent = `${AUTH_NAV_TEXT.identityPrefix}${profile.nom}`;
 
   const email = document.createElement("p");
   email.style.margin = "0 0 10px 0";
   email.style.fontSize = "0.9rem";
   email.style.opacity = "0.8";
   email.textContent = profile.email
-    ? `Email: ${profile.email}`
-    : "Email: non renseigne";
+    ? `${AUTH_NAV_TEXT.emailPrefix}${profile.email}`
+    : AUTH_NAV_TEXT.emailMissing;
 
   const logoutBtn = document.createElement("button");
   logoutBtn.type = "button";
-  logoutBtn.textContent = "Deconnexion";
+  logoutBtn.textContent = AUTH_NAV_TEXT.logout;
   logoutBtn.style.width = "100%";
   logoutBtn.style.padding = "8px 10px";
   logoutBtn.style.borderRadius = "8px";
@@ -161,11 +171,11 @@ function initAuthNav() {
   const loginLink = document.querySelector(".navigation-menu .btn-connexion");
   if (!loginLink) return;
 
-  // Evite de brancher plusieurs fois les memes listeners.
+  // Évite d'ajouter plusieurs fois les mêmes listeners.
   if (loginLink.dataset.authNavReady === "1") {
     const state = readAuthState();
     if (!state.connected) {
-      loginLink.textContent = "Connexion";
+      loginLink.textContent = AUTH_NAV_TEXT.login;
       loginLink.setAttribute("href", "connexion.html");
     }
     return;
@@ -184,7 +194,7 @@ function initAuthNav() {
     const state = readAuthState();
 
     if (!state.connected) {
-      loginLink.textContent = "Connexion";
+      loginLink.textContent = AUTH_NAV_TEXT.login;
       loginLink.setAttribute("href", "connexion.html");
       if (dropdown) {
         dropdown.style.display = "none";
@@ -192,7 +202,7 @@ function initAuthNav() {
       return;
     }
 
-    loginLink.textContent = "Connecte";
+    loginLink.textContent = AUTH_NAV_TEXT.connected;
     loginLink.setAttribute("href", "#");
 
     if (!dropdown && linkItem) {
@@ -206,11 +216,13 @@ function initAuthNav() {
 
     if (dropdown) {
       const paragraphs = dropdown.querySelectorAll("p");
-      if (paragraphs[0]) paragraphs[0].textContent = `Identite: ${state.nom}`;
+      if (paragraphs[0]) {
+        paragraphs[0].textContent = `${AUTH_NAV_TEXT.identityPrefix}${state.nom}`;
+      }
       if (paragraphs[1]) {
         paragraphs[1].textContent = state.email
-          ? `Email: ${state.email}`
-          : "Email: non renseigne";
+          ? `${AUTH_NAV_TEXT.emailPrefix}${state.email}`
+          : AUTH_NAV_TEXT.emailMissing;
       }
     }
   };

@@ -2,6 +2,23 @@
 
 const AUTH_REGISTER_ENDPOINTS = buildRegisterEndpoints();
 
+const INSCRIPTION_TEXT = {
+  backendRefused: "Inscription refusée par le backend.",
+  localRegisterSuccess:
+    "Inscription locale réussie (backend indisponible). Vérifiez que le serveur PHP tourne et que l'URL frontend pointe vers lui.",
+  registerSuccess: "Inscription réussie !",
+  requiredFields: "Veuillez remplir tous les champs",
+  backendUnavailable: "Backend indisponible.",
+  backendEndpointInvalid:
+    "Serveur PHP joignable, mais endpoint API introuvable/invalide. Vérifie la racine du serveur PHP. Détails: ",
+  nomLength: "Le nom doit contenir entre 2 et 80 caractères.",
+  prenomLength: "Le prénom doit contenir entre 2 et 80 caractères.",
+  surnomLength:
+    "Le surnom doit contenir entre 2 et 80 caractères (ou rester vide).",
+  invalidEmail: "Email invalide.",
+  passwordLength: "Le mot de passe doit contenir au moins 8 caractères.",
+};
+
 function buildRegisterEndpoints() {
   const relativePaths = [
     "/backend/api/auth/register.php",
@@ -65,22 +82,20 @@ document.addEventListener("DOMContentLoaded", () => {
         const result = await registerToBackend(payload);
         if (!result.ok) {
           if (result.reachable) {
-            alert(result.message || "Inscription refusée par le backend.");
+            alert(result.message || INSCRIPTION_TEXT.backendRefused);
             return;
           }
 
           // Fallback local pour éviter de bloquer l'utilisateur pendant la transition.
           saveLocalUser(payload);
-          alert(
-            "Inscription locale réussie (backend indisponible). Vérifiez que le serveur PHP tourne et que l'URL frontend pointe vers lui.",
-          );
+          alert(INSCRIPTION_TEXT.localRegisterSuccess);
         } else {
-          alert("Inscription réussie !");
+          alert(INSCRIPTION_TEXT.registerSuccess);
         }
 
         window.location.href = "connexion.html";
       } else {
-        alert("Veuillez remplir tous les champs");
+        alert(INSCRIPTION_TEXT.requiredFields);
       }
     });
   }
@@ -133,7 +148,7 @@ async function registerToBackend(payload) {
             return { ok: true, reachable: true, message: "" };
           }
 
-          let message = json?.message || "Inscription refusée par le backend.";
+          let message = json?.message || INSCRIPTION_TEXT.backendRefused;
           if (json?.errors && typeof json.errors === "object") {
             const firstError = Object.values(json.errors).find(
               (value) => typeof value === "string" && value.trim().length > 0,
@@ -168,8 +183,7 @@ async function registerToBackend(payload) {
       }
 
       if (!lastReachableMessage) {
-        lastReachableMessage =
-          json?.message || "Inscription refusée par le backend.";
+        lastReachableMessage = json?.message || INSCRIPTION_TEXT.backendRefused;
       }
 
       return {
@@ -187,7 +201,7 @@ async function registerToBackend(payload) {
       ok: false,
       reachable: true,
       message:
-        "Serveur PHP joignable, mais endpoint API introuvable/invalide. Vérifie la racine du serveur PHP. Détails: " +
+        INSCRIPTION_TEXT.backendEndpointInvalid +
         endpointDiagnostics.slice(0, 4).join(" | "),
     };
   }
@@ -195,7 +209,7 @@ async function registerToBackend(payload) {
   return {
     ok: false,
     reachable: false,
-    message: lastReachableMessage || "Backend indisponible.",
+    message: lastReachableMessage || INSCRIPTION_TEXT.backendUnavailable,
   };
 }
 
@@ -236,27 +250,27 @@ function saveLocalUser(payload) {
 
 function validateRegisterPayload(payload) {
   if (payload.nom.length < 2 || payload.nom.length > 80) {
-    return "Le nom doit contenir entre 2 et 80 caractères.";
+    return INSCRIPTION_TEXT.nomLength;
   }
 
   if (payload.prenom.length < 2 || payload.prenom.length > 80) {
-    return "Le prénom doit contenir entre 2 et 80 caractères.";
+    return INSCRIPTION_TEXT.prenomLength;
   }
 
   if (
     payload.surnom &&
     (payload.surnom.length < 2 || payload.surnom.length > 80)
   ) {
-    return "Le surnom doit contenir entre 2 et 80 caractères (ou rester vide).";
+    return INSCRIPTION_TEXT.surnomLength;
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(payload.email)) {
-    return "Email invalide.";
+    return INSCRIPTION_TEXT.invalidEmail;
   }
 
   if (payload.password.length < 8) {
-    return "Le mot de passe doit contenir au moins 8 caractères.";
+    return INSCRIPTION_TEXT.passwordLength;
   }
 
   return "";

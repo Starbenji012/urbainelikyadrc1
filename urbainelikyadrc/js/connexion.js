@@ -6,6 +6,15 @@ const AUTH_LOGIN_ENDPOINTS = [
   "backend/api/auth/login.php",
 ];
 
+const CONNEXION_TEXT = {
+  invalidCredentials: "Identifiants invalides.",
+  localLoginSuccess: "Connexion locale réussie (backend indisponible).",
+  loginSuccess: "Connexion réussie !",
+  requiredFields: "Veuillez remplir tous les champs",
+  backendUnavailable: "Backend indisponible.",
+  defaultUser: "Utilisateur local",
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   // Navigation mobile: logique partagée dans utils.js.
   initMenuBurger();
@@ -24,17 +33,17 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!result.ok) {
           // Si le backend est joignable mais refuse la connexion, on affiche son message.
           if (result.reachable) {
-            alert(result.message || "Identifiants invalides.");
+            alert(result.message || CONNEXION_TEXT.invalidCredentials);
             return;
           }
 
           // Fallback local uniquement si le backend est vraiment indisponible.
           const localOk = loginLocally({ email, password, nom, prenom });
           if (!localOk) {
-            alert("Identifiants invalides.");
+            alert(CONNEXION_TEXT.invalidCredentials);
             return;
           }
-          alert("Connexion locale réussie (backend indisponible). ");
+          alert(CONNEXION_TEXT.localLoginSuccess);
         } else {
           // Mémoriser un nom d'affichage local pour les pages signalement/communauté.
           const backendUser = result.user || {};
@@ -49,11 +58,11 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem("user_email", backendUser.email);
           }
           localStorage.setItem("auth_connected", "1");
-          alert("Connexion réussie !");
+          alert(CONNEXION_TEXT.loginSuccess);
         }
         window.location.href = "index.html";
       } else {
-        alert("Veuillez remplir tous les champs");
+        alert(CONNEXION_TEXT.requiredFields);
       }
     });
   }
@@ -95,7 +104,7 @@ async function loginToBackend(payload) {
         ok: false,
         reachable: true,
         user: null,
-        message: json?.message || "Identifiants invalides.",
+        message: json?.message || CONNEXION_TEXT.invalidCredentials,
       };
     } catch (e) {}
   }
@@ -103,7 +112,7 @@ async function loginToBackend(payload) {
     ok: false,
     reachable: false,
     user: null,
-    message: "Backend indisponible.",
+    message: CONNEXION_TEXT.backendUnavailable,
   };
 }
 
@@ -120,7 +129,7 @@ function loginLocally({ email, password, nom, prenom }) {
 
   const displayName =
     [found.prenom || prenom || "", found.nom || nom || ""].join(" ").trim() ||
-    "Utilisateur local";
+    CONNEXION_TEXT.defaultUser;
   localStorage.setItem("user_nom", displayName);
   localStorage.setItem("user_email", found.email || email || "");
   localStorage.setItem("auth_connected", "1");
