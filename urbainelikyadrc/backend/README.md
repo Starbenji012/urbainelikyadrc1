@@ -164,6 +164,8 @@ Proposition d'endpoints:
 - `POST /backend/api/auth/login.php`
 - `POST /backend/api/auth/logout.php`
 - `GET  /backend/api/auth/me.php`
+- `POST /backend/api/auth/forgot-password.php`
+- `POST /backend/api/auth/reset-password.php`
 
 ### Signalements
 
@@ -1119,5 +1121,50 @@ Resultat attendu: ton frontend ne change presque pas, mais les donnees ne depend
 ---
 
 Prochaine etape recommandee: finaliser la suppression des fallback localStorage cote frontend pour aligner toute l'application sur MySQL pur.
+
+## 23) Inscription securisee + reinitialisation mot de passe
+
+Comportement ajoute:
+
+- Apres creation du compte, `api/auth/register.php` envoie un email de bienvenue (sans mot de passe en clair).
+- Cet email peut contenir un lien de reinitialisation a usage unique, valable 30 minutes.
+- Si un utilisateur oublie son mot de passe:
+  - il envoie son email sur `POST /backend/api/auth/forgot-password.php`
+  - il recoit un lien avec `token=...`
+  - il envoie ensuite `POST /backend/api/auth/reset-password.php` avec `token` + `new_password`
+- La reponse JSON d'inscription inclut `welcome_email_sent` (`true` ou `false`).
+
+Configuration simple:
+
+- Le backend utilise `core/mailer.php` avec priorite SMTP (Gmail compatible).
+- Variables d'environnement recommandees:
+  - `APP_NAME` (nom de l'application dans l'expediteur)
+  - `MAIL_FROM` (email expediteur, exemple: `no-reply@tondomaine.com`)
+  - `MAIL_SMTP_ENABLED=true`
+  - `MAIL_SMTP_HOST=smtp.gmail.com`
+  - `MAIL_SMTP_PORT=465`
+  - `MAIL_SMTP_USER=toncompte@gmail.com`
+  - `MAIL_SMTP_PASS=mot_de_passe_application_gmail`
+  - `PASSWORD_RESET_URL_BASE=http://127.0.0.1:8000/backend/api/auth/reset-password.php`
+
+Exemple PowerShell avant de lancer le serveur:
+
+```powershell
+$env:MAIL_SMTP_ENABLED="true"
+$env:MAIL_SMTP_HOST="smtp.gmail.com"
+$env:MAIL_SMTP_PORT="465"
+$env:MAIL_SMTP_USER="toncompte@gmail.com"
+$env:MAIL_SMTP_PASS="xxxx xxxx xxxx xxxx"
+$env:MAIL_FROM="toncompte@gmail.com"
+php -S 127.0.0.1:8000 -t .
+```
+
+Important:
+
+- Pour Gmail, il faut activer la validation en 2 etapes puis creer un mot de passe d'application.
+- Si SMTP echoue, le backend tente un fallback `mail()`.
+- Si l'envoi echoue, le compte est quand meme cree et un warning est ecrit dans `logs/app.log`.
+- Pour la securite, le mot de passe ne doit jamais etre envoye par email en clair.
+- Si le destinataire ouvre l'email depuis un autre appareil/reseau, `127.0.0.1` ne marchera pas: il faut une URL publique (domaine, IP locale accessible, ou tunnel type ngrok) dans `PASSWORD_RESET_URL_BASE`.
 
 php -S 127.0.0.1:8000 -t .

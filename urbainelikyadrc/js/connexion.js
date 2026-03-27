@@ -6,6 +6,12 @@ const AUTH_LOGIN_ENDPOINTS = [
   "backend/api/auth/login.php",
 ];
 
+const AUTH_RESET_DIRECT_ENDPOINTS = [
+  "/backend/api/auth/reset-password-direct.php",
+  "../backend/api/auth/reset-password-direct.php",
+  "backend/api/auth/reset-password-direct.php",
+];
+
 const CONNEXION_TEXT = {
   invalidCredentials: "Identifiants invalides.",
   localLoginSuccess: "Connexion locale réussie (backend indisponible).",
@@ -13,6 +19,14 @@ const CONNEXION_TEXT = {
   requiredFields: "Veuillez remplir tous les champs",
   backendUnavailable: "Backend indisponible.",
   defaultUser: "Utilisateur local",
+  forgotInvalidEmail: "Veuillez entrer une adresse email valide.",
+  forgotInvalidPassword:
+    "Le nouveau mot de passe doit contenir au moins 8 caracteres.",
+  forgotPasswordMismatch:
+    "Le nouveau mot de passe et sa confirmation ne correspondent pas.",
+  forgotSuccess:
+    "Mot de passe reinitialise avec succes. Connecte-toi maintenant.",
+  forgotFailure: "Impossible de reinitialiser le mot de passe pour le moment.",
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -67,6 +81,75 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const forgotPasswordLink = document.getElementById("forgotPasswordLink");
+  const resetPanel = document.getElementById("resetPanel");
+  const resetCancelBtn = document.getElementById("resetCancelBtn");
+  const resetSubmitBtn = document.getElementById("resetSubmitBtn");
+
+  if (forgotPasswordLink) {
+    forgotPasswordLink.addEventListener("click", async (e) => {
+      e.preventDefault();
+
+      if (!resetPanel) return;
+      const loginEmail = document.getElementById("email");
+      const resetEmail = document.getElementById("resetEmail");
+      if (resetEmail && loginEmail && !String(resetEmail.value || "").trim()) {
+        resetEmail.value = String(loginEmail.value || "").trim();
+      }
+
+      resetPanel.hidden = false;
+    });
+  }
+
+  if (resetCancelBtn) {
+    resetCancelBtn.addEventListener("click", () => {
+      if (!resetPanel) return;
+      resetPanel.hidden = true;
+    });
+  }
+
+  if (resetSubmitBtn) {
+    resetSubmitBtn.addEventListener("click", async () => {
+      const resetEmail = String(
+        document.getElementById("resetEmail")?.value || "",
+      )
+        .trim()
+        .toLowerCase();
+      const newPassword = String(
+        document.getElementById("resetPassword")?.value || "",
+      );
+      const confirmPassword = String(
+        document.getElementById("resetPasswordConfirm")?.value || "",
+      );
+
+      if (!isValidEmail(resetEmail)) {
+        alert(CONNEXION_TEXT.forgotInvalidEmail);
+        return;
+      }
+
+      if (newPassword.length < 8) {
+        alert(CONNEXION_TEXT.forgotInvalidPassword);
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        alert(CONNEXION_TEXT.forgotPasswordMismatch);
+        return;
+      }
+
+      const result = await sendDirectResetRequest(resetEmail, newPassword);
+      if (!result.ok) {
+        alert(result.message || CONNEXION_TEXT.forgotFailure);
+        return;
+      }
+
+      alert(result.message || CONNEXION_TEXT.forgotSuccess);
+      if (resetPanel) {
+        resetPanel.hidden = true;
+      }
+    });
+  }
+
   // Gestion d'un éventuel basculement de formulaire.
   document.querySelectorAll(".Switch").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -114,6 +197,48 @@ async function loginToBackend(payload) {
     user: null,
     message: CONNEXION_TEXT.backendUnavailable,
   };
+}
+
+async function sendDirectResetRequest(email, newPassword) {
+  const payload = {
+    email,
+    new_password: newPassword,
+  };
+
+  for (const endpoint of AUTH_RESET_DIRECT_ENDPOINTS) {
+    try {
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await resp.json().catch(() => ({}));
+      if (resp.ok) {
+        return {
+          ok: true,
+          message: json?.message || CONNEXION_TEXT.forgotSuccess,
+        };
+      }
+
+      return {
+        ok: false,
+        message: json?.message || CONNEXION_TEXT.forgotFailure,
+      };
+    } catch (e) {}
+  }
+
+  return {
+    ok: false,
+    message: CONNEXION_TEXT.backendUnavailable,
+  };
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || ""));
 }
 
 function loginLocally({ email, password, nom, prenom }) {

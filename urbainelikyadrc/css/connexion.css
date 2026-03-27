@@ -285,6 +285,66 @@ a.btn-connexion:focus {
   text-decoration: underline;
 }
 
+.forgot-password-wrap {
+  margin: 8px 0 0 0;
+  text-align: right;
+}
+
+.forgot-password-link {
+  color: var(--bleu-nuit-button);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.forgot-password-link:hover,
+.forgot-password-link:focus {
+  color: var(--vert-val);
+  text-decoration: underline;
+}
+
+.reset-panel {
+  border: 1px solid rgba(15, 33, 69, 0.18);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.reset-panel h3 {
+  margin: 0 0 8px 0;
+  color: var(--bleu-nuit-button);
+  font-size: 1.08rem;
+}
+
+.reset-panel-note {
+  margin: 0 0 12px 0;
+  font-size: 0.92rem;
+  color: var(--gris-fonce-text);
+}
+
+.reset-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-annuler {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #dfe6ee;
+  color: var(--bleu-nuit-button);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-annuler:hover,
+.btn-annuler:focus {
+  background: #cfd9e4;
+}
+
 /* FORM GROUP - Conteneur de champ */
 .form-group {
   display: flex;
