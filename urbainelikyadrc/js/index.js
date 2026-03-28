@@ -12,6 +12,12 @@ const IDEES_ENDPOINTS = [
   "backend/api/idees/index.php",
 ];
 
+const STATS_ENDPOINTS = [
+  "/backend/api/stats/dashboard.php",
+  "../backend/api/stats/dashboard.php",
+  "backend/api/stats/dashboard.php",
+];
+
 function readLocalArray(key) {
   try {
     const v = JSON.parse(localStorage.getItem(key) || "[]");
@@ -35,6 +41,31 @@ async function fetchArray(urls) {
   return [];
 }
 
+async function fetchDashboardStats(urls) {
+  for (const url of urls) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) continue;
+      const j = await r.json();
+      const data = j?.data;
+      if (!data || typeof data !== "object") continue;
+
+      const signalements = Number(data.signalements_total);
+      const idees = Number(data.idees_total);
+      if (Number.isFinite(signalements) && Number.isFinite(idees)) {
+        return {
+          signalements: Math.max(0, Math.trunc(signalements)),
+          idees: Math.max(0, Math.trunc(idees)),
+        };
+      }
+    } catch (e) {
+      // On essaie l'URL suivante.
+    }
+  }
+
+  return null;
+}
+
 function mergeUniqueByKey(arrA, arrB, keyFn) {
   const out = [];
   const seen = new Set();
@@ -48,6 +79,19 @@ function mergeUniqueByKey(arrA, arrB, keyFn) {
 }
 
 async function updateGlobalStats() {
+  // Priorite aux statistiques backend, plus fiables en production multi-utilisateurs.
+  const dashboardStats = await fetchDashboardStats(STATS_ENDPOINTS);
+  if (dashboardStats) {
+    const sigEl = document.getElementById("sig-total");
+    if (sigEl) sigEl.textContent = String(dashboardStats.signalements);
+
+    const ideesEl = document.getElementById("idees-soumis");
+    if (ideesEl) ideesEl.textContent = String(dashboardStats.idees);
+
+    return;
+  }
+
+  // Fallback local+backend liste si l'endpoint global n'est pas disponible.
   // 1) Lire les signalements (local + backend), puis fusionner sans doublons.
   const localSignalements = readLocalArray("signalements");
   const backendSignalements = await fetchArray(SIGNALEMENTS_ENDPOINTS);
