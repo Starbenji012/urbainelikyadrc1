@@ -33,11 +33,11 @@ try {
         $fullName = trim(((string)$user['prenom']) . ' ' . ((string)$user['nom']));
         $mailSubject = 'Reinitialisation du mot de passe - UrbainElikyaDRC';
         $mailBody = "Bonjour {$fullName},\n\n"
-            . "Tu as demande une reinitialisation de mot de passe.\n"
-            . "Clique sur ce lien pour choisir un nouveau mot de passe:\n"
+            . "Vous avez demande une reinitialisation de mot de passe.\n"
+            . "Cliquez sur ce lien pour choisir un nouveau mot de passe:\n"
             . $tokenData['link'] . "\n\n"
             . "Ce lien expire dans {$tokenData['expires_minutes']} minutes et ne peut etre utilise qu'une seule fois.\n"
-            . "Si tu n'es pas a l'origine de cette demande, ignore simplement cet email.\n\n"
+            . "Si vous n'etes pas a l'origine de cette demande, ignorez simplement cet email.\n\n"
             . "Equipe UrbainElikyaDRC";
 
         $mailSent = send_plain_email((string)$user['email'], $mailSubject, $mailBody);

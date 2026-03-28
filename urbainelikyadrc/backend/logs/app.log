@@ -1,0 +1,4 @@
+[2026-03-28T19:27:52+00:00] [WARNING] SMTP reponse inattendue: 
+[2026-03-28T19:27:53+00:00] [WARNING] Echec envoi SMTP vers: mpembabenita@gmail.com
+[2026-03-28T19:27:55+00:00] [WARNING] Echec envoi email vers: mpembabenita@gmail.com
+[2026-03-28T19:27:55+00:00] [WARNING] Compte cree mais email de mot de passe non envoye pour: mpembabenita@gmail.com

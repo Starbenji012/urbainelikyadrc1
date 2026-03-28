@@ -11,3 +11,11 @@ function require_auth_user(): array
     }
     return $user;
 }
+
+// Supprime la session si elle correspond a l'utilisateur cible.
+function clear_auth_user_if_matches(string $userId): void
+{
+    if (!empty($_SESSION['auth_user']) && (string)($_SESSION['auth_user']['id'] ?? '') === $userId) {
+        unset($_SESSION['auth_user']);
+    }
+}

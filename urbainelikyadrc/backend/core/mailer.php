@@ -15,7 +15,7 @@ function env_bool(string $name, bool $default = false): bool
     return in_array($value, ['1', 'true', 'yes', 'on'], true);
 }
 
-function smtp_expect($socket, array $codes): bool
+function smtp_expect($socket, array $codes, string $step = ''): bool
 {
     $response = '';
     while (!feof($socket)) {
@@ -31,9 +31,24 @@ function smtp_expect($socket, array $codes): bool
         }
     }
 
+    $stepLabel = $step !== '' ? (' [' . $step . ']') : '';
+    if ($response === '') {
+        $meta = stream_get_meta_data($socket);
+        $details = [];
+        if (!empty($meta['timed_out'])) {
+            $details[] = 'timeout';
+        }
+        if (!empty($meta['eof'])) {
+            $details[] = 'eof';
+        }
+
+        app_log('warning', 'SMTP reponse vide' . $stepLabel . (empty($details) ? '' : (' (' . implode(', ', $details) . ')')));
+        return false;
+    }
+
     $code = (int)substr($response, 0, 3);
     if (!in_array($code, $codes, true)) {
-        app_log('warning', 'SMTP reponse inattendue: ' . trim($response));
+        app_log('warning', 'SMTP reponse inattendue' . $stepLabel . ': ' . trim($response));
         return false;
     }
 
@@ -44,6 +59,16 @@ function smtp_write($socket, string $command): bool
 {
     $written = fwrite($socket, $command . "\r\n");
     return $written !== false;
+}
+
+function smtp_command($socket, string $command, array $expectedCodes, string $step): bool
+{
+    if (!smtp_write($socket, $command)) {
+        app_log('warning', 'SMTP echec envoi commande [' . $step . ']: ' . $command);
+        return false;
+    }
+
+    return smtp_expect($socket, $expectedCodes, $step);
 }
 
 // Envoi SMTP direct (compatible Gmail via SSL 465 + mot de passe d'application).
@@ -87,7 +112,9 @@ function send_plain_email_smtp(string $to, string $subject, string $body): bool
     // Dot-stuffing SMTP pour les lignes qui commencent par un point.
     $data = preg_replace('/^\./m', '..', $data);
 
-    $transport = sprintf('ssl://%s:%d', $smtpHost, $smtpPort);
+    $transport = $smtpPort === 465
+        ? sprintf('ssl://%s:%d', $smtpHost, $smtpPort)
+        : sprintf('tcp://%s:%d', $smtpHost, $smtpPort);
     $socket = @stream_socket_client($transport, $errno, $errstr, 20);
     if (!$socket) {
         app_log('warning', sprintf('Connexion SMTP echouee (%d): %s', $errno, $errstr));
@@ -96,23 +123,32 @@ function send_plain_email_smtp(string $to, string $subject, string $body): bool
 
     stream_set_timeout($socket, 20);
 
-    $ok = smtp_expect($socket, [220])
-        && smtp_write($socket, 'EHLO ' . $hostname)
-        && smtp_expect($socket, [250])
-        && smtp_write($socket, 'AUTH LOGIN')
-        && smtp_expect($socket, [334])
-        && smtp_write($socket, base64_encode($smtpUser))
-        && smtp_expect($socket, [334])
-        && smtp_write($socket, base64_encode($smtpPass))
-        && smtp_expect($socket, [235])
-        && smtp_write($socket, 'MAIL FROM:<' . $fromEmail . '>')
-        && smtp_expect($socket, [250])
-        && smtp_write($socket, 'RCPT TO:<' . $safeTo . '>')
-        && smtp_expect($socket, [250, 251])
-        && smtp_write($socket, 'DATA')
-        && smtp_expect($socket, [354])
-        && smtp_write($socket, $data . "\r\n.")
-        && smtp_expect($socket, [250]);
+    $ok = smtp_expect($socket, [220], 'greeting')
+        && smtp_command($socket, 'EHLO ' . $hostname, [250], 'ehlo-initial');
+
+    if ($ok && $smtpPort === 587) {
+        $ok = smtp_command($socket, 'STARTTLS', [220], 'starttls');
+        if ($ok) {
+            $cryptoEnabled = @stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            if ($cryptoEnabled !== true) {
+                app_log('warning', 'Echec activation TLS sur SMTP (port 587).');
+                $ok = false;
+            }
+        }
+
+        if ($ok) {
+            $ok = smtp_command($socket, 'EHLO ' . $hostname, [250], 'ehlo-post-tls');
+        }
+    }
+
+    $ok = $ok
+        && smtp_command($socket, 'AUTH LOGIN', [334], 'auth-login')
+        && smtp_command($socket, base64_encode($smtpUser), [334], 'auth-user')
+        && smtp_command($socket, base64_encode($smtpPass), [235], 'auth-pass')
+        && smtp_command($socket, 'MAIL FROM:<' . $fromEmail . '>', [250], 'mail-from')
+        && smtp_command($socket, 'RCPT TO:<' . $safeTo . '>', [250, 251], 'rcpt-to')
+        && smtp_command($socket, 'DATA', [354], 'data')
+        && smtp_command($socket, $data . "\r\n.", [250], 'send-data');
 
     smtp_write($socket, 'QUIT');
     fclose($socket);
@@ -160,4 +196,16 @@ function send_plain_email(string $to, string $subject, string $body): bool
     }
 
     return $ok;
+}
+
+// Notification envoyee apres une reinitialisation de mot de passe.
+function send_password_reset_confirmation_email(string $to): bool
+{
+    $subject = 'Confirmation de reinitialisation de mot de passe';
+    $body = "Bonjour,\n\n"
+        . "Votre mot de passe UrbainElikyaDRC a ete reinitialise avec succes.\n"
+        . "Si vous n'etes pas a l'origine de cette action, contactez l'equipe de support immediatement.\n\n"
+        . "Equipe UrbainElikyaDRC";
+
+    return send_plain_email($to, $subject, $body);
 }

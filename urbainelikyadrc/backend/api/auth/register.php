@@ -10,7 +10,6 @@ require_once BACKEND_ROOT . '/core/id.php';
 require_once BACKEND_ROOT . '/core/logger.php';
 require_once BACKEND_ROOT . '/core/db.php';
 require_once BACKEND_ROOT . '/core/mailer.php';
-require_once BACKEND_ROOT . '/core/password_reset.php';
 
 require_method('POST');
 $input = get_json_input();
@@ -76,22 +75,18 @@ try {
         ':role' => $newUser['role'],
     ]);
 
-    // Email de bienvenue sans exposer le mot de passe en clair.
-    ensure_password_resets_table($pdo);
-    $tokenData = create_password_reset_token($pdo, $newUser['id'], 30);
+    // Email de bienvenue sans lien de reinitialisation.
 
     $mailSubject = 'Bienvenue sur UrbainElikyaDRC';
     $mailBody = "Bonjour {$newUser['prenom']} {$newUser['nom']},\n\n"
-        . "Votre compte UrbainElikyaDRC a ete cree avec succes.\n"
-        . "Pour des raisons de securite, votre mot de passe n'est jamais envoye par email.\n"
-        . "Si vous voulez definir un nouveau mot de passe immediatement, utilisez ce lien:\n"
-        . $tokenData['link'] . "\n\n"
-        . "Ce lien expire dans {$tokenData['expires_minutes']} minutes et ne peut etre utilise qu'une seule fois.\n\n"
+        . "Votre compte UrbainElikyaDRC a été créé avec succès.\n"
+        . "Pour des raisons de sécurité, votre mot de passe ne vous sera pas envoyé par email.\n"
+        . "Si vous oubliez votre mot de passe, utilisez la fonction 'Mot de passe oublie' depuis la page de connexion.\n\n"
         . "Equipe UrbainElikyaDRC";
 
     $mailSent = send_plain_email($newUser['email'], $mailSubject, $mailBody);
     if (!$mailSent) {
-        app_log('warning', 'Compte cree mais email de mot de passe non envoye pour: ' . $newUser['email']);
+        app_log('warning', 'Compte créé mais email de mot de passe non envoyé pour: ' . $newUser['email']);
     }
 
     $responseUser = $newUser;

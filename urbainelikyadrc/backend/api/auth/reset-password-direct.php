@@ -6,8 +6,10 @@ require_once dirname(__DIR__, 2) . '/core/bootstrap.php';
 require_once BACKEND_ROOT . '/core/response.php';
 require_once BACKEND_ROOT . '/core/request.php';
 require_once BACKEND_ROOT . '/core/validator.php';
+require_once BACKEND_ROOT . '/core/auth.php';
 require_once BACKEND_ROOT . '/core/logger.php';
 require_once BACKEND_ROOT . '/core/db.php';
+require_once BACKEND_ROOT . '/core/mailer.php';
 
 require_method('POST');
 $input = get_json_input();
@@ -53,10 +55,11 @@ try {
         json_error('Impossible de reinitialiser le mot de passe.', [], 500);
     }
 
-    // Deconnecte la session courante si c'etait le meme utilisateur.
-    if (!empty($_SESSION['auth_user']) && (string)($_SESSION['auth_user']['id'] ?? '') === (string)$user['id_utilisateur']) {
-        unset($_SESSION['auth_user']);
+    if (!send_password_reset_confirmation_email($email)) {
+        app_log('warning', 'Mot de passe reinitialise mais email de confirmation non envoye pour: ' . $email);
     }
+
+    clear_auth_user_if_matches((string)$user['id_utilisateur']);
 
     json_ok('Mot de passe reinitialise avec succes.');
 } catch (Throwable $e) {
