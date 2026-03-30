@@ -613,6 +613,15 @@ function shouldApplyAutocomplete(rawInput, formattedAddress) {
   const commaCount = (input.match(/,/g) || []).length;
   if (commaCount >= 3) return false;
 
+  const inputTokens = tokenizeAddress(input);
+  const formattedTokens = new Set(tokenizeAddress(formatted));
+  if (inputTokens.length >= 2) {
+    const allTokensPresent = inputTokens.every((t) => formattedTokens.has(t));
+    if (allTokensPresent) {
+      return input.length < formatted.length;
+    }
+  }
+
   // Compléter seulement si la saisie ressemble déjà clairement à l'adresse résolue.
   const similarity = scoreAddressSimilarity(input, formatted);
   if (similarity < 0.45) return false;
@@ -826,10 +835,10 @@ async function fetchNominatimJson(url, maxAttempts = 3) {
 }
 
 async function geocodeAddressInDRC(rawAddress) {
-  const normalized = normalizeText(rawAddress);
-  const query = encodeURIComponent(normalized);
+  const queryText = String(rawAddress || "").trim();
+  const query = encodeURIComponent(queryText);
   const url =
-    "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1" +
+    "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&addressdetails=1" +
     "&countrycodes=cd&bounded=1" +
     "&viewbox=" +
     `${DRC_BOUNDS.west},${DRC_BOUNDS.north},${DRC_BOUNDS.east},${DRC_BOUNDS.south}` +
@@ -841,24 +850,48 @@ async function geocodeAddressInDRC(rawAddress) {
     return null;
   }
 
-  const row = rows[0];
-  const lat = parseFloat(row.lat);
-  const lng = parseFloat(row.lon);
-  const countryCode = String(row?.address?.country_code || "").toLowerCase();
+  const scored = rows
+    .map((row) => {
+      const lat = parseFloat(row?.lat);
+      const lng = parseFloat(row?.lon);
+      const countryCode = String(
+        row?.address?.country_code || "",
+      ).toLowerCase();
+      if (countryCode !== "cd" || !isInDRCBounds(lat, lng)) return null;
 
-  if (countryCode !== "cd" || !isInDRCBounds(lat, lng)) {
+      const displayName = String(row?.display_name || "");
+      const formattedAddress = formatCompleteDRCAddress(
+        row?.address,
+        displayName,
+      );
+      const score = Math.max(
+        scoreAddressSimilarity(queryText, displayName),
+        scoreAddressSimilarity(queryText, formattedAddress),
+      );
+
+      return {
+        row,
+        lat,
+        lng,
+        displayName,
+        formattedAddress,
+        score,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score);
+
+  if (!scored.length) {
     return null;
   }
 
+  const best = scored[0];
   return {
-    lat: lat,
-    lng: lng,
-    displayName: row.display_name || rawAddress,
-    formattedAddress: formatCompleteDRCAddress(
-      row.address,
-      row.display_name || rawAddress,
-    ),
-    addressDetails: row.address || {},
+    lat: best.lat,
+    lng: best.lng,
+    displayName: best.displayName || queryText,
+    formattedAddress: best.formattedAddress || best.displayName || queryText,
+    addressDetails: best.row.address || {},
   };
 }
 
@@ -1088,10 +1121,11 @@ async function addSignalement(e) {
     titre,
     type: String(type || "").toLowerCase(),
     description: desc,
-    lieu: geo.formattedAddress || geo.displayName || lieu,
+    // Conserver l'adresse saisie/visible par l'utilisateur pour garder la coherence UI.
+    lieu: lieu,
     lat: geo.lat,
     lng: geo.lng,
-    adresseVerifiee: geo.displayName,
+    adresseVerifiee: geo.formattedAddress || geo.displayName || lieu,
     user_nom: resolveCurrentUserName(),
     user_email: resolveCurrentUserEmail(),
     photo: photoDataUrl,

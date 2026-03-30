@@ -201,10 +201,10 @@ function send_plain_email(string $to, string $subject, string $body): bool
 // Notification envoyee apres une reinitialisation de mot de passe.
 function send_password_reset_confirmation_email(string $to): bool
 {
-    $subject = 'Confirmation de reinitialisation de mot de passe';
+    $subject = 'Confirmation de réinitialisation de mot de passe';
     $body = "Bonjour,\n\n"
-        . "Votre mot de passe UrbainElikyaDRC a ete reinitialise avec succes.\n"
-        . "Si vous n'etes pas a l'origine de cette action, contactez l'equipe de support immediatement.\n\n"
+        . "Votre mot de passe UrbainElikyaDRC a été réinitialisé avec succès.\n"
+        . "Si vous n'êtes pas à l'origine de cette action, contactez l'équipe de support immédiatement.\n\n"
         . "Equipe UrbainElikyaDRC";
 
     return send_plain_email($to, $subject, $body);

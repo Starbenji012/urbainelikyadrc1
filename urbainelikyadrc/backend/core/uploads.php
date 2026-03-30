@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-// Enregistre une image envoyee en data URL dans backend/uploads/<folder>/.
-// Retourne le chemin relatif en cas de succes, ou null si image invalide.
+// Enregistre une image envoyee en data URL dans /uploads/<folder>/.
+// Retourne le chemin absolu accessible depuis la racine web en cas de succes, ou null si image invalide.
 function persist_data_url_image(string $dataUrl, string $folder, string $baseName): ?string
 {
     $dataUrl = trim($dataUrl);
@@ -44,7 +44,8 @@ function persist_data_url_image(string $dataUrl, string $folder, string $baseNam
     $safeFolder = preg_replace('/[^a-z0-9_-]/i', '', $folder) ?: 'misc';
     $safeName = preg_replace('/[^a-z0-9_-]/i', '', $baseName) ?: uniqid('img_', true);
 
-    $uploadsDir = BACKEND_ROOT . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . $safeFolder;
+    // Sauvegarder dans le dossier /uploads (racine) au lieu de /backend/uploads.
+    $uploadsDir = dirname(BACKEND_ROOT) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . $safeFolder;
     if (!is_dir($uploadsDir) && !mkdir($uploadsDir, 0775, true) && !is_dir($uploadsDir)) {
         return null;
     }
@@ -56,5 +57,6 @@ function persist_data_url_image(string $dataUrl, string $folder, string $baseNam
         return null;
     }
 
-    return 'uploads/' . $safeFolder . '/' . $fileName;
+    // Retourner le chemin absolu accessible depuis la racine web.
+    return '/' . 'uploads' . '/' . $safeFolder . '/' . $fileName;
 }
