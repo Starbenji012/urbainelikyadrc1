@@ -1,0 +1,251 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
+    <link href='https://cdn.boxicons.com/fonts/brands/boxicons-brands.min.css' rel='stylesheet'>
+    <link rel="shortcut icon" href="../img/logo 2.png">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/idées.css">
+    <link rel="stylesheet" href="../css/nav-mobile-fix.css">
+    <link rel="stylesheet" href="../css/layout-global-fix.css">
+    <title>Idées du Peuple</title>
+</head>
+
+<body>
+    <!----------------EN-TETE (Barre de Navigation)-------------------->
+    <header>
+        <nav class="navbar">
+            <!--------Logo-------->
+            <div class="navlogo">
+                <img src="../img/logo.png" alt="urbainelikyadrc" class="logo">
+            </div>
+
+            <!--------Pages-------->
+            <ul class="navigation-menu">
+                <li><a href="index.html">Accueil</a></li>
+                <li><a href="signaler.html">Signaler</a></li>
+                <li><a href="idees.html">Idées du Peuple</a></li>
+                <li><a href="communaute.html">Communauté</a></li>
+                <li><a href="a-propos.html">À propos</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="connexion.html" class="btn-connexion">Connexion</a></li>
+            </ul>
+
+            <!--------Bouton reponsive (Menu burger)-------->
+            <div class="menu-burger" id="menu-burger">
+                <i class='bx bx-menu'></i>
+            </div>
+        </nav>
+
+    </header>
+
+    <main class="idee-page">
+
+        <!---- Section Titre de la Page ---->
+
+        <section class="titre-de-page" id="titre-de-page">
+            <div class="titre">
+                <h1>Idées du Peuple</h1>
+                <p>Partagez vos idées pour améliorer votre communauté et voir vos suggestions prendre vie.</p>
+            </div>
+        </section>
+
+        <!---- Section Conseils ---->
+
+        <section class="guide-rapide" id="guide-rapide">
+            <h1 class="titre-conseil">Comment Soumettre une Idée</h1>
+            <div class="conseil">
+                <p>Pour soumettre une idée, remplissez le formulaire avec
+                    une description claire de votre idée, choisissez la catégorie appropriée et cliquez sur le bouton
+                    "Soumettre une Idée"</p>
+                <img src="../img/Creativity-amico.png" alt="Conseil Image">
+            </div>
+        </section>
+
+        <!---- Section Formulaire ---->
+
+        <section class="formulaire-section" id="formulaire-section">
+            <div class="idee-wrap">
+                <div class="form-layout">
+                    <!-- colonne formulaire -->
+                    <form action="#" method="post" class="formulaire" id="formIdee">
+
+                        <div class="form-group">
+                            <label for="titre">Titre de l'Idée:</label>
+                            <input type="text" id="titre" name="titre" required
+                                placeholder="Entrez le titre de votre idée...">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="photo">Photo</label>
+                            <input id="photo" name="photo" type="file" accept="image/*">
+                            <p class="form-note">Max 5MB - JPG, PNG</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="categorie">Catégorie:</label>
+                            <select id="categorie" name="categorie" required>
+                                <option value="infrastructure">Infrastructure</option>
+                                <option value="environnement">Environnement</option>
+                                <option value="services-publics">Services Publics</option>
+                                <option value="transport">Transport</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="description">Description de l'Idée:</label>
+                            <textarea id="description" name="description" rows="4" required
+                                placeholder="Décrivez votre idée ici..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn-envoyer">Soumettre une Idée</button>
+                        </div>
+
+                    </form>
+
+                    <!--  bloc d'information à droite -->
+                    <div class="asides-column">
+                        <aside class="bloc-info">
+                            <h3>Informations importantes</h3>
+                            <p>Les images ci-dessous representent les différentes catégories et elles serviront
+                                d'icônes
+                                sur
+                                la
+                                carte.</p>
+                            <ul class="etapes liste-icones">
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Infrastructure</p>
+                                        <img src="../icon-map/icons8-city-buildings-48.png" alt="poubelle"
+                                            data-type="infrastructure" class="filter-icon">
+                                    </div>
+                                </li>
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Environnement</p>
+                                        <img src="../icon-map/icons8-soil-48.png" alt="inondation" data-type="eau"
+                                            data-type="environnement" class="filter-icon">
+                                    </div>
+                                </li>
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Services Publics</p>
+                                        <img src="../icon-map/icons8-service-48.png" alt="services publics"
+                                            data-type="services-publics" class="filter-icon">
+                                    </div>
+                                </li>
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Transport</p>
+                                        <img src="../icon-map/icons8-taxi-48.png" alt="route" data-type="transport"
+                                            class="filter-icon">
+                                    </div>
+                                </li>
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Autre</p>
+                                        <img src="../icon-map/icons8-view-more-48.png" alt="autre" data-type="autre"
+                                            class="filter-icon">
+                                    </div>
+                                </li>
+                            </ul>
+
+                        </aside>
+                        <aside class="bloc-info">
+                            <h3>Message important !</h3>
+                            <p>
+
+                                <li>En cliquant sur l'une des icônes de catégorie vous pourrez filtrer vos idées
+                                    par type.</li>
+
+                                <li>le bouton <b><i>Afficher tous</i></b></b> vous permet de réinitialiser
+                                    les
+                                    filtres et de voir tous vos idées.</li>
+
+                            </p>
+                        </aside>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!---- Section exemple d'idées ---->
+        <section class="section-exemple-idees" id="section-exemple-idees">
+            <h2 class="titre-exemple-idees">Vos d'Idées</h2>
+            <div class="idees-header"
+                style="max-width:1200px;margin:0 auto 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 16px;">
+                <div class="compteur">Total d'idées : <strong id="totalIdees">0</strong></div>
+                <div>
+                    <button id="btn-show-all-idees" class="btn" type="button">Afficher tous</button>
+                    <span style="margin-left:12px;">Filtre: <strong id="activeFilterIdees">Tous</strong></span>
+                </div>
+                <div>
+                    <button id="btnViderIdees" class="btn" type="button">Vider les idées</button>
+                </div>
+            </div>
+            <div class="carousel-wrapper-idees-page">
+                <button class="carousel-btn-idees-page carousel-btn-prev-idees-page" id="carouselPrevIdeesPage"
+                    type="button" aria-label="Défiler les idées vers la gauche">&#10094;</button>
+                <div id="listeIdees" class="idees-grid">
+
+                </div>
+                <button class="carousel-btn-idees-page carousel-btn-next-idees-page" id="carouselNextIdeesPage"
+                    type="button" aria-label="Défiler les idées vers la droite">&#10095;</button>
+            </div>
+        </section>
+
+        <!---- Section remerciement ---->
+        <section class="retour" id="retour">
+            <div class="remerciement" id="remerciement">
+                <h2>Merci pour Votre Contribution!</h2>
+                <p>Nous apprécions votre engagement envers l'amélioration de notre
+                    communauté.</p>
+            </div>
+        </section>
+
+    </main>
+
+
+
+    <!------------------------------PIEDS DE LA PAGE------------------->
+    <footer>
+        <div class="footer-contenaire">
+
+            <div class="footer-section">
+                <h3><span class="couleur-part1">Urbain</span>ElikyaDRC</h3>
+                <p>Plateforme dédiée à l'amélioration de l'urbanisme et à la participation citoyenne en République
+                    Démocratique du Congo.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Liens Rapides</h3>
+                <ul>
+                    <li><a href="index.html">Accueil</a></li>
+                    <li><a href="signaler.html">Signaler</a></li>
+                    <li><a href="idees.html">Idées du Peuple</a></li>
+                    <li><a href="communaute.html">Communauté</a></li>
+                    <li><a href="a-propos.html">À propos</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contactez-nous</h3>
+                <p>Email: contact@urbainelikyadrc.com</p>
+                <p>Téléphone: +243 843 630 372</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            © 2025 Urbain ElikyaDRC - Tous droits réservés.
+        </div>
+
+    </footer>
+
+</body>
+
+<script src="../js/utils.js"></script>
+<script src="../js/idees.js"></script>
+
+</html>

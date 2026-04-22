@@ -1,0 +1,228 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href='https://cdn.boxicons.com/fonts/brands/boxicons-brands.min.css' rel='stylesheet'>
+    <link rel="shortcut icon" href="../img/logo 2.png">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/suivi.css">
+    <link rel="stylesheet" href="../css/nav-mobile-fix.css">
+    <link rel="stylesheet" href="../css/layout-global-fix.css">
+
+    <title>Map</title>
+</head>
+
+<body>
+    <!----------------EN-TETE (Barre de Navigation)-------------------->
+    <header>
+        <nav class="navbar">
+            <!--------Logo-------->
+            <div class="navlogo">
+                <img src="../img/logo.png" alt="urbainelikyadrc" class="logo">
+            </div>
+
+            <!--------Pages-------->
+            <ul class="navigation-menu">
+                <li><a href="index.html">Accueil</a></li>
+                <li><a href="signaler.html">Signaler</a></li>
+                <li><a href="idees.html">Idées du Peuple</a></li>
+                <li><a href="communaute.html">Communauté</a></li>
+                <li><a href="a-propos.html">À propos</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="connexion.html" class="btn-connexion">Connexion</a></li>
+            </ul>
+
+            <!--------Bouton reponsive (Menu burger)-------->
+            <div class="menu-burger" id="menu-burger">
+                <i class='bx bx-menu'></i>
+            </div>
+        </nav>
+
+    </header>
+
+    <main class="signalement-page">
+
+        <section class="retour-section" id="retour-section">
+            <!--------Bouton Retour-------->
+            <a class="btn-retour" id="btn-retour" href="index.html">
+                <i class='bx bx-arrow-back'></i> Retour
+            </a>
+        </section>
+
+
+
+        <!-- section titre de la page -->
+
+        <section id="titre-de-page" class="titre-de-page">
+            <div class="titre">
+                <h1>Bienvenue dans MAP</h1>
+                <p>Ici, vous pouvez observer tous les signalements soumis.</p>
+            </div>
+        </section>
+
+
+        <!-- section formulaire -->
+
+        <section id="carte-section" class="carte-section">
+            <div class="signalement-wrap">
+                <div class="map-layout">
+
+                    <div id="map-container" class="map-container">
+                        <div class="map-controls"
+                            style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;">
+                            <div>
+                                <button id="btn-show-all" class="btn" type="button">Afficher tous</button>
+                                <span style="margin-left:12px;">Filtre: <strong id="activeFilter">Tous</strong></span>
+                            </div>
+                            <div class="compteur">Total de signalements : <strong id="totalSignalements">0</strong>
+                            </div>
+                        </div>
+
+                        <div id="map" style="height:500px; border-radius: 10px;"></div>
+
+                    </div>
+
+                    <!--  bloc d'information à droite -->
+                    <div class="asides-column">
+                        <aside class="bloc-info">
+                            <h3>Informations importantes</h3>
+                            <p>Les images ci-dessous representent les différentes catégories et elles serviront d'icônes
+                                sur
+                                la
+                                carte.</p>
+                            <ul class="etapes liste-icones">
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Déchet</p>
+                                        <img src="../icon-map/icons8-corbeille-48.png" alt="poubelle" data-type="dechet"
+                                            class="filter-icon">
+                                    </div>
+                                </li>
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Inondation / Eau</p>
+                                        <img src="../icon-map/icons8-eau-48.png" alt="inondation" data-type="eau"
+                                            class="filter-icon">
+                                    </div>
+                                </li>
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Insécurité</p>
+                                        <img src="../icon-map/icons8-protection-du-trou-de-serrure-48.png"
+                                            alt="insécurité" data-type="insecurite" class="filter-icon">
+                                    </div>
+                                </li>
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Route abîmée</p>
+                                        <img src="../icon-map/icons8-route-48.png" alt="route" data-type="voirie"
+                                            class="filter-icon">
+                                    </div>
+                                </li>
+                                <li class="etape">
+                                    <div class="etape-info">
+                                        <p>Électricité</p>
+                                        <img src="../icon-map/icons8-électricité-32.png" alt="électricité"
+                                            data-type="electricite" class="filter-icon">
+                                    </div>
+                                </li>
+                            </ul>
+
+                        </aside>
+                        <aside class="bloc-info">
+                            <h3>Attention à la part des utilisateurs</h3>
+                            <p>
+                                <li>En cliquant sur les icônes qui sont sur la map vous pouvez voir les détails des
+                                    signalements soumis par
+                                    les
+                                    utilisateurs.</li>
+                                <li>Aussi, en cliquant sur les icônes de catégorie ici présentées, vous pouvez filtrer
+                                    les
+                                    signalements
+                                    qui
+                                    afficheront seulement sur la carte les signalements correspondants à la catégorie
+                                    sélectionnée.</li>
+                                <li>le bouton <b><i>Voir sur la carte</i></b> vous permet de visualiser directement sur
+                                    la carte là ou le problème est signalé.</li>
+                                <li>Enfin le bouton <b><i>Afficher tous</i></b></b> vous permet de réinitialiser les
+                                    filtres et de voir tous les signalements sur la carte.</li>
+                            </p>
+                        </aside>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!---- Section signalements affichés ---->
+        <section class="section-signalement-non-afficher-map" id="section-signalement-non-afficher-map">
+            <h2 class="titre-signalement-non-afficher-map">Vos Signalements</h2>
+            <div class="Signalements-header"
+                style="max-width:1200px;margin:0 auto 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 16px;">
+                <div class="compteur">Total : <strong id="totalSignalementsAfficheAll">0</strong>
+                </div>
+            </div>
+            <div class="carousel-wrapper-suivi">
+                <button class="carousel-btn-suivi carousel-btn-prev-suivi" id="carouselPrevSignalements"
+                    aria-label="Signalement précédent">
+                    <i class='bx bx-chevron-left'></i>
+                </button>
+                <div id="listeSignalements" class="Signalements-grid">
+                </div>
+                <button class="carousel-btn-suivi carousel-btn-next-suivi" id="carouselNextSignalements"
+                    aria-label="Signalement suivant">
+                    <i class='bx bx-chevron-right'></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- section remerciement -->
+
+        <section id="retour" class="retour">
+            <div id="remerciement" class="remerciement">
+                <p>Merci pour votre visite</p>
+            </div>
+        </section>
+    </main>
+    <!------------------------------PIEDS DE LA PAGE------------------->
+    <footer>
+        <div class="footer-contenaire">
+
+            <div class="footer-section">
+                <h3><span class="couleur-part1">Urbain</span>ElikyaDRC</h3>
+                <p>Plateforme dédiée à l'amélioration de l'urbanisme et à la participation citoyenne en République
+                    Démocratique du Congo.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Liens Rapides</h3>
+                <ul>
+                    <li><a href="index.html">Accueil</a></li>
+                    <li><a href="signaler.html">Signaler</a></li>
+                    <li><a href="idees.html">Idées du Peuple</a></li>
+                    <li><a href="communaute.html">Communauté</a></li>
+                    <li><a href="a-propos.html">À propos</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contactez-nous</h3>
+                <p>Email: contact@urbainelikyadrc.com</p>
+                <p>Téléphone: +243 843 630 372</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            © 2025 Urbain ElikyaDRC - Tous droits réservés.
+        </div>
+
+    </footer>
+
+</body>
+
+<script src="../js/utils.js"></script>
+<script src="../js/suivi.js"></script>
+
+</html>

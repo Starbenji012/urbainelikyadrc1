@@ -1,0 +1,206 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
+    <link href='https://cdn.boxicons.com/fonts/brands/boxicons-brands.min.css' rel='stylesheet'>
+    <link rel="shortcut icon" href="../img/logo 2.png">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/index.css">
+    <link rel="stylesheet" href="../css/nav-mobile-fix.css">
+    <link rel="stylesheet" href="../css/layout-global-fix.css">
+    <title>Accueil</title>
+</head>
+
+<body>
+    <!----------------EN-TETE (Barre de Navigation)-------------------->
+    <header>
+        <nav class="navbar">
+            <!--------Logo-------->
+            <div class="navlogo">
+                <img src="../img/logo.png" alt="urbainelikyadrc" class="logo">
+            </div>
+
+            <!--------Pages-------->
+            <ul class="navigation-menu">
+                <li><a href="index.html">Accueil</a></li>
+                <li><a href="signaler.html">Signaler</a></li>
+                <li><a href="idees.html">Idées du Peuple</a></li>
+                <li><a href="communaute.html">Communauté</a></li>
+                <li><a href="a-propos.html">À propos</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="connexion.html" class="btn-connexion">Connexion</a></li>
+            </ul>
+
+            <!--------Bouton reponsive (Menu burger)-------->
+            <div class="menu-burger" id="menu-burger">
+                <i class='bx bx-menu'></i>
+            </div>
+        </nav>
+
+    </header>
+
+    <main class="home-main">
+
+        <!--------------CORPS DE LA PAGE ACCUEIL-------------->
+        <!--------------IMAGE, SLOGAN ET BOUTONS-------------->
+        <section id="images-slogans" class="images-slogans">
+
+            <!--------Image de Fond-------->
+            <div class="hero">
+                <img src="../img/ville-rdc-2.jpg" alt="Vue panoramique de la ville de Kinshasa" class="hero-bg">
+
+                <!--------  Fond de couleur transparent -------->
+                <div class="hero-overlay"></div>
+
+                <!--------  Slogan -------->
+                <div class="hero-content">
+                    <h1 class="hero-slogan">Un clic pour signaler, un geste pour changer</h1>
+
+                    <!--------  Boutons signaler, idées et suivi -------->
+                    <div class="hero-buttons">
+                        <a href="suivi.html" class="btn btn-ghost">Map</a>
+                    </div>
+                </div>
+            </div>
+            <!--------------EXPLICATIONS-------------->
+        </section>
+        <section id="explication" class="explication">
+            <div class="presentation">
+                <h1>Bienvenue sur notre plateforme
+                    <span class="couleur">
+                        <span class="couleur-part1">Urbain</span>
+                        <span class="couleur-part2">ElikyaDRC</span>
+                    </span>
+                </h1>
+                <p>Nous sommes ravis de vous accueillir sur notre plateforme dédiée à l'urbanisme et à la citoyenneté.
+                    Ici,
+                    vous pouvez signaler des problèmes, partager vos idées et participer à l'amélioration de notre pays.
+                </p>
+            </div>
+            <div class="fonctionnement">
+                <h1>Comment ça fonctionne ?</h1>
+                <p>Notre plateforme est conçue pour être simple et intuitive. Voici comment vous pouvez l'utiliser :</p>
+                <ol class="etapes">
+                    <li class="etape">
+
+                        <div class="etape-body">
+                            <h3> Signaler et Partager vos idées</h3>
+                            <p>Vous pouvez signaler des problèmes concernant votre commune et soumettre des idées
+                                d'innovation
+                                grâce à nos deux pages dédiées en remplissant le formulaire approprié concernant votre
+                                situation.</p>
+                            <img src="../img/Forms-cuate.png" alt="forms">
+                        </div>
+
+                    </li>
+
+                    <li class="etape">
+                        <div class="etape-body">
+                            <h3> Suivre l'évolution de vos signalements</h3>
+                            <p>Suivez l'état de votre signalement en temps réel grâce au bouton <span>Map</span>.</p>
+                            <img src="../img/Paper map-cuate.png" alt="paper map">
+                        </div>
+
+
+                    </li>
+
+                    <li class="etape">
+                        <div class="etape-body">
+                            <h3> Participer à la Communauté</h3>
+                            <p> Rejoignez notre communauté pour échanger avec d'autres citoyens et partager vos
+                                expériences.
+                            </p>
+                        </div>
+                        <img src="../img/Group Chat-rafiki.png" alt="">
+                    </li>
+                </ol>
+
+        </section>
+
+        <!--------------STATISTIQUES-------------->
+        <section id="statistique-resultat" class="statistique-resultat">
+            <h2>Statistiques en temps réel</h2>
+            <div class="stat-container">
+                <div class="stat">
+                    <i class='bxr  bx-alert-triangle'></i>
+                    <h3 id="sig-total">0</h3>
+                    <p>Signalements totaux</p>
+                </div>
+
+                <div class="stat">
+                    <i class="bx bx-loader-lines"></i>
+                    <h3 id="sig-en-cours">0</h3>
+                    <p>Signalement en cours</p>
+                </div>
+
+                <div class="stat">
+                    <i class="bx bx-check-circle"></i>
+                    <h3 id="sig-traiter">0</h3>
+                    <p>Signalement Traité</p>
+                </div>
+
+                <div class="stat">
+                    <i class='bxr  bx-light-bulb-on'></i>
+                    <h3 id="idees-soumis">0</h3>
+                    <p>Idées soumis</p>
+                </div>
+
+                <div class="stat">
+                    <i class="bx bx-user-check"></i>
+                    <h3 id="idees-realise">0</h3>
+                    <p>Idées Réalisé</p>
+                </div>
+            </div>
+        </section>
+
+        <!-------------- REMERCIEMENT -------------->
+        <section class="retour" id="retour">
+            <div class="remerciement">
+                <h2>Merci pour votre visite</h2>
+                <p>Votre engagement citoyen est précieux. Ensemble, construisons des villes plus propres, plus sûres et
+                    plus solidaires.</p>
+            </div>
+        </section>
+
+    </main>
+    <!------------------------------PIEDS DE LA PAGE------------------->
+    <footer>
+        <div class="footer-contenaire">
+
+            <div class="footer-section">
+                <h3><span class="couleur-part1">Urbain</span>ElikyaDRC</h3>
+                <p>Plateforme dédiée à l'amélioration de l'urbanisme et à la participation citoyenne en République
+                    Démocratique du Congo.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Liens Rapides</h3>
+                <ul>
+                    <li><a href="index.html">Accueil</a></li>
+                    <li><a href="signaler.html">Signaler</a></li>
+                    <li><a href="idees.html">Idées du Peuple</a></li>
+                    <li><a href="communaute.html">Communauté</a></li>
+                    <li><a href="a-propos.html">À propos</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contactez-nous</h3>
+                <p>Email: contact@urbainelikyadrc.com</p>
+                <p>Téléphone: +243 843 630 372</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            © 2025 Urbain ElikyaDRC - Tous droits réservés.
+        </div>
+
+    </footer>
+
+
+</body>
+<script src="../js/utils.js"></script>
+<script src="../js/index.js"></script>
+
+</html>

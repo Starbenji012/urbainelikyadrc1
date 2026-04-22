@@ -1,0 +1,168 @@
+/*
+  Correctif global de navigation mobile.
+  Ce fichier surcharge les variantes locales pour garder un comportement unique.
+*/
+
+/* Bouton connexion: texte blanc dans tous les etats. */
+a.btn-connexion,
+a.btn-connexion:link,
+a.btn-connexion:visited,
+a.btn-connexion:hover,
+a.btn-connexion:focus,
+a.btn-connexion:active {
+  color: #ffffff !important;
+}
+
+@media (max-width: 800px) {
+  /* Header fixe pour garder le burger visible pendant le scroll. */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 1200;
+  }
+
+  .navbar {
+    position: relative;
+    min-height: 72px;
+  }
+
+  ul.navigation-menu {
+    display: none;
+  }
+
+  .menu-burger {
+    display: inline-flex !important;
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    transform: translateY(-50%);
+    z-index: 1302;
+  }
+
+  /* Panneau blanc a droite (menu ouvert). */
+  ul.navigation-menu.mobile-active {
+    display: flex !important;
+    position: fixed !important;
+    top: 0;
+    right: 0 !important;
+    bottom: 0;
+    left: auto !important;
+    width: min(320px, 78vw);
+    padding: 92px 18px 20px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 6px;
+    background: #ffffff;
+    border-radius: 0;
+    box-shadow: -14px 0 34px rgba(0, 0, 0, 0.14);
+    overflow-y: auto;
+    z-index: 1301;
+  }
+
+  /* Bloc vert transparent a gauche (overlay de fermeture). */
+  ul.navigation-menu.mobile-active::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: min(320px, 78vw);
+    bottom: 0;
+    background: rgba(36, 129, 84, 0.25);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    z-index: -1;
+  }
+
+  ul.navigation-menu.mobile-active > li {
+    width: 100%;
+  }
+
+  /* Liens lisibles sur panneau blanc. */
+  ul.navigation-menu.mobile-active > li > a {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 8px;
+    white-space: normal;
+    color: var(--gris-fonce-text);
+    text-shadow: none;
+    transition:
+      color 0.22s ease,
+      text-shadow 0.22s ease,
+      background-color 0.22s ease,
+      transform 0.14s ease,
+      box-shadow 0.22s ease;
+  }
+
+  /* Supprime totalement le trait anime sur les liens de la navbar mobile. */
+  header .navbar ul.navigation-menu.mobile-active > li > a::before,
+  ul.navigation-menu.mobile-active > li > a::before,
+  ul.navigation-menu.mobile-active > li > a:hover::before,
+  ul.navigation-menu.mobile-active > li > a:focus::before {
+    content: none;
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  ul.navigation-menu.mobile-active > li > a:hover,
+  ul.navigation-menu.mobile-active > li > a:focus {
+    color: var(--bleu-nuit-button);
+    text-shadow: 0 6px 18px rgba(15, 33, 69, 0.12);
+    background: rgba(15, 33, 69, 0.08);
+    transform: translateX(2px);
+    box-shadow: 0 8px 20px rgba(15, 33, 69, 0.16);
+  }
+
+  ul.navigation-menu.mobile-active > li > a.btn-connexion {
+    display: inline-flex;
+    width: auto;
+    margin-top: 10px;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bleu-nuit-button);
+    color: #ffffff !important;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(15, 33, 69, 0.12);
+    transition:
+      transform 0.14s ease,
+      box-shadow 0.22s ease,
+      filter 0.12s ease;
+  }
+
+  /* Meme interaction que desktop pour le bouton Connexion. */
+  ul.navigation-menu.mobile-active > li > a.btn-connexion:hover,
+  ul.navigation-menu.mobile-active > li > a.btn-connexion:focus {
+    background: var(--bleu-nuit-button);
+    color: #ffffff !important;
+    text-shadow: none;
+    transform: translateY(-3px);
+    box-shadow:
+      0 18px 48px rgba(15, 33, 69, 0.3),
+      0 0 26px rgba(61, 189, 125, 0.12);
+    filter: brightness(1.05);
+  }
+
+  /* Le X reste fixe pendant que le panneau est ouvert. */
+  .navigation-menu.mobile-active ~ .menu-burger {
+    position: fixed !important;
+    top: 14px;
+    right: 14px;
+    transform: none;
+  }
+}
+
+@media (max-width: 480px) {
+  ul.navigation-menu.mobile-active {
+    width: min(280px, 84vw);
+  }
+
+  ul.navigation-menu.mobile-active::before {
+    right: min(280px, 84vw);
+  }
+}

@@ -1,0 +1,144 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
+    <link href='https://cdn.boxicons.com/fonts/brands/boxicons-brands.min.css' rel='stylesheet'>
+    <link rel="shortcut icon" href="../img/logo 2.png">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/contact.css">
+    <link rel="stylesheet" href="../css/nav-mobile-fix.css">
+    <link rel="stylesheet" href="../css/layout-global-fix.css">
+    <title>Contact</title>
+</head>
+
+<body>
+    <!----------------EN-TETE (Barre de Navigation)-------------------->
+    <header>
+        <nav class="navbar">
+            <!--------Logo-------->
+            <div class="navlogo">
+                <img src="../img/logo.png" alt="urbainelikyadrc" class="logo">
+            </div>
+
+            <!--------Pages-------->
+            <ul class="navigation-menu">
+                <li><a href="index.html">Accueil</a></li>
+                <li><a href="signaler.html">Signaler</a></li>
+                <li><a href="idees.html">Idées du Peuple</a></li>
+                <li><a href="communaute.html">Communauté</a></li>
+                <li><a href="a-propos.html">À propos</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="connexion.html" class="btn-connexion">Connexion</a></li>
+            </ul>
+
+            <!--------Bouton reponsive (Menu burger)-------->
+            <div class="menu-burger" id="menu-burger">
+                <i class='bx bx-menu'></i>
+            </div>
+        </nav>
+
+    </header>
+
+    <main class="page-contact">
+
+        <!-- Section titre de la page -->
+        <section class="titre-de-page" id="titre-de-page">
+            <div class="titre">
+
+                <h1>Contactez-nous</h1>
+                <p> Une question, une suggestion ou un problème technique ?
+                    N'hésitez pas à nous écrire.</p>
+            </div>
+
+        </section>
+
+        <!-- Section Formulaire de Contact -->
+
+        <section class="formulaire-section" id="formulaire-section">
+            <div class="formulaire-contact">
+                <div class="form-colonne">
+                    <form action="#" method="post" class="formulaire" id="formcont">
+
+                        <div class="form-group">
+                            <label for="nom">Nom</label>
+                            <input type="text" id="nom" name="nom" placeholder="Votre nom" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sujet">Sujet</label>
+                            <input type="text" id="sujet" name="sujet" placeholder="Sujet du message" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" placeholder="Votre email" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="message">Message</label>
+                            <textarea id="message" name="message" rows="4" placeholder="Décrivez votre besoin ici..."
+                                required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn-envoyer">Envoyer</button>
+                        </div>
+
+                    </form>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- Section Informations de Contact -->
+        <section class="retour" id="retour">
+            <div class="remerciement">
+                <p>Alors n'hésitez pas à nous écrire.</p>
+            </div>
+        </section>
+
+
+    </main>
+
+    <!------------------------------PIEDS DE LA PAGE------------------->
+    <footer>
+        <div class="footer-contenaire">
+
+            <div class="footer-section">
+                <h3><span class="couleur-part1">Urbain</span>ElikyaDRC</h3>
+                <p>Plateforme dédiée à l'amélioration de l'urbanisme et à la participation citoyenne en République
+                    Démocratique du Congo.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Liens Rapides</h3>
+                <ul>
+                    <li><a href="index.html">Accueil</a></li>
+                    <li><a href="signaler.html">Signaler</a></li>
+                    <li><a href="idees.html">Idées du Peuple</a></li>
+                    <li><a href="communaute.html">Communauté</a></li>
+                    <li><a href="a-propos.html">À propos</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contactez-nous</h3>
+                <p>Email: contact@urbainelikyadrc.com</p>
+                <p>Téléphone: +243 843 630 372</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            © 2025 Urbain ElikyaDRC - Tous droits réservés.
+        </div>
+
+    </footer>
+
+</body>
+<script src="../js/utils.js"></script>
+<script src="../js/contact.js"></script>
+
+</html>

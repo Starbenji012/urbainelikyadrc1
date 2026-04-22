@@ -1,0 +1,641 @@
+/* POLICES */
+@import url("https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=DM+Serif+Text:ital@0;1&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Tangerine:wght@400;700&display=swap");
+
+/* VARIABLES : centralisees dans css/theme.css */
+
+/* REINITIALISATION MINIMALE */
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family:
+    system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--gris-clair-bg);
+  color: var(--gris-fonce-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ACCESSIBILITÉ : focus visible */
+a,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+a:focus,
+button:focus {
+  outline: 3px solid rgba(15, 33, 69, 0.12);
+  outline-offset: 3px;
+}
+
+/* HEADER compact et visible (blanc) */
+header {
+  background: var(--blanc-bg); /* header blanc */
+  width: 100%;
+  padding: 8px 0; /* header réduit */
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* NAVBAR : disposition */
+.navbar {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* LOGO : taille demandée 140px */
+.navlogo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.navlogo .logo {
+  width: 140px;
+  height: 140px;
+  object-fit: contain;
+  display: block;
+  transition: transform 0.22s ease;
+}
+.navlogo .logo:hover {
+  transform: scale(1.03);
+}
+.logo-caption {
+  margin: 0;
+  font-size: 12px;
+  color: var(--gris-fonce-text);
+}
+
+/* MENU principal : ul > li > a attendu */
+ul.navigation-menu {
+  list-style: none;
+  display: flex;
+  gap: 18px;
+  margin: 0 auto;
+  padding: 0;
+  align-items: center;
+}
+
+/* LIENS DU MENU : sélecteur précis */
+header .navbar ul.navigation-menu > li > a,
+header .navbar ul.navigation-menu > li > a:link,
+header .navbar ul.navigation-menu > li > a:visited {
+  position: relative; /* pour ::before */
+  display: inline-block;
+  color: var(--gris-fonce-text);
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 6px 8px;
+  transition:
+    color 0.22s ease,
+    text-shadow 0.22s ease;
+  z-index: 2;
+}
+
+/* Soulignement anime centre (pseudo-element par lien) */
+header .navbar ul.navigation-menu > li > a::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -6px;
+  width: 0;
+  height: 3px;
+  background: var(--bleu-nuit-button);
+  border-radius: 3px;
+  transition: width 0.22s ease;
+  opacity: 0.98;
+}
+
+/* Survol / focus : couleur bleu-nuit + lueur + soulignement */
+header .navbar ul.navigation-menu > li > a:hover,
+header .navbar ul.navigation-menu > li > a:focus {
+  color: var(--bleu-nuit-button);
+  text-shadow: 0 6px 18px rgba(15, 33, 69, 0.12);
+}
+header .navbar ul.navigation-menu > li > a:hover::before,
+header .navbar ul.navigation-menu > li > a:focus::before {
+  width: 70%;
+}
+
+/* BOUTONS : style unifié pour btn-connexion et boutons du hero */
+.btn,
+a.btn-connexion {
+  padding: 10px 16px;
+  background: var(--bleu-nuit-button);
+  color: var(--blanc-bg);
+  border-radius: 10px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(15, 33, 69, 0.12);
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.22s ease,
+    filter 0.12s ease;
+  border: none;
+  cursor: pointer;
+}
+
+/* Meme effet lumineux au survol/focus pour tous les boutons */
+.btn:hover,
+.btn:focus,
+a.btn-connexion:hover,
+a.btn-connexion:focus {
+  transform: translateY(-3px);
+  box-shadow:
+    0 18px 48px rgba(15, 33, 69, 0.3),
+    0 0 26px rgba(61, 189, 125, 0.12);
+  filter: brightness(1.05);
+  outline: none;
+}
+/* Force couleur texte bouton connexion blanc */
+a.btn-connexion,
+a.btn-connexion:link,
+a.btn-connexion:visited,
+a.btn-connexion:hover,
+a.btn-connexion:focus {
+  color: white !important;
+}
+/* MENU BURGER (mobile) */
+.menu-burger {
+  display: none;
+  font-size: 22px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: var(--gris-fonce-text);
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+}
+/* STYLE BOUTON RETOUR */
+.btn-retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  margin-bottom: 20px;
+  background-color: var(--bleu-nuit-button);
+  color: var(--blanc-bg);
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(15, 33, 69, 0.2);
+}
+
+.btn-retour:hover {
+  background-color: var(--vert-val);
+  transform: translateX(-4px);
+  box-shadow: 0 4px 12px rgba(61, 189, 125, 0.3);
+}
+
+.btn-retour:active {
+  transform: translateX(-2px);
+  box-shadow: 0 2px 6px rgba(61, 189, 125, 0.2);
+}
+
+.btn-retour i {
+  font-size: 1.1rem;
+}
+
+/* PAGE CONNEXION : Background + overlay */
+.page-connexion {
+  position: relative;
+  min-height: calc(100vh - 160px);
+  background-image: url("../img/ville-rdc-3.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+/* OVERLAY : couche colorée au-dessus de l'image pour lisibilité */
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(29, 128, 83, 0.45);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* SECTION FORMULAIRE */
+.formulaire-section {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.formulaire-connexion-inscription {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 640px;
+}
+
+/* FORMULAIRE - Conteneur principal */
+.formulaire {
+  background: var(--blanc-bg);
+  padding: 28px;
+  border-radius: 14px;
+  box-shadow: 0 10px 40px rgba(61, 189, 125, 0.12);
+  transition: box-shadow 0.3s ease;
+}
+.formulaire:hover {
+  box-shadow: 0 15px 50px rgba(61, 189, 125, 0.18);
+}
+
+.formulaire h1 {
+  margin: 0 0 20px 0;
+  font-size: 1.6rem;
+  text-align: center;
+  color: var(--bleu-nuit-button);
+  font-weight: 700;
+}
+
+/* Texte de changement form */
+.Switch {
+  color: var(--vert-val);
+  cursor: pointer;
+  font-weight: 600;
+  transition: color 0.18s ease;
+}
+.Switch:hover {
+  color: var(--vert-footer);
+  text-decoration: underline;
+}
+
+.forgot-password-wrap {
+  margin: 8px 0 0 0;
+  text-align: right;
+}
+
+.forgot-password-link {
+  color: var(--bleu-nuit-button);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.forgot-password-link:hover,
+.forgot-password-link:focus {
+  color: var(--vert-val);
+  text-decoration: underline;
+}
+
+.reset-panel {
+  border: 1px solid rgba(15, 33, 69, 0.18);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.reset-panel h3 {
+  margin: 0 0 8px 0;
+  color: var(--bleu-nuit-button);
+  font-size: 1.08rem;
+}
+
+.reset-panel-note {
+  margin: 0 0 12px 0;
+  font-size: 0.92rem;
+  color: var(--gris-fonce-text);
+}
+
+.reset-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-annuler {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #dfe6ee;
+  color: var(--bleu-nuit-button);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-annuler:hover,
+.btn-annuler:focus {
+  background: #cfd9e4;
+}
+
+/* FORM GROUP - Conteneur de champ */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* LABELS */
+.form-group label {
+  font-weight: 600;
+  color: var(--gris-fonce-text);
+  font-size: 0.95rem;
+  transition: color 0.18s ease;
+}
+.form-group label:hover {
+  color: var(--vert-val);
+}
+
+/* INPUTS, TEXTAREA, SELECT */
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="file"],
+.form-group input[type="password"],
+.form-group textarea,
+.form-group select {
+  padding: 12px 14px;
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  background: var(--blanc-bg);
+  font-size: 1rem;
+  color: var(--gris-fonce-text);
+  font-family: inherit;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.1s ease;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.5;
+}
+
+/* FOCUS sur les inputs */
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--vert-val);
+  box-shadow: 0 8px 24px rgba(61, 189, 125, 0.15);
+  transform: translateY(-2px);
+}
+
+/* État erreur */
+.input-error {
+  border-color: var(--rouge-sign) !important;
+  box-shadow: 0 6px 18px rgba(230, 57, 70, 0.12) !important;
+}
+
+/* Texte d'aide */
+.form-note {
+  font-size: 0.9rem;
+  color: var(--gris-fonce-text);
+  font-style: italic;
+}
+
+/* Conteneur des actions */
+.form-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+/* BOUTON ENVOYER */
+.btn-envoyer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--bleu-nuit-button);
+  color: var(--blanc-bg);
+  border-radius: 10px;
+  border: none;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(15, 33, 69, 0.15);
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.22s ease,
+    filter 0.12s ease;
+  min-width: 140px;
+}
+
+.btn-envoyer:hover,
+.btn-envoyer:focus {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 48px rgba(15, 33, 69, 0.2);
+  filter: brightness(1.05);
+}
+
+.btn-envoyer:active {
+  transform: translateY(-1px);
+}
+
+/* Force texte bouton connexion en blanc partout */
+.btn-connexion,
+.btn-connexion:link,
+.btn-connexion:visited {
+  color: white !important;
+}
+
+/* MESSAGE D'ERREUR */
+.form-error {
+  color: var(--rouge-sign);
+  font-size: 0.9rem;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/*-----footer--------*/
+
+footer {
+  background: var(--vert-footer);
+  color: var(--blanc-bg);
+  text-align: center;
+  padding: 16px;
+  font-size: 0.9rem;
+}
+
+.footer-contenaire {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  width: 90%;
+  margin: auto;
+}
+.footer-section {
+  width: 30%;
+  min-width: 250px;
+}
+
+.footer-section h3 {
+  margin-bottom: 12px;
+  font-size: 1.2rem;
+  color: var(--blanc-bg);
+}
+
+.footer-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.footer-section a {
+  color: var(--blanc-bg);
+  text-decoration: none;
+}
+
+.footer-section a:hover {
+  text-decoration: underline;
+  color: var(--bleu-nuit-button);
+}
+.footer-bottom {
+  text-align: center;
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 1rem;
+}
+
+/* RESPONSIF - Tablette et téléphone */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  ul.navigation-menu {
+    gap: 12px;
+  }
+
+  header .navbar ul.navigation-menu > li > a {
+    font-size: 0.85rem;
+  }
+
+  .menu-burger {
+    display: block;
+  }
+
+  ul.navigation-menu {
+    display: none;
+  }
+
+  .formulaire {
+    padding: 20px;
+    border-radius: 12px;
+  }
+
+  .formulaire h1 {
+    font-size: 1.4rem;
+    margin-bottom: 16px;
+  }
+
+  .btn-envoyer {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-connexion {
+    padding: 20px 12px;
+    min-height: calc(100vh - 140px);
+  }
+
+  .formulaire {
+    padding: 16px;
+  }
+
+  .formulaire h1 {
+    font-size: 1.2rem;
+  }
+
+  .form-group input[type="text"],
+  .form-group input[type="email"],
+  .form-group input[type="password"],
+  .form-group textarea,
+  .form-group select {
+    padding: 10px 12px;
+    font-size: 16px;
+  }
+
+  .form-group label {
+    font-size: 0.9rem;
+  }
+
+  .btn-retour {
+    font-size: 0.9rem;
+    padding: 10px 16px;
+  }
+}
+
+/* Responsive global: menu burger en 2 blocs + footer adaptatif */
+@media (max-width: 1024px) {
+  .footer-contenaire {
+    width: 94%;
+    gap: 16px;
+  }
+
+  .footer-section {
+    width: calc(50% - 8px);
+    min-width: 220px;
+  }
+}
+
+@media (max-width: 800px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  footer {
+    padding: 20px 16px;
+  }
+
+  .footer-contenaire {
+    width: 100%;
+    gap: 14px;
+  }
+
+  .footer-section {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .footer-bottom {
+    font-size: 0.92rem;
+  }
+}
+
+@media (max-width: 480px) {
+}

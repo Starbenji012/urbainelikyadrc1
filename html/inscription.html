@@ -1,0 +1,135 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
+    <link href='https://cdn.boxicons.com/fonts/brands/boxicons-brands.min.css' rel='stylesheet'>
+    <link rel="shortcut icon" href="../img/logo 2.png">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/inscription.css">
+    <link rel="stylesheet" href="../css/nav-mobile-fix.css">
+    <link rel="stylesheet" href="../css/layout-global-fix.css">
+    <title>Inscription</title>
+</head>
+
+<body>
+    <!----------------EN-TETE (Barre de Navigation)-------------------->
+    <header>
+        <nav class="navbar">
+            <!--------Logo-------->
+            <div class="navlogo">
+                <img src="../img/logo.png" alt="urbainelikyadrc" class="logo">
+            </div>
+
+            <!--------Pages-------->
+            <ul class="navigation-menu">
+                <li><a href="index.html">Accueil</a></li>
+                <li><a href="signaler.html">Signaler</a></li>
+                <li><a href="idees.html">Idées du Peuple</a></li>
+                <li><a href="communaute.html">Communauté</a></li>
+                <li><a href="a-propos.html">À propos</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="connexion.html" class="btn-connexion">Connexion</a></li>
+            </ul>
+
+            <!--------Bouton reponsive (Menu burger)-------->
+            <div class="menu-burger" id="menu-burger">
+                <i class='bx bx-menu'></i>
+            </div>
+        </nav>
+
+    </header>
+    <main class="page-connexion">
+
+        <!--------  Fond de couleur transparent -------->
+        <div class="hero-overlay"></div>
+
+        <section class="formulaire-section" id="formulaire-section">
+            <div class="formulaire-connexion-inscription">
+
+                <div class="form connexion active">
+
+                    <!--------Bouton Retour-------->
+                    <button class="btn-retour" id="btn-retour" onclick="goBack()">
+                        <i class='bx bx-arrow-back'></i> Retour
+                    </button>
+
+                    <!--------formulaire inscription -------->
+                    <div class="form inscription">
+                        <form action="#" method="post" class="formulaire" id="formIns">
+
+                            <div class="form-group">
+                                <label for="titre">Nom</label>
+                                <input type="text" id="nom" name="nom" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="prenom">Prénom</label>
+                                <input type="text" id="prenom" name="prenom" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="surnom">Surnom</label>
+                                <input type="text" id="surnom" name="surnom" placeholder="Optionnel">
+                            </div>
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <input type="email" id="email" name="email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">Mot de passe</label>
+                                <input type="password" id="password" name="password" required>
+                            </div>
+                            <div class="form-group">
+                                <button type="submit" class="btn-envoyer">Inscription</button>
+                            </div>
+
+                            <div class="form-group">
+                                <p>
+                                    Vous avez déjà un compte ?
+                                    <span><a href="connexion.html" class="Switch">Connectez-vous</a></span>
+                                </p>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-contenaire">
+
+            <div class="footer-section">
+                <h3><span class="couleur-part1">Urbain</span>ElikyaDRC</h3>
+                <p>Plateforme dédiée à l'amélioration de l'urbanisme et à la participation citoyenne en République
+                    Démocratique du Congo.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Liens Rapides</h3>
+                <ul>
+                    <li><a href="index.html">Accueil</a></li>
+                    <li><a href="signaler.html">Signaler</a></li>
+                    <li><a href="idees.html">Idées du Peuple</a></li>
+                    <li><a href="communaute.html">Communauté</a></li>
+                    <li><a href="a-propos.html">À propos</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contactez-nous</h3>
+                <p>Email: contact@urbainelikyadrc.com</p>
+                <p>Téléphone: +243 843 630 372</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            © 2025 Urbain ElikyaDRC - Tous droits réservés.
+        </div>
+
+    </footer>
+
+</body>
+
+<script src="../js/utils.js"></script>
+<script src="../js/inscription.js?v=20260324"></script>
+
+</html>
