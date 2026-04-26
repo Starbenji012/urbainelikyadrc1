@@ -175,7 +175,7 @@ function addMarkerToMap(sig) {
     typeIconMarkup +
     typeMeta.label +
     "</span>" +
-    '<span class="popup-signalement-status">En cours</span>' +
+    '<span class="popup-signalement-status">En attente</span>' +
     "</div>";
   if (sig.timestamp) {
     try {
@@ -417,7 +417,7 @@ function renderSignalementsList() {
 
     const status = document.createElement("span");
     status.className = "carte-signalement-status";
-    status.textContent = "En cours";
+    status.textContent = "En attente";
     card.appendChild(status);
 
     if (sig.user_nom) {

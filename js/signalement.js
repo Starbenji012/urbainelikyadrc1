@@ -1239,7 +1239,7 @@ function renderList() {
 
     const status = document.createElement("span");
     status.className = "carte-signalement-status";
-    status.textContent = "En cours";
+    status.textContent = "En attente";
     card.appendChild(status);
 
     const author = document.createElement("p");
@@ -1565,7 +1565,7 @@ function renderSignalementTypeBadgeHTML(typeValue, baseClass) {
 }
 
 function renderSignalementStatusBadgeHTML(baseClass) {
-  return `<span class="${baseClass}">En cours</span>`;
+  return `<span class="${baseClass}">En attente</span>`;
 }
 
 function renderMap() {
