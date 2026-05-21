@@ -2,42 +2,43 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 2) . '/core/bootstrap.php';
-require_once BACKEND_ROOT . '/core/response.php';
-require_once BACKEND_ROOT . '/core/request.php';
-require_once BACKEND_ROOT . '/core/validator.php';
-require_once BACKEND_ROOT . '/core/id.php';
-require_once BACKEND_ROOT . '/core/db.php';
-require_once BACKEND_ROOT . '/core/logger.php';
+require_once dirname(__DIR__, 2) . '/core/init.php';
 
-require_method('POST');
-$input = get_json_input();
+use App\Core\Database;
+use App\Core\RequestHandler;
+use App\Core\ResponseHandler;
+use App\Core\Validator;
+use App\Core\IdGenerator;
+use App\Core\Logger;
 
-$nom = as_clean_string($input['nom'] ?? '');
-$email = strtolower(as_clean_string($input['email'] ?? ''));
-$sujet = as_clean_string($input['sujet'] ?? '');
-$message = as_clean_string($input['message'] ?? '');
+RequestHandler::requireMethod('POST');
+$input = RequestHandler::getJsonInput();
+
+$nom = RequestHandler::cleanString($input['nom'] ?? '');
+$email = Validator::sanitizeEmail($input['email'] ?? '');
+$sujet = RequestHandler::cleanString($input['sujet'] ?? '');
+$message = RequestHandler::cleanString($input['message'] ?? '');
 
 $errors = [];
-if (!is_length_between($nom, 2, 120)) {
+if (!Validator::isLengthBetween($nom, 2, 120)) {
     $errors['nom'] = 'Le nom doit contenir entre 2 et 120 caracteres.';
 }
-if (!is_valid_email($email)) {
+if (!Validator::isValidEmail($email)) {
     $errors['email'] = 'Email invalide.';
 }
-if (!is_length_between($sujet, 3, 160)) {
+if (!Validator::isLengthBetween($sujet, 3, 160)) {
     $errors['sujet'] = 'Le sujet doit contenir entre 3 et 160 caracteres.';
 }
-if (!is_length_between($message, 5, 5000)) {
+if (!Validator::isLengthBetween($message, 5, 5000)) {
     $errors['message'] = 'Le message doit contenir entre 5 et 5000 caracteres.';
 }
 
 if (!empty($errors)) {
-    json_error('Validation echouee.', $errors, 422);
+    ResponseHandler::error('Validation echouee.', $errors, 422);
 }
 
 $newMessage = [
-    'id' => generate_id('msg'),
+    'id' => IdGenerator::generate('msg'),
     'nom' => $nom,
     'email' => $email,
     'sujet' => $sujet,
@@ -46,7 +47,7 @@ $newMessage = [
 ];
 
 try {
-    $pdo = db_get_pdo();
+    $pdo = Database::getInstance();
     $stmt = $pdo->prepare(
         'INSERT INTO messages_contact (id_message, nom, email, sujet, message, created_at)
          VALUES (:id_message, :nom, :email, :sujet, :message, NOW())'
@@ -61,8 +62,8 @@ try {
 
     $responseData = $newMessage;
     $responseData['timestamp'] = gmdate('c');
-    json_ok('Message de contact enregistre.', $responseData, 201);
+    ResponseHandler::success('Message de contact enregistre.', $responseData, 201);
 } catch (Throwable $e) {
-    app_log('error', 'Contact MySQL error: ' . $e->getMessage());
-    json_error('Erreur serveur pendant l envoi du message.', [], 500);
+    Logger::error('Contact MySQL error: ' . $e->getMessage());
+    ResponseHandler::error('Erreur serveur pendant l envoi du message.', [], 500);
 }

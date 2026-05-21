@@ -2,24 +2,29 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 2) . '/core/bootstrap.php';
-require_once BACKEND_ROOT . '/core/response.php';
-require_once BACKEND_ROOT . '/core/request.php';
-require_once BACKEND_ROOT . '/core/db.php';
-require_once BACKEND_ROOT . '/core/logger.php';
+require_once dirname(__DIR__, 2) . '/core/init.php';
+require_once dirname(__DIR__, 2) . '/core/classes/AdminDashboardService.php';
 
-require_method('POST');
-$input = get_json_input();
+use App\Core\Database;
+use App\Core\RequestHandler;
+use App\Core\ResponseHandler;
+use App\Core\Validator;
+use App\Core\Logger;
+use App\Core\AuthService;
+use App\Core\AdminDashboardService;
 
-$email = strtolower(as_clean_string($input['email'] ?? ''));
+RequestHandler::requireMethod('POST');
+$input = RequestHandler::getJsonInput();
+
+$email = Validator::sanitizeEmail($input['email'] ?? '');
 $password = (string)($input['password'] ?? '');
 
 if ($email === '' || $password === '') {
-    json_error('Email et mot de passe requis.', [], 422);
+    ResponseHandler::error('Email et mot de passe requis.', [], 422);
 }
 
 try {
-    $pdo = db_get_pdo();
+    $pdo = Database::getInstance();
     $stmt = $pdo->prepare(
         'SELECT id_utilisateur, nom, prenom, surnom, email, mot_de_passe_hash, role
          FROM utilisateurs
@@ -29,11 +34,15 @@ try {
     $stmt->execute([':email' => $email]);
     $foundUser = $stmt->fetch();
 
-    if (!is_array($foundUser) || !password_verify($password, (string)($foundUser['mot_de_passe_hash'] ?? ''))) {
-        json_error('Identifiants invalides.', [], 401);
+    if (!is_array($foundUser) || !AuthService::verifyPassword($password, (string)($foundUser['mot_de_passe_hash'] ?? ''))) {
+        ResponseHandler::error('Identifiants invalides.', [], 401);
     }
 
-    $_SESSION['auth_user'] = [
+    if (AdminDashboardService::isUserBlocked($pdo, (string)($foundUser['id_utilisateur'] ?? ''))) {
+        ResponseHandler::error('Compte bloque. Veuillez contacter un administrateur.', [], 403);
+    }
+
+    $user = [
         'id' => $foundUser['id_utilisateur'],
         'nom' => $foundUser['nom'],
         'prenom' => $foundUser['prenom'],
@@ -42,8 +51,9 @@ try {
         'role' => $foundUser['role'] ?? 'citoyen',
     ];
 
-    json_ok('Connexion reussie.', $_SESSION['auth_user']);
-} catch (Throwable $e) {
-    app_log('error', 'Login MySQL error: ' . $e->getMessage());
-    json_error('Erreur serveur pendant la connexion.', [], 500);
+    AuthService::setAuthUser($user);
+    ResponseHandler::success('Connexion reussie.', $user);
+} catch (\Throwable $e) {
+    Logger::error('Login MySQL error: ' . $e->getMessage());
+    ResponseHandler::error('Erreur serveur pendant la connexion.', [], 500);
 }

@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 2) . '/core/bootstrap.php';
-require_once BACKEND_ROOT . '/core/response.php';
-require_once BACKEND_ROOT . '/core/request.php';
-require_once BACKEND_ROOT . '/core/db.php';
+require_once dirname(__DIR__, 2) . '/core/init.php';
 
-require_method('GET');
+use App\Core\Database;
+use App\Core\RequestHandler;
+use App\Core\ResponseHandler;
 
-$pdo = db_get_pdo();
+RequestHandler::requireMethod('GET');
 
-// Compter les enregistrements globaux depuis la base MySQL.
+$pdo = Database::getInstance();
+
 $usersTotal = (int)$pdo->query('SELECT COUNT(*) FROM utilisateurs')->fetchColumn();
 $signalementsTotal = (int)$pdo->query('SELECT COUNT(*) FROM signalements')->fetchColumn();
 $ideesTotal = (int)$pdo->query('SELECT COUNT(*) FROM idees')->fetchColumn();
@@ -24,4 +24,4 @@ $data = [
     'messages_total' => $messagesTotal,
 ];
 
-json_ok('Statistiques globales.', $data);
+ResponseHandler::success('Statistiques globales.', $data);

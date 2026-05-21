@@ -2,98 +2,100 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 2) . '/core/bootstrap.php';
-require_once BACKEND_ROOT . '/core/response.php';
-require_once BACKEND_ROOT . '/core/request.php';
-require_once BACKEND_ROOT . '/core/validator.php';
-require_once BACKEND_ROOT . '/core/id.php';
-require_once BACKEND_ROOT . '/core/logger.php';
-require_once BACKEND_ROOT . '/core/db.php';
-require_once BACKEND_ROOT . '/core/mailer.php';
+require_once dirname(__DIR__, 2) . '/core/init.php';
 
-require_method('POST');
-$input = get_json_input();
+use App\Core\Database;
+use App\Core\RequestHandler;
+use App\Core\ResponseHandler;
+use App\Core\Validator;
+use App\Core\Logger;
+use App\Core\IdGenerator;
+use App\Core\AuthService;
+use App\Core\MailerService;
 
-$nom = as_clean_string($input['nom'] ?? '');
-$prenom = as_clean_string($input['prenom'] ?? '');
-$surnom = as_clean_string($input['surnom'] ?? '');
-$email = strtolower(as_clean_string($input['email'] ?? ''));
+RequestHandler::requireMethod('POST');
+$input = RequestHandler::getJsonInput();
+
+$nom = RequestHandler::cleanString($input['nom'] ?? '');
+$prenom = RequestHandler::cleanString($input['prenom'] ?? '');
+$surnom = RequestHandler::cleanString($input['surnom'] ?? '');
+$email = Validator::sanitizeEmail($input['email'] ?? '');
 $password = (string)($input['password'] ?? '');
 
 $errors = [];
-if (!is_length_between($nom, 2, 80)) {
+if (!Validator::isLengthBetween($nom, 2, 80)) {
     $errors['nom'] = 'Le nom doit contenir entre 2 et 80 caracteres.';
 }
-if (!is_length_between($prenom, 2, 80)) {
+if (!Validator::isLengthBetween($prenom, 2, 80)) {
     $errors['prenom'] = 'Le prenom doit contenir entre 2 et 80 caracteres.';
 }
-if ($surnom && !is_length_between($surnom, 2, 80)) {
+if ($surnom && !Validator::isLengthBetween($surnom, 2, 80)) {
     $errors['surnom'] = 'Le surnom doit contenir entre 2 et 80 caracteres (ou vide).';
 }
-if (!is_valid_email($email)) {
+if (!Validator::isValidEmail($email)) {
     $errors['email'] = 'Email invalide.';
 }
-if (strlen($password) < 8) {
-    $errors['password'] = 'Le mot de passe doit contenir au moins 8 caracteres.';
+if ($passwordError = Validator::validatePassword($password)) {
+    $errors['password'] = $passwordError;
 }
 
 if (!empty($errors)) {
-    json_error('Validation echouee.', $errors, 422);
+    ResponseHandler::error('Validation echouee.', $errors, 422);
 }
 
-$newUser = [
-    'id' => generate_id('usr'),
-    'nom' => $nom,
-    'prenom' => $prenom,
-    'surnom' => $surnom,
-    'email' => $email,
-    'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-    'role' => 'citoyen',
-    'created_at' => gmdate('c'),
-];
-
 try {
-    $pdo = db_get_pdo();
+    $pdo = Database::getInstance();
 
+    // Vérifier email existant
     $checkStmt = $pdo->prepare('SELECT id_utilisateur FROM utilisateurs WHERE email = :email LIMIT 1');
     $checkStmt->execute([':email' => $email]);
     if ($checkStmt->fetch()) {
-        json_error('Cet email est deja utilise.', ['email' => 'Email deja pris.'], 409);
+        ResponseHandler::error('Cet email est deja utilise.', ['email' => 'Email deja pris.'], 409);
     }
+
+    $userId = IdGenerator::generate('usr');
+    $passwordHash = AuthService::hashPassword($password);
 
     $insertStmt = $pdo->prepare(
         'INSERT INTO utilisateurs (id_utilisateur, nom, prenom, surnom, email, mot_de_passe_hash, role, created_at)
          VALUES (:id, :nom, :prenom, :surnom, :email, :password_hash, :role, NOW())'
     );
     $insertStmt->execute([
-        ':id' => $newUser['id'],
-        ':nom' => $newUser['nom'],
-        ':prenom' => $newUser['prenom'],
-        ':surnom' => $newUser['surnom'] !== '' ? $newUser['surnom'] : null,
-        ':email' => $newUser['email'],
-        ':password_hash' => $newUser['password_hash'],
-        ':role' => $newUser['role'],
+        ':id' => $userId,
+        ':nom' => $nom,
+        ':prenom' => $prenom,
+        ':surnom' => $surnom !== '' ? $surnom : null,
+        ':email' => $email,
+        ':password_hash' => $passwordHash,
+        ':role' => 'citoyen',
     ]);
 
-    // Email de bienvenue sans lien de reinitialisation.
-
+    // Email de bienvenue
+    $mailer = new MailerService();
     $mailSubject = 'Bienvenue sur UrbainElikyaDRC';
-    $mailBody = "Bonjour {$newUser['prenom']} {$newUser['nom']},\n\n"
+    $mailBody = "Bonjour {$prenom} {$nom},\n\n"
         . "Votre compte UrbainElikyaDRC a été créé avec succès.\n"
         . "Pour des raisons de sécurité, votre mot de passe ne vous sera pas envoyé par email.\n"
         . "Si vous oubliez votre mot de passe, utilisez la fonction 'Mot de passe oublie' depuis la page de connexion.\n\n"
         . "Equipe UrbainElikyaDRC";
 
-    $mailSent = send_plain_email($newUser['email'], $mailSubject, $mailBody);
+    $mailSent = $mailer->send($email, $mailSubject, $mailBody);
     if (!$mailSent) {
-        app_log('warning', 'Compte créé mais email de mot de passe non envoyé pour: ' . $newUser['email']);
+        Logger::warning('Account created but welcome email not sent for: ' . $email);
     }
 
-    $responseUser = $newUser;
-    unset($responseUser['password_hash']);
-    $responseUser['welcome_email_sent'] = $mailSent;
-    json_ok('Inscription reussie.', $responseUser, 201);
+    $responseUser = [
+        'id' => $userId,
+        'nom' => $nom,
+        'prenom' => $prenom,
+        'surnom' => $surnom,
+        'email' => $email,
+        'role' => 'citoyen',
+        'welcome_email_sent' => $mailSent,
+    ];
+
+    ResponseHandler::success('Inscription reussie.', $responseUser, 201);
 } catch (Throwable $e) {
-    app_log('error', 'Register MySQL error: ' . $e->getMessage());
-    json_error('Erreur serveur pendant l inscription.', [], 500);
+    Logger::error('Register MySQL error: ' . $e->getMessage());
+    ResponseHandler::error('Erreur serveur pendant l inscription.', [], 500);
 }

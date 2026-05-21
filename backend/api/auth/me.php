@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 2) . '/core/bootstrap.php';
-require_once BACKEND_ROOT . '/core/response.php';
-require_once BACKEND_ROOT . '/core/request.php';
-require_once BACKEND_ROOT . '/core/auth.php';
+require_once dirname(__DIR__, 2) . '/core/init.php';
 
-require_method('GET');
+use App\Core\RequestHandler;
+use App\Core\ResponseHandler;
+use App\Core\AuthService;
 
-$user = require_auth_user();
+RequestHandler::requireMethod('GET');
 
-json_ok('Utilisateur courant.', $user);
+$user = AuthService::requireAuthUser();
+
+ResponseHandler::success('Utilisateur courant.', $user);

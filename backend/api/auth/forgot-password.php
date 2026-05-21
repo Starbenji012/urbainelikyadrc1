@@ -2,33 +2,34 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 2) . '/core/bootstrap.php';
-require_once BACKEND_ROOT . '/core/response.php';
-require_once BACKEND_ROOT . '/core/request.php';
-require_once BACKEND_ROOT . '/core/validator.php';
-require_once BACKEND_ROOT . '/core/logger.php';
-require_once BACKEND_ROOT . '/core/db.php';
-require_once BACKEND_ROOT . '/core/mailer.php';
-require_once BACKEND_ROOT . '/core/password_reset.php';
+require_once dirname(__DIR__, 2) . '/core/init.php';
 
-require_method('POST');
-$input = get_json_input();
+use App\Core\Database;
+use App\Core\RequestHandler;
+use App\Core\ResponseHandler;
+use App\Core\Validator;
+use App\Core\Logger;
+use App\Core\PasswordResetService;
+use App\Core\MailerService;
 
-$email = strtolower(as_clean_string($input['email'] ?? ''));
-if (!is_valid_email($email)) {
-    json_error('Email invalide.', ['email' => 'Email invalide.'], 422);
+RequestHandler::requireMethod('POST');
+$input = RequestHandler::getJsonInput();
+
+$email = Validator::sanitizeEmail($input['email'] ?? '');
+if (!Validator::isValidEmail($email)) {
+    ResponseHandler::error('Email invalide.', ['email' => 'Email invalide.'], 422);
 }
 
 try {
-    $pdo = db_get_pdo();
-    ensure_password_resets_table($pdo);
+    $pdo = Database::getInstance();
+    $resetService = new PasswordResetService($pdo);
 
     $stmt = $pdo->prepare('SELECT id_utilisateur, nom, prenom, email FROM utilisateurs WHERE email = :email LIMIT 1');
     $stmt->execute([':email' => $email]);
     $user = $stmt->fetch();
 
     if (is_array($user)) {
-        $tokenData = create_password_reset_token($pdo, (string)$user['id_utilisateur'], 30);
+        $tokenData = $resetService->createToken((string)$user['id_utilisateur'], 30);
 
         $fullName = trim(((string)$user['prenom']) . ' ' . ((string)$user['nom']));
         $mailSubject = 'Reinitialisation du mot de passe - UrbainElikyaDRC';
@@ -40,17 +41,18 @@ try {
             . "Si vous n'etes pas a l'origine de cette demande, ignorez simplement cet email.\n\n"
             . "Equipe UrbainElikyaDRC";
 
-        $mailSent = send_plain_email((string)$user['email'], $mailSubject, $mailBody);
+        $mailer = new MailerService();
+        $mailSent = $mailer->send((string)$user['email'], $mailSubject, $mailBody);
         if (!$mailSent) {
-            app_log('warning', 'Lien reset genere mais email non envoye pour: ' . $user['email']);
+            Logger::warning('Reset link generated but email not sent for: ' . $user['email']);
         }
     }
 
     // Message volontairement neutre pour eviter l'enumeration d'emails.
-    json_ok('Si cet email existe, un lien de reinitialisation a ete envoye.', [
+    ResponseHandler::success('Si cet email existe, un lien de reinitialisation a ete envoye.', [
         'email_sent' => true,
     ]);
 } catch (Throwable $e) {
-    app_log('error', 'Forgot password error: ' . $e->getMessage());
-    json_error('Erreur serveur pendant la demande de reinitialisation.', [], 500);
+    Logger::error('Forgot password error: ' . $e->getMessage());
+    ResponseHandler::error('Erreur serveur pendant la demande de reinitialisation.', [], 500);
 }
