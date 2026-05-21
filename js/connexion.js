@@ -65,6 +65,9 @@ document.addEventListener("DOMContentLoaded", () => {
           if (backendUser.email) {
             localStorage.setItem("user_email", backendUser.email);
           }
+          if (backendUser.role) {
+            localStorage.setItem("user_role", backendUser.role);
+          }
           localStorage.setItem("auth_connected", "1");
           alert(CONNEXION_TEXT.loginSuccess);
         }
@@ -163,6 +166,7 @@ async function loginToBackend(payload) {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
 
@@ -263,6 +267,7 @@ function loginLocally({ email, password, nom, prenom }) {
     CONNEXION_TEXT.defaultUser;
   localStorage.setItem("user_nom", displayName);
   localStorage.setItem("user_email", found.email || email || "");
+  localStorage.setItem("user_role", "citoyen");
   localStorage.setItem("auth_connected", "1");
   return true;
 }

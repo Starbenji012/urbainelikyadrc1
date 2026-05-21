@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
+    <link href='https://cdn.boxicons.com/fonts/brands/boxicons-brands.min.css' rel='stylesheet'>
+    <link rel="shortcut icon" href="../img/logo 2.png">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/nav-mobile-fix.css">
+    <link rel="stylesheet" href="../css/layout-global-fix.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <title>Tableau de Bord Admin</title>
+</head>
+
+<body>
+    <!----------------EN-TETE (Barre de Navigation)-------------------->
+    <header>
+        <nav class="navbar">
+            <!--------Logo-------->
+            <div class="navlogo">
+                <img src="../img/logo.png" alt="urbainelikyadrc" class="logo">
+            </div>
+
+            <!--------Pages-------->
+            <ul class="navigation-menu">
+                <li><a href="index.html">Accueil</a></li>
+                <li><a href="signaler.html">Signaler</a></li>
+                <li><a href="idees.html">Idées du Peuple</a></li>
+                <li><a href="communaute.html">Communauté</a></li>
+                <li><a href="a-propos.html">À propos</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="connexion.html" class="btn-connexion">Connexion</a></li>
+            </ul>
+
+            <!--------Bouton reponsive (Menu burger)-------->
+            <div class="menu-burger" id="menu-burger">
+                <i class='bx bx-menu'></i>
+            </div>
+        </nav>
+    </header>
+
+    <main class="dashboard-main">
+        <!--------------BLOC PRINCIPAL DU TABLEAU DE BORD-------------->
+        <section class="hero-dashboard">
+            <div class="hero-dashboard__content">
+                <p class="eyebrow">Administration</p>
+                <h1>Tableau de Bord</h1>
+                <p>Gérez les signalements, les idées, les messages, les comptes et les statistiques de la plateforme.
+                </p>
+            </div>
+            <div class="hero-dashboard__actions">
+                <button class="btn btn-ghost-light" id="btn-refresh-dashboard" type="button"><i
+                        class='bx bx-refresh'></i> Actualiser</button>
+                <span class="live-pill"><span class="live-dot"></span> Carte en temps réel</span>
+            </div>
+        </section>
+
+        <section class="dashboard-section" id="dashboard-section">
+            <div class="dashboard-container">
+                <div id="dashboard-alert" class="dashboard-alert dashboard-alert--info">Chargement des données
+                    administrateur en cours.</div>
+
+                <!--------------STATISTIQUES-------------->
+                <div class="stats-grid">
+                    <article class="stat-card stat-card--green">
+                        <div class="stat-card__head"><i class='bx bx-user'></i><span>Comptes</span></div>
+                        <strong id="users-total">0</strong>
+                        <small>Utilisateurs enregistrés</small>
+                    </article>
+                    <article class="stat-card stat-card--red">
+                        <div class="stat-card__head"><i class='bx bx-error-circle'></i><span>Signalements</span></div>
+                        <strong id="signalements-total">0</strong>
+                        <small>Total des signalements</small>
+                    </article>
+                    <article class="stat-card stat-card--amber">
+                        <div class="stat-card__head"><i class='bx bx-loader-circle'></i><span>En cours</span></div>
+                        <strong id="signalements-en-cours">0</strong>
+                        <small>Signalements actifs</small>
+                    </article>
+                    <article class="stat-card stat-card--green">
+                        <div class="stat-card__head"><i class='bx bx-check-circle'></i><span>Résolus</span></div>
+                        <strong id="signalements-resolus">0</strong>
+                        <small>Signalements traités</small>
+                    </article>
+                    <article class="stat-card stat-card--amber">
+                        <div class="stat-card__head"><i class='bx bx-bulb'></i><span>Idées</span></div>
+                        <strong id="idees-total">0</strong>
+                        <small>Idées déposées</small>
+                    </article>
+                    <article class="stat-card stat-card--green">
+                        <div class="stat-card__head"><i class='bx bx-like'></i><span>Likes</span></div>
+                        <strong id="likes-total">0</strong>
+                        <small>Votes reçus par les idées</small>
+                    </article>
+                    <article class="stat-card stat-card--blue">
+                        <div class="stat-card__head"><i class='bx bx-message-dots'></i><span>Messages</span></div>
+                        <strong id="messages-total">0</strong>
+                        <small>Messages reçus</small>
+                    </article>
+                    <article class="stat-card stat-card--green">
+                        <div class="stat-card__head"><i class='bx bx-shield-quarter'></i><span>Avertissements</span>
+                        </div>
+                        <strong id="warnings-total">0</strong>
+                        <small>Historiques de sanctions</small>
+                    </article>
+                </div>
+
+                <!--------------CARTE EN TEMPS REEL-------------->
+                <section class="panel panel-map">
+                    <div class="panel-head">
+                        <div>
+                            <h2><i class='bx bx-map'></i> Carte en temps réel</h2>
+                            <p>Affichage direct des signalements géolocalisés.</p>
+                        </div>
+                        <div class="panel-actions">
+                            <button class="btn btn-outline" id="btn-map-fit" type="button">Centrer la carte</button>
+                        </div>
+                    </div>
+                    <div class="map-layout">
+                        <div id="admin-map" class="map-canvas"></div>
+                        <aside class="map-legend">
+                            <h3>Légende</h3>
+                            <div class="legend-grid">
+                                <div class="legend-item" data-type="dechet"><img
+                                        src="../icon-map/icons8-corbeille-48.png" alt="Déchet" class="legend-icon"
+                                        data-type="dechet"> Déchet</div>
+                                <div class="legend-item" data-type="eau"><img src="../icon-map/icons8-eau-48.png"
+                                        alt="Eau / Inondation" class="legend-icon" data-type="eau"> Eau /
+                                    Inondation</div>
+                                <div class="legend-item" data-type="insecurite"><img
+                                        src="../icon-map/icons8-protection-du-trou-de-serrure-48.png" alt="Insécurité"
+                                        class="legend-icon" data-type="insecurite"> Insécurité</div>
+                                <div class="legend-item" data-type="voirie"><img src="../icon-map/icons8-route-48.png"
+                                        alt="Route abîmée" class="legend-icon" data-type="voirie"> Route abîmée</div>
+                                <div class="legend-item" data-type="electricite"><img
+                                        src="../icon-map/icons8-électricité-32.png" alt="Électricité"
+                                        class="legend-icon" data-type="electricite"> Électricité</div>
+                            </div>
+                            <div class="map-summary" id="map-summary">0 point affiché</div>
+                        </aside>
+                    </div>
+                </section>
+
+                <!--------------SIGNALEMENTS-------------->
+                <section class="panel">
+                    <div class="panel-head">
+                        <div>
+                            <h2><i class='bx bx-error-circle'></i> Signalements</h2>
+                            <p>Voir, filtrer, mettre en cours, résoudre ou supprimer un signalement.</p>
+                        </div>
+                    </div>
+                    <div class="filters-row">
+                        <input id="signalements-search" class="search-input" type="search"
+                            placeholder="Rechercher un signalement, auteur ou lieu">
+                        <select id="signalements-category" class="select-input">
+                            <option value="">Toutes catégories</option>
+                        </select>
+                        <select id="signalements-status" class="select-input">
+                            <option value="">Tous les statuts</option>
+                            <option value="nouveau">Nouveau</option>
+                            <option value="en_cours">En cours</option>
+                            <option value="resolu">Résolu</option>
+                        </select>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Titre</th>
+                                    <th>Catégorie</th>
+                                    <th>Statut</th>
+                                    <th>Auteur</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="signalements-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!--------------IDEES-------------->
+                <section class="panel">
+                    <div class="panel-head">
+                        <div>
+                            <h2><i class='bx bx-bulb'></i> Idées</h2>
+                            <p>Voir les idées, filtrer par catégorie, les mettre en cours ou les marquer comme
+                                réalisées.</p>
+                        </div>
+                    </div>
+                    <div class="filters-row">
+                        <input id="idees-search" class="search-input" type="search"
+                            placeholder="Rechercher une idée, auteur ou mot-clé">
+                        <select id="idees-category" class="select-input">
+                            <option value="">Toutes catégories</option>
+                        </select>
+                        <select id="idees-status" class="select-input">
+                            <option value="">Tous les statuts</option>
+                            <option value="nouvelle">Nouvelle</option>
+                            <option value="en_cours">En cours</option>
+                            <option value="realisee">Réalisée</option>
+                        </select>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Titre</th>
+                                    <th>Catégorie</th>
+                                    <th>Statut</th>
+                                    <th>Likes</th>
+                                    <th>Auteur</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="idees-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!--------------MESSAGES-------------->
+                <section class="panel">
+                    <div class="panel-head">
+                        <div>
+                            <h2><i class='bx bx-message-detail'></i> Messages</h2>
+                            <p>Voir les messages par correspondant, répondre par email ou supprimer.</p>
+                        </div>
+                    </div>
+                    <div class="filters-row">
+                        <input id="messages-search" class="search-input" type="search"
+                            placeholder="Rechercher un correspondant, email ou sujet">
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Correspondant</th>
+                                    <th>Email</th>
+                                    <th>Sujet</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="messages-table-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="reply-box">
+                        <h3><i class='bx bx-reply'></i> Répondre par email</h3>
+                        <div class="reply-grid">
+                            <input id="reply-email" class="search-input" type="email"
+                                placeholder="Email du correspondant">
+                            <input id="reply-subject" class="search-input" type="text"
+                                placeholder="Sujet de la réponse">
+                        </div>
+                        <textarea id="reply-body" class="reply-textarea" rows="6"
+                            placeholder="Tapez votre réponse ici..."></textarea>
+                        <div class="reply-actions">
+                            <span id="reply-target">Aucun message sélectionné</span>
+                            <button class="btn btn-primary" id="btn-send-reply" type="button">Envoyer la
+                                réponse</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!--------------COMPTES-------------->
+                <section class="panel">
+                    <div class="panel-head">
+                        <div>
+                            <h2><i class='bx bx-group'></i> Comptes</h2>
+                            <p>Ajouter des avertissements et supprimer les comptes.</p>
+                        </div>
+                    </div>
+                    <div class="filters-row">
+                        <input id="users-search" class="search-input" type="search"
+                            placeholder="Rechercher un compte, email ou rôle">
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Utilisateur</th>
+                                    <th>Email</th>
+                                    <th>Rôle</th>
+                                    <th>Avertissements</th>
+                                    <th>Blocage</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!--------------SUPER ADMIN-------------->
+                <section class="panel admin-only-panel" id="admin-management-panel" hidden>
+                    <div class="panel-head">
+                        <div>
+                            <h2><i class='bx bx-shield-quarter'></i> Super admin</h2>
+                            <p>Créer d'autres administrateurs et leur attribuer des droits précis.</p>
+                        </div>
+                    </div>
+
+                    <div class="admin-summary" id="admin-summary">Chargement des droits administrateur...</div>
+
+                    <form id="admin-create-form" class="admin-create-form">
+                        <div class="filters-row admin-form-grid">
+                            <input id="admin-prenom" class="search-input" type="text" placeholder="Prénom">
+                            <input id="admin-nom" class="search-input" type="text" placeholder="Nom">
+                            <input id="admin-surnom" class="search-input" type="text" placeholder="Surnom (optionnel)">
+                            <input id="admin-email" class="search-input" type="email" placeholder="Email admin">
+                            <input id="admin-password" class="search-input" type="password" placeholder="Mot de passe">
+                            <select id="admin-role" class="select-input">
+                                <option value="admin">Admin</option>
+                                <option value="super_admin">Super admin</option>
+                            </select>
+                        </div>
+
+                        <div class="admin-permissions">
+                            <label><input id="perm-signalements" type="checkbox" checked> Signalements</label>
+                            <label><input id="perm-idees" type="checkbox" checked> Idées</label>
+                            <label><input id="perm-messages" type="checkbox" checked> Messages</label>
+                            <label><input id="perm-users" type="checkbox" checked> Comptes</label>
+                            <label><input id="perm-stats" type="checkbox" checked> Statistiques</label>
+                            <label><input id="perm-map" type="checkbox" checked> Carte</label>
+                            <label><input id="perm-admins" type="checkbox"> Gestion admins</label>
+                        </div>
+
+                        <div class="reply-actions">
+                            <span>Les droits seront enregistrés à la création ou mis à jour pour un compte
+                                existant.</span>
+                            <button class="btn btn-primary" id="btn-create-admin" type="submit">Créer / promouvoir
+                                l'admin</button>
+                        </div>
+                    </form>
+
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Administrateur</th>
+                                    <th>Email</th>
+                                    <th>Rôle</th>
+                                    <th>Droits</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admins-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </main>
+
+    <!------------------------------PIEDS DE LA PAGE------------------->
+    <footer>
+        <div class="footer-contenaire">
+            <div class="footer-section">
+                <h3><span class="couleur-part1">Urbain</span>ElikyaDRC</h3>
+                <p>Plateforme dédiée à l'amélioration de l'urbanisme et à la participation citoyenne en République
+                    Démocratique du Congo.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Liens Rapides</h3>
+                <ul>
+                    <li><a href="index.html">Accueil</a></li>
+                    <li><a href="signaler.html">Signaler</a></li>
+                    <li><a href="idees.html">Idées du Peuple</a></li>
+                    <li><a href="communaute.html">Communauté</a></li>
+                    <li><a href="a-propos.html">À propos</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contactez-nous</h3>
+                <p>Email: contact@urbainelikyadrc.com</p>
+                <p>Téléphone: +243 843 630 372</p>
+            </div>
+        </div>
+        <div class="footer-bottom">© 2025 Urbain ElikyaDRC - Tous droits réservés.</div>
+    </footer>
+
+    <script src="../js/utils.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="../js/dashboard.js"></script>
+</body>
+
+</html>
