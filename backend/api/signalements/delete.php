@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/core/init.php';
+require_once dirname(__DIR__, 2) . '/core/classes/AdminDashboardService.php';
 
 use App\Core\AuthService;
 use App\Core\Database;
+use App\Core\AdminDashboardService;
 use App\Core\Logger;
 use App\Core\RequestHandler;
 use App\Core\ResponseHandler;
@@ -32,8 +34,7 @@ try {
         ResponseHandler::error('Suppression non autorisee.', [], 403);
     }
 
-    $deleteStmt = $pdo->prepare('DELETE FROM signalements WHERE id_signalement = :id');
-    $deleteStmt->execute([':id' => $id]);
+    AdminDashboardService::deleteSignalement($pdo, $id, (string)($authUser['id'] ?? ''));
 
     ResponseHandler::success('Signalement supprime.');
 } catch (\Throwable $e) {

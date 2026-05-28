@@ -12,6 +12,7 @@ use App\Core\Logger;
 use App\Core\MailerService;
 use App\Core\RequestHandler;
 use App\Core\ResponseHandler;
+use App\Core\UploadService;
 use App\Core\Validator;
 
 RequestHandler::requireMethod('POST');
@@ -56,12 +57,41 @@ try {
     if ($resource === 'signalement') {
         if ($action === 'status') {
             $status = RequestHandler::cleanString((string)($input['status'] ?? 'nouveau'));
-            AdminDashboardService::setSignalementStatus($pdo, $id, $status);
-            ResponseHandler::success('Signalement mis a jour.', ['id' => $id, 'status' => $status]);
+            if ($status === 'resolu') {
+                $evidence = (string)($input['evidence'] ?? '');
+                if (trim($evidence) === '') {
+                    ResponseHandler::error('Une image de preuve est requise pour valider la resolution.', [], 422);
+                }
+
+                $evidencePath = UploadService::persistDataUrlImage($evidence, 'dashboard', 'signalement_' . $id . '_' . time());
+                if ($evidencePath === null || $evidencePath === '') {
+                    ResponseHandler::error('Image de preuve invalide.', [], 422);
+                }
+
+                $result = AdminDashboardService::setSignalementStatus($pdo, $id, $status, (string)($adminUser['id'] ?? ''), null, $evidencePath);
+                ResponseHandler::success('Signalement resolu.', $result);
+            }
+
+            if ($status === 'en_cours') {
+                $result = AdminDashboardService::setSignalementStatus($pdo, $id, $status, (string)($adminUser['id'] ?? ''));
+                ResponseHandler::success('Signalement mis en traitement.', $result);
+            }
+
+            ResponseHandler::error('Statut de signalement inconnu.', [], 422);
+        }
+
+        if ($action === 'cancel') {
+            $reason = trim((string)($input['reason'] ?? ''));
+            if ($reason === '') {
+                ResponseHandler::error('Un motif est requis pour annuler.', [], 422);
+            }
+
+            $result = AdminDashboardService::setSignalementStatus($pdo, $id, 'annule', (string)($adminUser['id'] ?? ''), $reason);
+            ResponseHandler::success('Signalement annule.', $result);
         }
 
         if ($action === 'delete') {
-            AdminDashboardService::deleteSignalement($pdo, $id);
+            AdminDashboardService::deleteSignalement($pdo, $id, (string)($adminUser['id'] ?? ''));
             ResponseHandler::success('Signalement supprime.');
         }
     }
@@ -69,12 +99,40 @@ try {
     if ($resource === 'idee') {
         if ($action === 'status') {
             $status = RequestHandler::cleanString((string)($input['status'] ?? 'nouvelle'));
-            AdminDashboardService::setIdeeStatus($pdo, $id, $status, (string)($adminUser['id'] ?? ''));
-            ResponseHandler::success('Idee mise a jour.', ['id' => $id, 'status' => $status]);
+            if ($status === 'realisee') {
+                $evidence = trim((string)($input['evidence'] ?? ''));
+                $evidencePath = null;
+                if ($evidence !== '') {
+                    $evidencePath = UploadService::persistDataUrlImage($evidence, 'dashboard', 'idee_' . $id . '_' . time());
+                    if ($evidencePath === null || $evidencePath === '') {
+                        ResponseHandler::error('Image de preuve invalide.', [], 422);
+                    }
+                }
+
+                $result = AdminDashboardService::setIdeeStatus($pdo, $id, $status, (string)($adminUser['id'] ?? ''), null, $evidencePath);
+                ResponseHandler::success('Idee realisee.', $result);
+            }
+
+            if ($status === 'en_cours') {
+                $result = AdminDashboardService::setIdeeStatus($pdo, $id, $status, (string)($adminUser['id'] ?? ''));
+                ResponseHandler::success('Idee mise en traitement.', $result);
+            }
+
+            ResponseHandler::error('Statut d idee inconnu.', [], 422);
+        }
+
+        if ($action === 'cancel') {
+            $reason = trim((string)($input['reason'] ?? ''));
+            if ($reason === '') {
+                ResponseHandler::error('Un motif est requis pour annuler.', [], 422);
+            }
+
+            $result = AdminDashboardService::setIdeeStatus($pdo, $id, 'annule', (string)($adminUser['id'] ?? ''), $reason);
+            ResponseHandler::success('Idee annulee.', $result);
         }
 
         if ($action === 'delete') {
-            AdminDashboardService::deleteIdee($pdo, $id);
+            AdminDashboardService::deleteIdee($pdo, $id, (string)($adminUser['id'] ?? ''));
             ResponseHandler::success('Idee supprimee.');
         }
     }
@@ -143,10 +201,11 @@ try {
 
         if ($action === 'block') {
             $days = (int)($input['days'] ?? 0);
+            $hours = (int)($input['hours'] ?? 0);
             $reason = RequestHandler::cleanString((string)($input['reason'] ?? 'Compte bloque par un administrateur.'));
             $blockedUntil = null;
-            if ($days > 0) {
-                $blockedUntil = date('Y-m-d H:i:s', strtotime('+' . $days . ' days'));
+            if ($days > 0 || $hours > 0) {
+                $blockedUntil = date('Y-m-d H:i:s', strtotime('+' . $days . ' days +' . $hours . ' hours'));
             }
             $block = AdminDashboardService::setUserBlock($pdo, $id, $blockedUntil, $reason, (string)($adminUser['id'] ?? ''));
             ResponseHandler::success('Compte bloque.', [
@@ -163,11 +222,12 @@ try {
 
         if ($action === 'delay') {
             $days = (int)($input['days'] ?? 0);
+            $hours = (int)($input['hours'] ?? 0);
             if ($days <= 0) {
                 ResponseHandler::error('Le delai doit etre superieur a 0 jour.', [], 422);
             }
             $reason = RequestHandler::cleanString((string)($input['reason'] ?? 'Delai de debloquage defini par un administrateur.'));
-            $blockedUntil = date('Y-m-d H:i:s', strtotime('+' . $days . ' days'));
+            $blockedUntil = date('Y-m-d H:i:s', strtotime('+' . $days . ' days +' . $hours . ' hours'));
             $block = AdminDashboardService::setUserBlock($pdo, $id, $blockedUntil, $reason, (string)($adminUser['id'] ?? ''));
             ResponseHandler::success('Delai de debloquage mis a jour.', [
                 'id' => $id,
@@ -185,16 +245,6 @@ try {
     ResponseHandler::error('Action admin inconnue.', [], 422);
 } catch (\Throwable $e) {
     Logger::error('Admin action error: ' . $e->getMessage());
-
-    if ($resource === 'idee' && $action === 'status') {
-        $status = RequestHandler::cleanString((string)($input['status'] ?? 'nouvelle'));
-        if (AdminDashboardService::updateIdeeStatusInJson($id, $status)) {
-            ResponseHandler::success('Idee mise a jour en mode secours.', [
-                'id' => $id,
-                'status' => $status,
-            ]);
-        }
-    }
 
     ResponseHandler::error('Erreur serveur pendant l action admin.', [], 500);
 }

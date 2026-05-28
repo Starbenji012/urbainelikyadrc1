@@ -3,11 +3,13 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/core/init.php';
+require_once dirname(__DIR__, 2) . '/core/classes/AdminDashboardService.php';
 
 use App\Core\Database;
 use App\Core\RequestHandler;
 use App\Core\ResponseHandler;
 use App\Core\AuthService;
+use App\Core\AdminDashboardService;
 use App\Core\Logger;
 
 RequestHandler::requireMethod('POST');
@@ -32,8 +34,7 @@ try {
         ResponseHandler::error('Suppression non autorisee.', [], 403);
     }
 
-    $deleteStmt = $pdo->prepare('DELETE FROM idees WHERE id_idee = :id');
-    $deleteStmt->execute([':id' => $id]);
+    AdminDashboardService::deleteIdee($pdo, $id, (string)($authUser['id'] ?? ''));
 
     ResponseHandler::success('Idee supprimee.');
 } catch (Throwable $e) {

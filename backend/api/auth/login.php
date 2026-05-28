@@ -51,6 +51,8 @@ try {
         'role' => $foundUser['role'] ?? 'citoyen',
     ];
 
+    $user['auth_token'] = AuthService::createAccessToken($user);
+
     AuthService::setAuthUser($user);
     ResponseHandler::success('Connexion reussie.', $user);
 } catch (\Throwable $e) {

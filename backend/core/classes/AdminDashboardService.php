@@ -21,13 +21,35 @@ class AdminDashboardService
     public static function ensureSchema(PDO $pdo): void
     {
         $pdo->exec(
-            'CREATE TABLE IF NOT EXISTS admin_idees_status (
-                id_idee VARCHAR(80) NOT NULL PRIMARY KEY,
-                status VARCHAR(40) NOT NULL DEFAULT "nouvelle",
+            'CREATE TABLE IF NOT EXISTS admin_signalement_status (
+                id_signalement VARCHAR(80) NOT NULL PRIMARY KEY,
+                status VARCHAR(40) NOT NULL DEFAULT "nouveau",
+                started_at DATETIME DEFAULT NULL,
+                resolved_at DATETIME DEFAULT NULL,
+                cancelled_at DATETIME DEFAULT NULL,
+                cancel_reason VARCHAR(255) DEFAULT NULL,
+                evidence_path VARCHAR(255) DEFAULT NULL,
                 updated_by VARCHAR(80) DEFAULT NULL,
                 updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
         );
+
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS admin_idees_status (
+                id_idee VARCHAR(80) NOT NULL PRIMARY KEY,
+                status VARCHAR(40) NOT NULL DEFAULT "nouvelle",
+                started_at DATETIME DEFAULT NULL,
+                resolved_at DATETIME DEFAULT NULL,
+                cancelled_at DATETIME DEFAULT NULL,
+                cancel_reason VARCHAR(255) DEFAULT NULL,
+                evidence_path VARCHAR(255) DEFAULT NULL,
+                updated_by VARCHAR(80) DEFAULT NULL,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+        );
+
+        self::ensureSignalementStatusColumns($pdo);
+        self::ensureIdeeStatusColumns($pdo);
 
         $pdo->exec(
             'CREATE TABLE IF NOT EXISTS admin_user_warnings (
@@ -67,6 +89,23 @@ class AdminDashboardService
                 INDEX idx_admin_permissions_key (permission_key)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
         );
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS admin_content_deletions (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                resource_type VARCHAR(32) NOT NULL,
+                resource_id VARCHAR(80) NOT NULL,
+                resource_title VARCHAR(255) DEFAULT NULL,
+                deleted_by VARCHAR(80) DEFAULT NULL,
+                deleted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_admin_content_deletions_type (resource_type),
+                INDEX idx_admin_content_deletions_at (deleted_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+        );
+        try {
+            $pdo->exec('ALTER TABLE admin_content_deletions ADD COLUMN resource_title VARCHAR(255) DEFAULT NULL');
+        } catch (\Throwable $e) {
+            // Column already exists.
+        }
     }
 
     public static function fetchDashboardData(PDO $pdo, ?array $currentUser = null): array
@@ -87,71 +126,21 @@ class AdminDashboardService
                 'signalements_total' => count($signalements),
                 'signalements_en_cours' => self::countByValue($signalements, 'status', 'en_cours'),
                 'signalements_resolus' => self::countByValue($signalements, 'status', 'resolu'),
+                'signalements_annules' => self::countByValue($signalements, 'status', 'annule'),
+                'signalements_supprimes' => self::countDeletions($pdo, 'signalement'),
                 'idees_total' => count($idees),
                 'idees_en_cours' => self::countByValue($idees, 'status', 'en_cours'),
                 'idees_realisees' => self::countByValue($idees, 'status', 'realisee'),
+                'idees_annulees' => self::countByValue($idees, 'status', 'annule'),
+                'idees_supprimees' => self::countDeletions($pdo, 'idee'),
                 'messages_total' => count($messages),
                 'likes_total' => (int)$pdo->query('SELECT COUNT(*) FROM likes_idee')->fetchColumn(),
                 'warnings_total' => (int)$pdo->query('SELECT COUNT(*) FROM admin_user_warnings')->fetchColumn(),
             ],
             'signalements' => $signalements,
             'idees' => $idees,
-            'messages' => $messages,
-            'users' => $users,
-            'admins' => $admins,
-            'filters' => [
-                'signalement_types' => self::uniqueValues($signalements, 'type'),
-                'signalement_statuses' => self::uniqueValues($signalements, 'status'),
-                'idee_categories' => self::uniqueValues($idees, 'categorie'),
-                'idee_statuses' => self::uniqueValues($idees, 'status'),
-            ],
-            'map_points' => self::mapPoints($signalements),
-        ];
-    }
-
-    public static function fetchDashboardDataFromFiles(?array $currentUser = null): array
-    {
-        $signalements = self::readJsonArray('signalements.json');
-        $idees = array_map(static function (array $item): array {
-            $item['status'] = self::normalizeIdeeStatus((string)($item['status'] ?? 'nouvelle'));
-            return $item;
-        }, self::readJsonArray('idees.json'));
-        $messages = self::readJsonArray('messages.json');
-        $users = self::readJsonArray('users.json');
-        $admins = array_values(array_filter($users, static function (array $user): bool {
-            return in_array(strtolower((string)($user['role'] ?? 'citoyen')), ['admin', 'super_admin'], true);
-        }));
-
-        $normalizedCurrentUser = [];
-        if (is_array($currentUser) && !empty($currentUser['id'])) {
-            $normalizedCurrentUser = [
-                'id' => (string)($currentUser['id'] ?? ''),
-                'nom' => (string)($currentUser['nom'] ?? ''),
-                'prenom' => (string)($currentUser['prenom'] ?? ''),
-                'surnom' => (string)($currentUser['surnom'] ?? ''),
-                'email' => (string)($currentUser['email'] ?? ''),
-                'role' => self::normalizeAdminRole((string)($currentUser['role'] ?? 'admin')),
-                'permissions' => self::normalizePermissionsForFallback((string)($currentUser['role'] ?? 'admin')),
-            ];
-        }
-
-        return [
-            'current_user' => $normalizedCurrentUser,
-            'stats' => [
-                'users_total' => count($users),
-                'blocked_total' => 0,
-                'signalements_total' => count($signalements),
-                'signalements_en_cours' => self::countByValue($signalements, 'status', 'en_cours'),
-                'signalements_resolus' => self::countByValue($signalements, 'status', 'resolu'),
-                'idees_total' => count($idees),
-                'idees_en_cours' => self::countByValue($idees, 'status', 'en_cours'),
-                'idees_realisees' => self::countByValue($idees, 'status', 'realisee'),
-                'messages_total' => count($messages),
-                'likes_total' => array_sum(array_map(static fn (array $item): int => (int)($item['likes'] ?? 0), $idees)),
-                'warnings_total' => 0,
-            ],
-            'signalements' => $signalements,
-            'idees' => $idees,
+            'cancelled_history' => self::buildCancelledHistory($signalements, $idees),
+            'deleted_history' => self::fetchDeletionHistory($pdo),
             'messages' => $messages,
             'users' => $users,
             'admins' => $admins,
@@ -180,10 +169,16 @@ class AdminDashboardService
                     CAST(s.latitude AS DOUBLE) AS lat,
                     CAST(s.longitude AS DOUBLE) AS lng,
                     s.photo_path AS photo,
-                    COALESCE(s.status, "nouveau") AS status,
+                    COALESCE(st.status, s.status, "nouveau") AS status,
+                    DATE_FORMAT(st.started_at, "%Y-%m-%dT%H:%i:%sZ") AS started_at,
+                    DATE_FORMAT(st.resolved_at, "%Y-%m-%dT%H:%i:%sZ") AS resolved_at,
+                    DATE_FORMAT(st.cancelled_at, "%Y-%m-%dT%H:%i:%sZ") AS cancelled_at,
+                    st.cancel_reason AS cancel_reason,
+                    st.evidence_path AS evidence_path,
                     DATE_FORMAT(s.created_at, "%Y-%m-%dT%H:%i:%sZ") AS timestamp
              FROM signalements s
              LEFT JOIN utilisateurs u ON u.id_utilisateur = s.id_utilisateur
+             LEFT JOIN admin_signalement_status st ON st.id_signalement = s.id_signalement
              ORDER BY s.created_at DESC'
         );
 
@@ -212,14 +207,19 @@ class AdminDashboardService
                     i.categorie,
                     i.description,
                     i.photo_path AS photo,
-                      COUNT(li.id_like) AS likes,
-                      COALESCE(s.status, "nouvelle") AS status,
+                                        COUNT(li.id_like) AS likes,
+                                        COALESCE(st.status, i.status, "nouvelle") AS status,
+                                        DATE_FORMAT(st.started_at, "%Y-%m-%dT%H:%i:%sZ") AS started_at,
+                                        DATE_FORMAT(st.resolved_at, "%Y-%m-%dT%H:%i:%sZ") AS resolved_at,
+                                        DATE_FORMAT(st.cancelled_at, "%Y-%m-%dT%H:%i:%sZ") AS cancelled_at,
+                                        st.cancel_reason AS cancel_reason,
+                                        st.evidence_path AS evidence_path,
                     DATE_FORMAT(i.created_at, "%Y-%m-%dT%H:%i:%sZ") AS timestamp
              FROM idees i
              LEFT JOIN utilisateurs u ON u.id_utilisateur = i.id_utilisateur
              LEFT JOIN likes_idee li ON li.id_idee = i.id_idee
-             LEFT JOIN admin_idees_status s ON s.id_idee = i.id_idee
-             GROUP BY i.id_idee, i.id_utilisateur, u.nom, u.prenom, u.email, i.titre, i.categorie, i.description, i.photo_path, i.created_at, s.status
+                         LEFT JOIN admin_idees_status st ON st.id_idee = i.id_idee
+                         GROUP BY i.id_idee, i.id_utilisateur, u.nom, u.prenom, u.email, i.titre, i.categorie, i.description, i.photo_path, i.status, i.created_at, st.status, st.started_at, st.resolved_at, st.cancelled_at, st.cancel_reason, st.evidence_path
              ORDER BY i.created_at DESC'
         );
 
@@ -290,51 +290,146 @@ class AdminDashboardService
         return $rows;
     }
 
-    public static function setSignalementStatus(PDO $pdo, string $id, string $status): void
+    public static function setSignalementStatus(PDO $pdo, string $id, string $status, string $adminId, ?string $reason = null, ?string $evidencePath = null): array
     {
-        $stmt = $pdo->prepare('UPDATE signalements SET status = :status WHERE id_signalement = :id LIMIT 1');
+        self::ensureSignalementStatusColumns($pdo);
+
+        $normalizedStatus = self::normalizeSignalementStatus($status);
+        $existing = self::fetchSignalementStatus($pdo, $id) ?? [];
+        $startedAt = (string)($existing['started_at'] ?? '');
+        $resolvedAt = (string)($existing['resolved_at'] ?? '');
+        $cancelledAt = (string)($existing['cancelled_at'] ?? '');
+
+        if ($normalizedStatus === 'en_cours' && $startedAt === '') {
+            $startedAt = date('Y-m-d H:i:s');
+        }
+
+        if ($normalizedStatus === 'resolu') {
+            $resolvedAt = date('Y-m-d H:i:s');
+        }
+
+        if ($normalizedStatus === 'annule') {
+            $cancelledAt = date('Y-m-d H:i:s');
+        }
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO admin_signalement_status (id_signalement, status, started_at, resolved_at, cancelled_at, cancel_reason, evidence_path, updated_by, updated_at)
+             VALUES (:id, :status, :started_at, :resolved_at, :cancelled_at, :cancel_reason, :evidence_path, :updated_by, NOW())
+             ON DUPLICATE KEY UPDATE
+                status = VALUES(status),
+                started_at = VALUES(started_at),
+                resolved_at = VALUES(resolved_at),
+                cancelled_at = VALUES(cancelled_at),
+                cancel_reason = VALUES(cancel_reason),
+                evidence_path = VALUES(evidence_path),
+                updated_by = VALUES(updated_by),
+                updated_at = NOW()'
+        );
         $stmt->execute([
-            ':status' => self::normalizeSignalementStatus($status),
+            ':id' => $id,
+            ':status' => $normalizedStatus,
+            ':started_at' => $startedAt !== '' ? $startedAt : null,
+            ':resolved_at' => $resolvedAt !== '' ? $resolvedAt : null,
+            ':cancelled_at' => $cancelledAt !== '' ? $cancelledAt : null,
+            ':cancel_reason' => $reason !== '' ? $reason : null,
+            ':evidence_path' => $evidencePath !== '' ? $evidencePath : null,
+            ':updated_by' => $adminId,
+        ]);
+
+        $legacy = $pdo->prepare('UPDATE signalements SET status = :status WHERE id_signalement = :id LIMIT 1');
+        $legacy->execute([
+            ':status' => $normalizedStatus,
             ':id' => $id,
         ]);
+
+        return self::fetchSignalementStatus($pdo, $id) ?? [
+            'id_signalement' => $id,
+            'status' => $normalizedStatus,
+            'started_at' => $startedAt !== '' ? self::normalizeDateTime($startedAt) : null,
+            'resolved_at' => $resolvedAt !== '' ? self::normalizeDateTime($resolvedAt) : null,
+            'cancelled_at' => $cancelledAt !== '' ? self::normalizeDateTime($cancelledAt) : null,
+            'cancel_reason' => $reason,
+            'evidence_path' => $evidencePath,
+        ];
     }
 
-    public static function deleteSignalement(PDO $pdo, string $id): void
+    public static function deleteSignalement(PDO $pdo, string $id, ?string $deletedBy = null): void
     {
+        $title = self::fetchResourceTitle($pdo, 'signalement', $id);
+        self::logDeletion($pdo, 'signalement', $id, $title, $deletedBy);
+
         $stmt = $pdo->prepare('DELETE FROM signalements WHERE id_signalement = :id LIMIT 1');
         $stmt->execute([':id' => $id]);
     }
 
-    public static function setIdeeStatus(PDO $pdo, string $id, string $status, string $adminId): void
+    public static function setIdeeStatus(PDO $pdo, string $id, string $status, string $adminId, ?string $reason = null, ?string $evidencePath = null): array
     {
         self::ensureIdeeStatusColumn($pdo);
 
+        $normalizedStatus = self::normalizeIdeeStatus($status);
+        $existing = self::fetchIdeeStatus($pdo, $id) ?? [];
+        $startedAt = (string)($existing['started_at'] ?? '');
+        $resolvedAt = (string)($existing['resolved_at'] ?? '');
+        $cancelledAt = (string)($existing['cancelled_at'] ?? '');
+
+        if ($normalizedStatus === 'en_cours' && $startedAt === '') {
+            $startedAt = date('Y-m-d H:i:s');
+        }
+
+        if ($normalizedStatus === 'realisee') {
+            $resolvedAt = date('Y-m-d H:i:s');
+        }
+
+        if ($normalizedStatus === 'annule') {
+            $cancelledAt = date('Y-m-d H:i:s');
+        }
+
         $stmt = $pdo->prepare(
-            'INSERT INTO admin_idees_status (id_idee, status, updated_by, updated_at)
-             VALUES (:id, :status, :updated_by, NOW())
-             ON DUPLICATE KEY UPDATE status = VALUES(status), updated_by = VALUES(updated_by), updated_at = NOW()'
+            'INSERT INTO admin_idees_status (id_idee, status, started_at, resolved_at, cancelled_at, cancel_reason, evidence_path, updated_by, updated_at)
+             VALUES (:id, :status, :started_at, :resolved_at, :cancelled_at, :cancel_reason, :evidence_path, :updated_by, NOW())
+             ON DUPLICATE KEY UPDATE
+                status = VALUES(status),
+                started_at = VALUES(started_at),
+                resolved_at = VALUES(resolved_at),
+                cancelled_at = VALUES(cancelled_at),
+                cancel_reason = VALUES(cancel_reason),
+                evidence_path = VALUES(evidence_path),
+                updated_by = VALUES(updated_by),
+                updated_at = NOW()'
         );
         $stmt->execute([
             ':id' => $id,
-            ':status' => self::normalizeIdeeStatus($status),
+            ':status' => $normalizedStatus,
+            ':started_at' => $startedAt !== '' ? $startedAt : null,
+            ':resolved_at' => $resolvedAt !== '' ? $resolvedAt : null,
+            ':cancelled_at' => $cancelledAt !== '' ? $cancelledAt : null,
+            ':cancel_reason' => $reason !== '' ? $reason : null,
+            ':evidence_path' => $evidencePath !== '' ? $evidencePath : null,
             ':updated_by' => $adminId,
         ]);
 
-        try {
-            $legacyStmt = $pdo->prepare('UPDATE idees SET status = :status WHERE id_idee = :id LIMIT 1');
-            $legacyStmt->execute([
-                ':status' => self::normalizeIdeeStatus($status),
-                ':id' => $id,
-            ]);
-        } catch (\Throwable $e) {
-            // ignore when legacy column does not exist
-        }
+        $legacy = $pdo->prepare('UPDATE idees SET status = :status WHERE id_idee = :id LIMIT 1');
+        $legacy->execute([
+            ':status' => $normalizedStatus,
+            ':id' => $id,
+        ]);
 
-        self::updateIdeeStatusInJson($id, $status);
+        return self::fetchIdeeStatus($pdo, $id) ?? [
+            'id_idee' => $id,
+            'status' => $normalizedStatus,
+            'started_at' => $startedAt !== '' ? self::normalizeDateTime($startedAt) : null,
+            'resolved_at' => $resolvedAt !== '' ? self::normalizeDateTime($resolvedAt) : null,
+            'cancelled_at' => $cancelledAt !== '' ? self::normalizeDateTime($cancelledAt) : null,
+            'cancel_reason' => $reason,
+            'evidence_path' => $evidencePath,
+        ];
     }
 
-    public static function deleteIdee(PDO $pdo, string $id): void
+    public static function deleteIdee(PDO $pdo, string $id, ?string $deletedBy = null): void
     {
+        $title = self::fetchResourceTitle($pdo, 'idee', $id);
+        self::logDeletion($pdo, 'idee', $id, $title, $deletedBy);
+
         $deleteLikes = $pdo->prepare('DELETE FROM likes_idee WHERE id_idee = :id');
         $deleteLikes->execute([':id' => $id]);
 
@@ -345,48 +440,20 @@ class AdminDashboardService
         $deleteIdee->execute([':id' => $id]);
     }
 
-    public static function updateIdeeStatusInJson(string $id, string $status): bool
+    public static function logDeletion(PDO $pdo, string $resourceType, string $resourceId, ?string $resourceTitle = null, ?string $deletedBy = null): void
     {
-        $path = BACKEND_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'idees.json';
-        if (!is_file($path)) {
-            return false;
-        }
+        self::ensureSchema($pdo);
 
-        $content = file_get_contents($path);
-        if ($content === false || trim($content) === '') {
-            return false;
-        }
-
-        $items = json_decode($content, true);
-        if (!is_array($items)) {
-            return false;
-        }
-
-        $updated = false;
-        foreach ($items as &$item) {
-            if (!is_array($item)) {
-                continue;
-            }
-            if ((string)($item['id'] ?? '') !== $id) {
-                continue;
-            }
-
-            $item['status'] = self::normalizeIdeeStatus($status);
-            $updated = true;
-            break;
-        }
-        unset($item);
-
-        if (!$updated) {
-            return false;
-        }
-
-        $encoded = json_encode($items, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        if ($encoded === false) {
-            return false;
-        }
-
-        return file_put_contents($path, $encoded . PHP_EOL, LOCK_EX) !== false;
+        $stmt = $pdo->prepare(
+            'INSERT INTO admin_content_deletions (resource_type, resource_id, resource_title, deleted_by, deleted_at)
+             VALUES (:resource_type, :resource_id, :resource_title, :deleted_by, NOW())'
+        );
+        $stmt->execute([
+            ':resource_type' => $resourceType,
+            ':resource_id' => $resourceId,
+            ':resource_title' => $resourceTitle !== '' ? $resourceTitle : null,
+            ':deleted_by' => $deletedBy !== '' ? $deletedBy : null,
+        ]);
     }
 
     public static function deleteMessage(PDO $pdo, string $id): void
@@ -412,7 +479,8 @@ class AdminDashboardService
         self::sendUserEmail($pdo, $userId, 'Avertissement UrbainElikyaDRC', self::buildWarningEmailBody($pdo, $userId, $note, $warningsCount));
 
         if ($warningsCount >= 3) {
-            self::setUserBlock($pdo, $userId, null, 'Blocage automatique apres 3 avertissements.', $adminId);
+            $blockedUntil = date('Y-m-d H:i:s', strtotime('+3 days'));
+            self::setUserBlock($pdo, $userId, $blockedUntil, 'Blocage automatique apres 3 avertissements.', $adminId);
         }
 
         return $warningsCount;
@@ -843,7 +911,7 @@ class AdminDashboardService
     private static function normalizeSignalementStatus(string $status): string
     {
         $status = strtolower(trim($status));
-        $allowed = ['nouveau', 'en_cours', 'resolu'];
+        $allowed = ['nouveau', 'en_cours', 'resolu', 'annule'];
 
         if (!in_array($status, $allowed, true)) {
             return 'nouveau';
@@ -856,43 +924,14 @@ class AdminDashboardService
     {
         $status = strtolower(trim($status));
         $status = str_replace(['réalisée', 'realisée', 'realise', 'realiser', 'realisee', 'réalisee'], ['realisee', 'realisee', 'realisee', 'realisee', 'realisee', 'realisee'], $status);
-        $allowed = ['nouvelle', 'en_cours', 'realisee'];
+        $status = str_replace(['annulé', 'annulee', 'annulée'], 'annule', $status);
+        $allowed = ['nouvelle', 'en_cours', 'realisee', 'annule'];
 
         if (!in_array($status, $allowed, true)) {
             return 'nouvelle';
         }
 
         return $status;
-    }
-
-    private static function normalizePermissionsForFallback(string $role): array
-    {
-        $permissions = array_fill_keys(self::ADMIN_PERMISSIONS, false);
-        $role = self::normalizeAdminRole($role);
-
-        if ($role === 'super_admin') {
-            foreach ($permissions as $key => $value) {
-                $permissions[$key] = true;
-            }
-        }
-
-        return $permissions;
-    }
-
-    private static function readJsonArray(string $filename): array
-    {
-        $path = BACKEND_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . $filename;
-        if (!is_file($path)) {
-            return [];
-        }
-
-        $content = file_get_contents($path);
-        if ($content === false || trim($content) === '') {
-            return [];
-        }
-
-        $decoded = json_decode($content, true);
-        return is_array($decoded) ? $decoded : [];
     }
 
     private static function ensureIdeeStatusColumn(PDO $pdo): void
@@ -902,6 +941,98 @@ class AdminDashboardService
         } catch (\Throwable $e) {
             // Column already exists or table is managed differently; ignore.
         }
+    }
+
+    private static function ensureSignalementStatusColumns(PDO $pdo): void
+    {
+        $columns = [
+            'started_at' => 'DATETIME DEFAULT NULL',
+            'resolved_at' => 'DATETIME DEFAULT NULL',
+            'cancelled_at' => 'DATETIME DEFAULT NULL',
+            'cancel_reason' => 'VARCHAR(255) DEFAULT NULL',
+            'evidence_path' => 'VARCHAR(255) DEFAULT NULL',
+        ];
+
+        foreach ($columns as $column => $definition) {
+            try {
+                $pdo->exec('ALTER TABLE admin_signalement_status ADD COLUMN ' . $column . ' ' . $definition);
+            } catch (\Throwable $e) {
+                // Column already exists.
+            }
+        }
+    }
+
+    private static function ensureIdeeStatusColumns(PDO $pdo): void
+    {
+        $columns = [
+            'started_at' => 'DATETIME DEFAULT NULL',
+            'resolved_at' => 'DATETIME DEFAULT NULL',
+            'cancelled_at' => 'DATETIME DEFAULT NULL',
+            'cancel_reason' => 'VARCHAR(255) DEFAULT NULL',
+            'evidence_path' => 'VARCHAR(255) DEFAULT NULL',
+        ];
+
+        foreach ($columns as $column => $definition) {
+            try {
+                $pdo->exec('ALTER TABLE admin_idees_status ADD COLUMN ' . $column . ' ' . $definition);
+            } catch (\Throwable $e) {
+                // Column already exists.
+            }
+        }
+    }
+
+    private static function fetchSignalementStatus(PDO $pdo, string $id): ?array
+    {
+        $stmt = $pdo->prepare(
+            'SELECT id_signalement, status, started_at, resolved_at, cancelled_at, cancel_reason, evidence_path
+             FROM admin_signalement_status
+             WHERE id_signalement = :id
+             LIMIT 1'
+        );
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch();
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        $row['started_at'] = self::normalizeDateTime((string)($row['started_at'] ?? ''));
+        $row['resolved_at'] = self::normalizeDateTime((string)($row['resolved_at'] ?? ''));
+        $row['cancelled_at'] = self::normalizeDateTime((string)($row['cancelled_at'] ?? ''));
+
+        return $row;
+    }
+
+    private static function fetchIdeeStatus(PDO $pdo, string $id): ?array
+    {
+        $stmt = $pdo->prepare(
+            'SELECT id_idee, status, started_at, resolved_at, cancelled_at, cancel_reason, evidence_path
+             FROM admin_idees_status
+             WHERE id_idee = :id
+             LIMIT 1'
+        );
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch();
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        $row['started_at'] = self::normalizeDateTime((string)($row['started_at'] ?? ''));
+        $row['resolved_at'] = self::normalizeDateTime((string)($row['resolved_at'] ?? ''));
+        $row['cancelled_at'] = self::normalizeDateTime((string)($row['cancelled_at'] ?? ''));
+
+        return $row;
+    }
+
+    private static function normalizeDateTime(string $value): ?string
+    {
+        $ts = strtotime($value);
+        if ($ts === false) {
+            return null;
+        }
+
+        return gmdate('Y-m-d\TH:i:s\Z', $ts);
     }
 
     private static function uniqueValues(array $rows, string $field): array
@@ -929,6 +1060,88 @@ class AdminDashboardService
         return $count;
     }
 
+    private static function countDeletions(PDO $pdo, string $resourceType): int
+    {
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM admin_content_deletions WHERE resource_type = :resource_type');
+        $stmt->execute([':resource_type' => $resourceType]);
+
+        return (int)$stmt->fetchColumn();
+    }
+
+    private static function fetchDeletionHistory(PDO $pdo): array
+    {
+        $stmt = $pdo->query(
+            'SELECT resource_type, resource_id, resource_title, deleted_by, deleted_at
+             FROM admin_content_deletions
+             ORDER BY deleted_at DESC, id DESC
+             LIMIT 100'
+        );
+
+        $rows = $stmt->fetchAll();
+        return is_array($rows) ? $rows : [];
+    }
+
+    private static function buildCancelledHistory(array $signalements, array $idees): array
+    {
+        $items = [];
+
+        foreach ($signalements as $row) {
+            if (strtolower(trim((string)($row['status'] ?? ''))) !== 'annule') {
+                continue;
+            }
+
+            $items[] = [
+                'resource_type' => 'signalement',
+                'resource_id' => $row['id_signalement'] ?? $row['id'] ?? '',
+                'resource_title' => $row['titre'] ?? '',
+                'reason' => $row['cancel_reason'] ?? '',
+                'cancelled_at' => $row['cancelled_at'] ?? '',
+                'updated_by' => $row['updated_by'] ?? '',
+            ];
+        }
+
+        foreach ($idees as $row) {
+            if (strtolower(trim((string)($row['status'] ?? ''))) !== 'annule') {
+                continue;
+            }
+
+            $items[] = [
+                'resource_type' => 'idee',
+                'resource_id' => $row['id_idee'] ?? $row['id'] ?? '',
+                'resource_title' => $row['titre'] ?? '',
+                'reason' => $row['cancel_reason'] ?? '',
+                'cancelled_at' => $row['cancelled_at'] ?? '',
+                'updated_by' => $row['updated_by'] ?? '',
+            ];
+        }
+
+        usort($items, static function (array $left, array $right): int {
+            return strcmp((string)($right['cancelled_at'] ?? ''), (string)($left['cancelled_at'] ?? ''));
+        });
+
+        return array_slice($items, 0, 100);
+    }
+
+    private static function fetchResourceTitle(PDO $pdo, string $resourceType, string $id): string
+    {
+        try {
+            if ($resourceType === 'signalement') {
+                $stmt = $pdo->prepare('SELECT titre FROM signalements WHERE id_signalement = :id LIMIT 1');
+                $stmt->execute([':id' => $id]);
+                return (string)($stmt->fetchColumn() ?: '');
+            }
+
+            if ($resourceType === 'idee') {
+                $stmt = $pdo->prepare('SELECT titre FROM idees WHERE id_idee = :id LIMIT 1');
+                $stmt->execute([':id' => $id]);
+                return (string)($stmt->fetchColumn() ?: '');
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return '';
+    }
+
     private static function mapPoints(array $signalements): array
     {
         $points = [];
@@ -945,6 +1158,11 @@ class AdminDashboardService
                 'titre' => $row['titre'] ?? '',
                 'type' => $row['type'] ?? '',
                 'status' => $row['status'] ?? 'nouveau',
+                'started_at' => $row['started_at'] ?? '',
+                'resolved_at' => $row['resolved_at'] ?? '',
+                'cancelled_at' => $row['cancelled_at'] ?? '',
+                'cancel_reason' => $row['cancel_reason'] ?? '',
+                'evidence_path' => $row['evidence_path'] ?? '',
                 'lat' => $lat,
                 'lng' => $lng,
                 'lieu' => $row['lieu'] ?? '',
