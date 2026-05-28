@@ -1,0 +1,13 @@
+{
+  "name": "urbainelikyadrc/backend",
+  "description": "Backend PHP with POO core services",
+  "type": "project",
+  "require": {
+    "php": ">=7.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\Core\\": "backend/core/classes/"
+    }
+  }
+}
