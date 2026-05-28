@@ -55,18 +55,48 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           // Mémoriser un nom d'affichage local pour les pages signalement/communauté.
           const backendUser = result.user || {};
-          const displayName = [backendUser.prenom, backendUser.nom]
+          const fallbackEmail = String(email || "").trim();
+          const resolvedEmail = String(
+            backendUser.email || backendUser.mail || fallbackEmail,
+          ).trim();
+          const displayName = [
+            backendUser.prenom,
+            backendUser.nom,
+            backendUser.surnom,
+          ]
             .filter(Boolean)
             .join(" ")
             .trim();
-          if (displayName) {
-            localStorage.setItem("user_nom", displayName);
-          }
-          if (backendUser.email) {
-            localStorage.setItem("user_email", backendUser.email);
-          }
-          if (backendUser.role) {
-            localStorage.setItem("user_role", backendUser.role);
+          const resolvedName =
+            displayName || resolvedEmail || CONNEXION_TEXT.defaultUser;
+          window.__authProfile = {
+            id: String(
+              backendUser.id ||
+                backendUser.id_utilisateur ||
+                backendUser.user_id ||
+                "",
+            ),
+            nom: resolvedName,
+            email: resolvedEmail,
+            role: String(backendUser.role || "citoyen"),
+          };
+          localStorage.setItem("user_nom", resolvedName);
+          localStorage.setItem("user_email", resolvedEmail);
+          localStorage.setItem(
+            "user_role",
+            String(backendUser.role || "citoyen"),
+          );
+          localStorage.setItem(
+            "user_id",
+            String(
+              backendUser.id ||
+                backendUser.id_utilisateur ||
+                backendUser.user_id ||
+                "",
+            ),
+          );
+          if (backendUser.auth_token) {
+            localStorage.setItem("auth_token", String(backendUser.auth_token));
           }
           localStorage.setItem("auth_connected", "1");
           alert(CONNEXION_TEXT.loginSuccess);
@@ -263,9 +293,20 @@ function loginLocally({ email, password, nom, prenom }) {
   if (!found) return false;
 
   const displayName =
-    [found.prenom || prenom || "", found.nom || nom || ""].join(" ").trim() ||
+    [found.prenom || prenom || "", found.nom || nom || "", found.surnom || ""]
+      .join(" ")
+      .trim() ||
+    found.email ||
+    email ||
     CONNEXION_TEXT.defaultUser;
+  window.__authProfile = {
+    id: String(found.id_utilisateur || found.id || ""),
+    nom: displayName,
+    email: String(found.email || email || ""),
+    role: "citoyen",
+  };
   localStorage.setItem("user_nom", displayName);
+  localStorage.setItem("user_id", found.id_utilisateur || found.id || "");
   localStorage.setItem("user_email", found.email || email || "");
   localStorage.setItem("user_role", "citoyen");
   localStorage.setItem("auth_connected", "1");

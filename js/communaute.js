@@ -1,30 +1,42 @@
-/* COMMUNAUTE.JS - Affichage global et likes communautaires */
+/* COMMUNAUTE.JS - Affichage global des idées et signalements par statut */
 
 const IDEES_ENDPOINTS = buildApiEndpoints("idees/index.php");
-
+const SIGNALEMENTS_ENDPOINTS = buildApiEndpoints("signalements/index.php");
 const IDEES_LIKE_ENDPOINTS = buildApiEndpoints("idees/like.php");
 
 const COMMUNAUTE_TEXT = {
   noIdeas: "Aucune idée.",
+  noResolvedIdeas: "Aucune idée réalisée.",
+  noResolvedSignalements: "Aucun signalement résolu.",
 };
 
-// Données locales des idées.
-let idees = JSON.parse(localStorage.getItem("idees_page") || "[]");
+let idees = [];
+let signalements = [];
 
-// Likes communautaires séparés de la page Idées.
-let likesCommunaute = JSON.parse(
-  localStorage.getItem("idees_communaute_likes") || "{}",
-);
-
-// Variables pour le carrousel
-const MIN_CARDS_FOR_AUTO_SCROLL = 3; // Défilement seulement si > 3 cartes
-const AUTO_SCROLL_STEP_PX = 1; // Pas fixe pour éviter le tremblement du texte
-const AUTO_SCROLL_TICK_MS = 26; // ~38px/s, vitesse moyenne
+const MIN_CARDS_FOR_AUTO_SCROLL = 3;
+const AUTO_SCROLL_STEP_PX = 1;
+const AUTO_SCROLL_TICK_MS = 26;
 const MANUAL_PAUSE_MS = 1400;
 
-let carouselIntervalId = null;
-let pauseUntil = 0;
-let isHoverPaused = false;
+const carouselIntervals = new Map();
+const carouselPauseUntil = new Map();
+
+function normalizeStatus(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .trim();
+}
+
+function isIdeeRealisee(idee) {
+  return normalizeStatus(idee?.status) === "realisee";
+}
+
+function isSignalementResolu(sig) {
+  return normalizeStatus(sig?.status) === "resolu";
+}
 
 function getIdeeCategoryMeta(category) {
   const key = String(category || "").toLowerCase();
@@ -70,84 +82,103 @@ function renderIdeeCategoryBadge(category) {
   return `<span class="categorie-badge cat-${meta.key}"><img src="${meta.icon}" alt="${meta.label}" class="categorie-badge-icon">${meta.label}</span>`;
 }
 
-function renderIdeeStatusBadge() {
-  return '<span class="idee-status-badge">En attente</span>';
+function renderIdeaCard(idee) {
+  const key = String(idee.id || idee.timestamp || "");
+  return `
+    <div class="carte-idee ${idee.photo ? "" : "no-photo"}">
+      ${idee.photo ? `<img src="${idee.photo}" alt="Photo idée" class="carte-idee-photo">` : ""}
+      <h3>${idee.titre || "Idée"}</h3>
+      <p>${idee.description || ""}</p>
+      ${idee.user_nom ? `<p class="carte-idee-author">Par : ${idee.user_nom}</p>` : ""}
+      ${renderIdeeCategoryBadge(idee.categorie)}
+      <span class="idee-status-badge">${idee.status === "realisee" ? "Réalisée" : "En attente"}</span>
+      <small>${idee.timestamp ? new Date(idee.timestamp).toLocaleString("fr-FR") : "Date inconnue"}</small>
+      <div class="carte-actions">
+        <button class="btn-like" data-like-key="${key}" onclick="communauteLikeIdee('${key}')">
+          <i class='bx bx-heart'></i> <span class="like-count" data-like-key="${key}">${Number(idee.likes || 0)}</span>
+        </button>
+      </div>
+    </div>
+  `;
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Navigation mobile: logique partagée dans utils.js.
-  initMenuBurger();
+function getSignalementTypeLabel(typeValue) {
+  const key = String(typeValue || "").toLowerCase();
+  const labels = {
+    voirie: "Route abimée",
+    eau: "Eau",
+    electricite: "Electricité",
+    insecurite: "Insécurité",
+    dechet: "Déchet",
+  };
+  return labels[key] || "Autre";
+}
 
-  // Charger les idées depuis le backend, puis afficher la page.
-  loadIdeesFromBackend().then(() => {
-    renderIdees();
-    setupCarousel();
-  });
-});
+function renderSignalementCard(sig) {
+  return `
+    <div class="carte-signalement ${sig.photo ? "" : "no-photo"}">
+      ${sig.photo ? `<img src="${sig.photo}" alt="Photo signalement" class="carte-signalement-photo">` : ""}
+      <h3>${sig.titre || "Signalement"}</h3>
+      <p class="carte-signalement-desc">${sig.description || ""}</p>
+      <span class="carte-signalement-type">${getSignalementTypeLabel(sig.type)}</span>
+      <span class="carte-signalement-status">${sig.status === "resolu" ? "Résolu" : "En attente"}</span>
+      ${sig.user_nom ? `<p class="carte-signalement-author">Par : ${sig.user_nom}</p>` : ""}
+      <p class="carte-signalement-location">📍 ${sig.lieu || "Adresse non spécifiée"}</p>
+      <div class="carte-signalement-meta">${sig.timestamp ? new Date(sig.timestamp).toLocaleString("fr-FR") : "Date inconnue"}</div>
+    </div>
+  `;
+}
 
-function setupCarousel() {
-  const carousel = document.getElementById("ideesCarousel");
-  const btnPrev = document.getElementById("carouselPrev");
-  const btnNext = document.getElementById("carouselNext");
+function renderCards(containerId, items, emptyMessage, cardRenderer) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
 
+  container.innerHTML = items.length
+    ? items.map(cardRenderer).join("")
+    : `<p>${emptyMessage}</p>`;
+}
+
+function stopInfiniteScroll(containerId) {
+  const intervalId = carouselIntervals.get(containerId);
+  if (intervalId) {
+    clearInterval(intervalId);
+    carouselIntervals.delete(containerId);
+  }
+}
+
+function normalizeInfinitePosition(carousel) {
+  const span = Number(carousel.dataset.loopSpan || 0);
+  if (!span) return;
+
+  if (carousel.scrollLeft >= span * 2) {
+    carousel.scrollLeft -= span;
+  } else if (carousel.scrollLeft < span * 0.5) {
+    carousel.scrollLeft += span;
+  }
+}
+
+function getCardStep(carousel) {
+  const cards = carousel.querySelectorAll(".carte-idee, .carte-signalement");
+  if (cards.length >= 2) {
+    const step = cards[1].offsetLeft - cards[0].offsetLeft;
+    if (step > 0) return step;
+  }
+  return 320;
+}
+
+function prepareInfiniteCarousel(containerId) {
+  const carousel = document.getElementById(containerId);
   if (!carousel) return;
 
-  stopInfiniteScroll();
-  prepareInfiniteCarousel(carousel);
+  stopInfiniteScroll(containerId);
 
-  const baseCount = Number(carousel.dataset.baseCount || 0);
-  if (baseCount <= MIN_CARDS_FOR_AUTO_SCROLL) {
-    carousel.scrollLeft = 0;
-    return;
-  }
-
-  const step = getCardStep(carousel);
-
-  if (btnPrev && btnPrev.dataset.bound !== "1") {
-    btnPrev.addEventListener("click", () => {
-      pauseUntil = Date.now() + MANUAL_PAUSE_MS;
-      carousel.scrollBy({ left: -step, behavior: "smooth" });
-      setTimeout(() => normalizeInfinitePosition(carousel), 380);
-    });
-    btnPrev.dataset.bound = "1";
-  }
-
-  if (btnNext && btnNext.dataset.bound !== "1") {
-    btnNext.addEventListener("click", () => {
-      pauseUntil = Date.now() + MANUAL_PAUSE_MS;
-      carousel.scrollBy({ left: step, behavior: "smooth" });
-      setTimeout(() => normalizeInfinitePosition(carousel), 380);
-    });
-    btnNext.dataset.bound = "1";
-  }
-
-  if (carousel.dataset.hoverBound !== "1") {
-    carousel.addEventListener("mouseover", (event) => {
-      if (event.target.closest(".carte-idee")) {
-        isHoverPaused = true;
-      }
-    });
-
-    carousel.addEventListener("mouseout", (event) => {
-      const leavingCard = event.target.closest(".carte-idee");
-      const stillInsideCard = event.relatedTarget?.closest?.(".carte-idee");
-      if (leavingCard && !stillInsideCard) {
-        isHoverPaused = false;
-      }
-    });
-
-    carousel.dataset.hoverBound = "1";
-  }
-
-  startInfiniteScroll(carousel);
-}
-
-function prepareInfiniteCarousel(carousel) {
-  const originals = Array.from(carousel.querySelectorAll(".carte-idee"));
+  const originals = Array.from(
+    carousel.querySelectorAll(".carte-idee, .carte-signalement"),
+  );
   const originalCount = originals.length;
   carousel.dataset.baseCount = String(originalCount);
 
-  if (originalCount <= MIN_CARDS_FOR_AUTO_SCROLL) {
+  if (originalCount < MIN_CARDS_FOR_AUTO_SCROLL) {
     carousel.dataset.loopSpan = "0";
     carousel.scrollLeft = 0;
     return;
@@ -172,72 +203,144 @@ function prepareInfiniteCarousel(carousel) {
   carousel.scrollLeft = span;
 }
 
-function getCardStep(carousel) {
-  const cards = carousel.querySelectorAll(".carte-idee");
-  if (cards.length >= 2) {
-    const step = cards[1].offsetLeft - cards[0].offsetLeft;
-    if (step > 0) return step;
-  }
-  return 320;
-}
+function startInfiniteScroll(containerId) {
+  const carousel = document.getElementById(containerId);
+  if (!carousel) return;
 
-function normalizeInfinitePosition(carousel) {
-  const span = Number(carousel.dataset.loopSpan || 0);
-  if (!span) return;
+  stopInfiniteScroll(containerId);
 
-  if (carousel.scrollLeft >= span * 2) {
-    carousel.scrollLeft -= span;
-  } else if (carousel.scrollLeft < span * 0.5) {
-    carousel.scrollLeft += span;
-  }
-}
-
-function startInfiniteScroll(carousel) {
-  stopInfiniteScroll();
-
-  carouselIntervalId = setInterval(() => {
+  const intervalId = window.setInterval(() => {
     if (!carousel.isConnected) return;
 
-    if (!isHoverPaused && Date.now() >= pauseUntil) {
-      carousel.scrollLeft += AUTO_SCROLL_STEP_PX;
-      normalizeInfinitePosition(carousel);
-    }
+    const pauseUntil = carouselPauseUntil.get(containerId) || 0;
+    const hoverPaused = carousel.dataset.hoverPaused === "1";
+    if (Date.now() < pauseUntil || hoverPaused) return;
+
+    carousel.scrollLeft += AUTO_SCROLL_STEP_PX;
+    normalizeInfinitePosition(carousel);
   }, AUTO_SCROLL_TICK_MS);
+
+  carouselIntervals.set(containerId, intervalId);
 }
 
-function stopInfiniteScroll() {
-  if (carouselIntervalId) {
-    clearInterval(carouselIntervalId);
-    carouselIntervalId = null;
+function setupInfiniteCarousel(containerId, prevId, nextId) {
+  const carousel = document.getElementById(containerId);
+  const btnPrev = document.getElementById(prevId);
+  const btnNext = document.getElementById(nextId);
+  if (!carousel) return;
+
+  prepareInfiniteCarousel(containerId);
+
+  const baseCount = Number(carousel.dataset.baseCount || 0);
+  if (baseCount < MIN_CARDS_FOR_AUTO_SCROLL) {
+    if (btnPrev) btnPrev.disabled = true;
+    if (btnNext) btnNext.disabled = true;
+    return;
+  }
+
+  if (btnPrev && btnPrev.dataset.bound !== "1") {
+    btnPrev.addEventListener("click", () => {
+      carouselPauseUntil.set(containerId, Date.now() + MANUAL_PAUSE_MS);
+      const step = getCardStep(carousel);
+      carousel.scrollBy({ left: -step, behavior: "smooth" });
+      setTimeout(() => normalizeInfinitePosition(carousel), 380);
+    });
+    btnPrev.dataset.bound = "1";
+  }
+
+  if (btnNext && btnNext.dataset.bound !== "1") {
+    btnNext.addEventListener("click", () => {
+      carouselPauseUntil.set(containerId, Date.now() + MANUAL_PAUSE_MS);
+      const step = getCardStep(carousel);
+      carousel.scrollBy({ left: step, behavior: "smooth" });
+      setTimeout(() => normalizeInfinitePosition(carousel), 380);
+    });
+    btnNext.dataset.bound = "1";
+  }
+
+  if (carousel.dataset.hoverBound !== "1") {
+    carousel.addEventListener("mouseover", (event) => {
+      if (event.target.closest(".carte-idee, .carte-signalement")) {
+        carousel.dataset.hoverPaused = "1";
+      }
+    });
+
+    carousel.addEventListener("mouseout", (event) => {
+      const leavingCard = event.target.closest(
+        ".carte-idee, .carte-signalement",
+      );
+      const stillInsideCard = event.relatedTarget?.closest?.(
+        ".carte-idee, .carte-signalement",
+      );
+      if (leavingCard && !stillInsideCard) {
+        carousel.dataset.hoverPaused = "0";
+      }
+    });
+
+    carousel.dataset.hoverBound = "1";
+  }
+
+  startInfiniteScroll(containerId);
+}
+
+function setupSimpleCarousel(containerId, prevId, nextId) {
+  const carousel = document.getElementById(containerId);
+  const btnPrev = document.getElementById(prevId);
+  const btnNext = document.getElementById(nextId);
+  if (!carousel) return;
+
+  const step = 320;
+
+  if (btnPrev && btnPrev.dataset.bound !== "1") {
+    btnPrev.addEventListener("click", () => {
+      carousel.scrollBy({ left: -step, behavior: "smooth" });
+    });
+    btnPrev.dataset.bound = "1";
+  }
+
+  if (btnNext && btnNext.dataset.bound !== "1") {
+    btnNext.addEventListener("click", () => {
+      carousel.scrollBy({ left: step, behavior: "smooth" });
+    });
+    btnNext.dataset.bound = "1";
   }
 }
 
-function renderIdees() {
-  const ideesContainer = document.getElementById("ideesCarousel");
-  if (ideesContainer) {
-    ideesContainer.innerHTML =
-      idees.length === 0
-        ? `<p>${COMMUNAUTE_TEXT.noIdeas}</p>`
-        : idees
-            .map(
-              (idee) => `
-      <div class="carte-idee ${idee.photo ? "" : "no-photo"}">
-        ${idee.photo ? `<img src="${idee.photo}" alt="Photo idée" class="carte-idee-photo">` : ""}
-        <h3>${idee.titre}</h3>
-        <p>${idee.description}</p>
-        ${idee.user_nom ? `<p class="carte-idee-author">Par : ${idee.user_nom}</p>` : ""}
-        ${renderIdeeCategoryBadge(idee.categorie)}
-        ${renderIdeeStatusBadge()}
-        <small>${new Date(idee.timestamp).toLocaleString()}</small>
-        <div class="carte-actions">
-              <button class="btn-like" data-like-key="${idee.id || idee.timestamp}" onclick="communauteLikeIdee('${idee.id || idee.timestamp}')">
-                <i class='bx bx-heart'></i> <span class="like-count" data-like-key="${idee.id || idee.timestamp}">${likesCommunaute[idee.id || idee.timestamp] || 0}</span>
-          </button>
-        </div>
-      </div>
-    `,
-            )
-            .join("");
+async function loadIdeasFromBackend() {
+  for (const endpoint of IDEES_ENDPOINTS) {
+    try {
+      const resp = await fetch(endpoint, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!resp.ok) continue;
+
+      const data = unwrapApiListResponse(await resp.json());
+      if (!data.length) continue;
+
+      idees = data;
+      return;
+    } catch (e) {}
+  }
+}
+
+async function loadSignalementsFromBackend() {
+  for (const endpoint of SIGNALEMENTS_ENDPOINTS) {
+    try {
+      const resp = await fetch(endpoint, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!resp.ok) continue;
+
+      const data = unwrapApiListResponse(await resp.json());
+      if (!data.length) continue;
+
+      signalements = data;
+      return;
+    } catch (e) {}
   }
 }
 
@@ -251,42 +354,8 @@ async function communauteLikeIdee(idOrTimestamp) {
     await likeIdeeToBackend(target.id);
   }
 
-  likesCommunaute[idOrTimestamp] = (likesCommunaute[idOrTimestamp] || 0) + 1;
-  localStorage.setItem(
-    "idees_communaute_likes",
-    JSON.stringify(likesCommunaute),
-  );
-
-  // Met à jour uniquement les compteurs correspondants sans re-render le carrousel.
-  const nextValue = String(likesCommunaute[idOrTimestamp]);
-  const counts = document.querySelectorAll(
-    `.like-count[data-like-key="${idOrTimestamp}"]`,
-  );
-  counts.forEach((el) => {
-    el.textContent = nextValue;
-  });
-}
-
-async function loadIdeesFromBackend() {
-  for (const endpoint of IDEES_ENDPOINTS) {
-    try {
-      const resp = await fetch(endpoint, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        cache: "no-store",
-      });
-      if (!resp.ok) continue;
-
-      const data = await resp.json();
-      if (!Array.isArray(data)) continue;
-
-      idees = data;
-      localStorage.setItem("idees_page", JSON.stringify(idees));
-      return;
-    } catch (e) {
-      // On essaie le prochain endpoint.
-    }
-  }
+  await loadIdeasFromBackend();
+  renderCommunitySections();
 }
 
 async function likeIdeeToBackend(id) {
@@ -301,9 +370,51 @@ async function likeIdeeToBackend(id) {
         body: JSON.stringify({ id }),
       });
       if (resp.ok) return true;
-    } catch (e) {
-      // Fallback local deja gere.
-    }
+    } catch (e) {}
   }
   return false;
 }
+
+function renderCommunitySections() {
+  renderCards(
+    "ideesCarouselSoumises",
+    idees,
+    COMMUNAUTE_TEXT.noIdeas,
+    renderIdeaCard,
+  );
+  renderCards(
+    "ideesCarouselRealisees",
+    idees.filter(isIdeeRealisee),
+    COMMUNAUTE_TEXT.noResolvedIdeas,
+    renderIdeaCard,
+  );
+  renderCards(
+    "signalementsCarouselResolus",
+    signalements.filter(isSignalementResolu),
+    COMMUNAUTE_TEXT.noResolvedSignalements,
+    renderSignalementCard,
+  );
+
+  setupInfiniteCarousel(
+    "ideesCarouselSoumises",
+    "carouselPrevIdeesSoumises",
+    "carouselNextIdeesSoumises",
+  );
+  setupSimpleCarousel(
+    "ideesCarouselRealisees",
+    "carouselPrevIdeesRealisees",
+    "carouselNextIdeesRealisees",
+  );
+  setupInfiniteCarousel(
+    "signalementsCarouselResolus",
+    "carouselPrevSignalementsResolus",
+    "carouselNextSignalementsResolus",
+  );
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  initMenuBurger();
+  loadIdeasFromBackend()
+    .then(loadSignalementsFromBackend)
+    .then(renderCommunitySections);
+});

@@ -21,7 +21,8 @@ async function fetchArray(urls) {
       const r = await fetch(url);
       if (!r.ok) continue;
       const j = await r.json();
-      if (Array.isArray(j)) return j;
+      const data = unwrapApiListResponse(j);
+      if (data.length) return data;
     } catch (e) {
       // On essaie l'URL suivante.
     }
@@ -38,14 +39,26 @@ async function fetchDashboardStats(urls) {
       const data = j?.data;
       if (!data || typeof data !== "object") continue;
 
-      const signalements = Number(data.signalements_total);
-      const idees = Number(data.idees_total);
-      if (Number.isFinite(signalements) && Number.isFinite(idees)) {
-        return {
-          signalements: Math.max(0, Math.trunc(signalements)),
-          idees: Math.max(0, Math.trunc(idees)),
-        };
-      }
+      return {
+        signalements: Math.max(
+          0,
+          Math.trunc(Number(data.signalements_total) || 0),
+        ),
+        signalementsEnCours: Math.max(
+          0,
+          Math.trunc(Number(data.signalements_en_cours) || 0),
+        ),
+        signalementsResolus: Math.max(
+          0,
+          Math.trunc(Number(data.signalements_resolus) || 0),
+        ),
+        idees: Math.max(0, Math.trunc(Number(data.idees_total) || 0)),
+        ideesEnCours: Math.max(0, Math.trunc(Number(data.idees_en_cours) || 0)),
+        ideesRealisees: Math.max(
+          0,
+          Math.trunc(Number(data.idees_realisees) || 0),
+        ),
+      };
     } catch (e) {
       // On essaie l'URL suivante.
     }
@@ -66,6 +79,15 @@ function mergeUniqueByKey(arrA, arrB, keyFn) {
   return out;
 }
 
+function normalizeStatus(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .trim();
+}
+
 async function updateGlobalStats() {
   // Priorite aux statistiques backend, plus fiables en production multi-utilisateurs.
   const dashboardStats = await fetchDashboardStats(STATS_ENDPOINTS);
@@ -73,40 +95,49 @@ async function updateGlobalStats() {
     const sigEl = document.getElementById("sig-total");
     if (sigEl) sigEl.textContent = String(dashboardStats.signalements);
 
+    const sigEnCoursEl = document.getElementById("sig-en-cours");
+    if (sigEnCoursEl)
+      sigEnCoursEl.textContent = String(
+        dashboardStats.signalementsEnCours || 0,
+      );
+
+    const sigTraiterEl = document.getElementById("sig-traiter");
+    if (sigTraiterEl)
+      sigTraiterEl.textContent = String(
+        dashboardStats.signalementsResolus || 0,
+      );
+
     const ideesEl = document.getElementById("idees-soumis");
     if (ideesEl) ideesEl.textContent = String(dashboardStats.idees);
+
+    const ideesRealiseEl = document.getElementById("idees-realise");
+    if (ideesRealiseEl)
+      ideesRealiseEl.textContent = String(dashboardStats.ideesRealisees || 0);
 
     return;
   }
 
-  // Fallback local+backend liste si l'endpoint global n'est pas disponible.
-  // 1) Lire les signalements (local + backend), puis fusionner sans doublons.
-  const localSignalements = readLocalArray("signalements");
-  const backendSignalements = await fetchArray(SIGNALEMENTS_ENDPOINTS);
-  const allSignalements = mergeUniqueByKey(
-    backendSignalements,
-    localSignalements,
-    (s) =>
-      String(
-        s?.id ||
-          s?.timestamp ||
-          `${s?.titre || ""}-${s?.lat || ""}-${s?.lng || ""}`,
-      ),
-  );
-
-  // 2) Lire les idées (local + backend), puis fusionner sans doublons.
-  const localIdees = readLocalArray("idees_page");
-  const backendIdees = await fetchArray(IDEES_ENDPOINTS);
-  const allIdees = mergeUniqueByKey(backendIdees, localIdees, (i) =>
-    String(i?.id || i?.timestamp || i?.titre || ""),
-  );
-
-  // 3) Afficher les compteurs dans la page d'accueil.
+  // Afficher uniquement les compteurs backend/BDD.
   const sigEl = document.getElementById("sig-total");
-  if (sigEl) sigEl.textContent = String(allSignalements.length);
+  if (sigEl) sigEl.textContent = String(dashboardStats.signalements);
+
+  const sigEnCoursEl = document.getElementById("sig-en-cours");
+  if (sigEnCoursEl) {
+    sigEnCoursEl.textContent = String(dashboardStats.signalementsEnCours || 0);
+  }
+
+  const sigTraiterEl = document.getElementById("sig-traiter");
+  if (sigTraiterEl) {
+    sigTraiterEl.textContent = String(dashboardStats.signalementsResolus || 0);
+  }
 
   const ideesEl = document.getElementById("idees-soumis");
-  if (ideesEl) ideesEl.textContent = String(allIdees.length);
+  if (ideesEl) ideesEl.textContent = String(dashboardStats.idees);
+
+  const ideesRealiseEl = document.getElementById("idees-realise");
+  if (ideesRealiseEl) {
+    ideesRealiseEl.textContent = String(dashboardStats.ideesRealisees || 0);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {

@@ -1,9 +1,7 @@
-/* IDEES.JS - Backend PHP avec fallback localStorage */
+/* IDEES.JS - Backend PHP */
 
-let idees = JSON.parse(localStorage.getItem("idees_page") || "[]");
-let likesCommunaute = JSON.parse(
-  localStorage.getItem("idees_communaute_likes") || "{}",
-);
+let idees = [];
+let likesCommunaute = {};
 
 const MIN_CARDS_FOR_AUTO_SCROLL = 3;
 const AUTO_SCROLL_STEP_PX = 1;
@@ -32,7 +30,6 @@ const IDEE_TEXT = {
   requiredFields: "Titre et description requis",
   invalidPhoto: "Photo invalide.",
   createdBackend: "Idée ajoutée (backend) !",
-  createdLocal: "Idée ajoutée en local (backend indisponible) !",
   backendUnavailable: "Backend indisponible.",
   mustLoginToView: "Connectez-vous pour voir vos idées personnelles.",
   noIdeasForAccount: "Aucune idée pour votre compte.",
@@ -61,12 +58,42 @@ function resolveCurrentUserEmail() {
     .toLowerCase();
 }
 
+function normalizeIdentityTokens(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function namesReferToSamePerson(profileName, itemName) {
+  const profileTokens = normalizeIdentityTokens(profileName).filter(
+    (token) => token.length > 2,
+  );
+  const itemTokens = normalizeIdentityTokens(itemName).filter(
+    (token) => token.length > 2,
+  );
+
+  if (!profileTokens.length || !itemTokens.length) return false;
+  if (profileTokens.join(" ") === itemTokens.join(" ")) return true;
+
+  const profileInItem = profileTokens.every((token) =>
+    itemTokens.includes(token),
+  );
+  const itemInProfile = itemTokens.every((token) =>
+    profileTokens.includes(token),
+  );
+  return profileInItem || itemInProfile;
+}
+
 function readCurrentProfile() {
   const nom = resolveCurrentUserName();
   const email = resolveCurrentUserEmail();
+  const userId = String(localStorage.getItem("user_id") || "").trim();
   const connected =
     String(localStorage.getItem("auth_connected") || "") === "1";
-  return { connected, nom, email };
+  return { connected, nom, email, userId };
 }
 
 function isOwnedByCurrentUser(item) {
@@ -82,9 +109,11 @@ function isOwnedByCurrentUser(item) {
   const profileNom = String(profile.nom || "")
     .trim()
     .toLowerCase();
+  const itemUserId = String(item?.user_id || "").trim();
 
   if (profile.email && itemEmail) return itemEmail === profile.email;
-  return Boolean(profileNom && itemNom && itemNom === profileNom);
+  if (profile.userId && itemUserId) return itemUserId === profile.userId;
+  return namesReferToSamePerson(profileNom, itemNom);
 }
 
 function getVisibleIdees() {
@@ -238,31 +267,24 @@ async function readPhotoAsDataURL(file) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Navigation mobile: logique partagée dans utils.js.
-  initMenuBurger();
-  renderIdees();
-  loadIdeesFromBackend();
+  (async () => {
+    // Navigation mobile: logique partagée dans utils.js.
+    initMenuBurger();
+    await syncAuthStateFromBackend();
+    renderIdees();
+    loadIdeesFromBackend();
 
-  const form = document.getElementById("formIdee");
-  if (form) form.addEventListener("submit", addIdee);
+    const form = document.getElementById("formIdee");
+    if (form) form.addEventListener("submit", addIdee);
 
-  const btnVider = document.getElementById("btnViderIdees");
-  if (btnVider) btnVider.addEventListener("click", clearIdees);
+    const btnVider = document.getElementById("btnViderIdees");
+    if (btnVider) btnVider.addEventListener("click", clearIdees);
 
-  const btnShowAll = document.getElementById("btn-show-all-idees");
-  if (btnShowAll) btnShowAll.addEventListener("click", showAllIdees);
+    const btnShowAll = document.getElementById("btn-show-all-idees");
+    if (btnShowAll) btnShowAll.addEventListener("click", showAllIdees);
 
-  addFilterListenersIdees();
-
-  // Synchronise l'affichage des likes quand la page Communauté en ajoute.
-  window.addEventListener("storage", (evt) => {
-    if (evt.key === "idees_communaute_likes") {
-      likesCommunaute = JSON.parse(
-        localStorage.getItem("idees_communaute_likes") || "{}",
-      );
-      renderIdees();
-    }
-  });
+    addFilterListenersIdees();
+  })();
 });
 
 function validateIdeePayload(idee) {
@@ -343,6 +365,7 @@ async function addIdee(e) {
 
   const idee = {
     id: `ide_local_${Date.now()}`,
+    user_id: profile.userId || "",
     user_nom: resolveCurrentUserName(),
     user_email: resolveCurrentUserEmail(),
     titre,
@@ -363,12 +386,10 @@ async function submitIdeeWithFallback(idee, formEl) {
     return;
   }
 
-  // Envoi backend d'abord; fallback local seulement si backend injoignable.
+  // Envoi backend d'abord.
   const backendCreated = await createIdeeToBackend(idee);
   if (backendCreated.ok) {
-    idees.unshift(backendCreated.data);
-    localStorage.setItem("idees_page", JSON.stringify(idees));
-    renderIdees();
+    await loadIdeesFromBackend();
     formEl.reset();
     alert(IDEE_TEXT.createdBackend);
     return;
@@ -379,11 +400,7 @@ async function submitIdeeWithFallback(idee, formEl) {
     return;
   }
 
-  idees.unshift(idee);
-  localStorage.setItem("idees_page", JSON.stringify(idees));
-  renderIdees();
-  formEl.reset();
-  alert(IDEE_TEXT.createdLocal);
+  alert(IDEE_TEXT.backendUnavailable);
 }
 
 async function loadIdeesFromBackend() {
@@ -396,17 +413,10 @@ async function loadIdeesFromBackend() {
       });
       if (!resp.ok) continue;
 
-      const data = await resp.json();
-      if (!Array.isArray(data)) continue;
+      const data = unwrapApiListResponse(await resp.json());
+      if (!data.length) continue;
 
-      // Fusion backend + local sans doublons.
-      const byKey = new Map();
-      [...data, ...idees].forEach((item) => {
-        const k = String(item.id || item.timestamp || item.titre || "");
-        if (!byKey.has(k)) byKey.set(k, item);
-      });
-      idees = Array.from(byKey.values());
-      localStorage.setItem("idees_page", JSON.stringify(idees));
+      idees = data;
       renderIdees();
       return;
     } catch (e) {
@@ -420,6 +430,7 @@ async function createIdeeToBackend(idee) {
     titre: idee.titre,
     categorie: idee.categorie,
     description: idee.description,
+    user_id: idee.user_id || String(readCurrentProfile().userId || ""),
     user_nom: idee.user_nom || resolveCurrentUserName(),
     user_email: idee.user_email || resolveCurrentUserEmail(),
     photo: idee.photo || "",
@@ -657,7 +668,6 @@ async function deleteIdee(idOrTimestamp) {
     idees = idees.filter(
       (i) => String(i.id || i.timestamp) !== String(idOrTimestamp),
     );
-    localStorage.setItem("idees_page", JSON.stringify(idees));
     renderIdees();
   }
 }
@@ -665,7 +675,6 @@ async function deleteIdee(idOrTimestamp) {
 function clearIdees() {
   if (confirm(IDEE_TEXT.confirmClear)) {
     idees = idees.filter((idee) => !isOwnedByCurrentUser(idee));
-    localStorage.setItem("idees_page", JSON.stringify(idees));
     renderIdees();
   }
 }

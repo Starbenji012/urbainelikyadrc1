@@ -148,42 +148,42 @@ async function readPhotoAsDataURL(file) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  initMenuBurger();
+  (async () => {
+    initMenuBurger();
+    await syncAuthStateFromBackend();
 
-  // Chargement initial: récupération des signalements déjà enregistrés.
-  const saved = localStorage.getItem("signalements");
-  if (saved) {
-    signalements = JSON.parse(saved);
-  }
+    // Chargement initial: on repart des données backend uniquement.
+    signalements = [];
 
-  // Initialisation de la carte et de l'affichage liste/carte.
-  initMap();
-  renderList();
-  renderMap();
-  loadSignalementsFromBackend();
+    // Initialisation de la carte et de l'affichage liste/carte.
+    initMap();
+    renderList();
+    renderMap();
+    loadSignalementsFromBackend();
 
-  // Soumission du formulaire.
-  const form = document.getElementById("form-signalement");
-  if (form) {
-    form.addEventListener("submit", addSignalement);
-  }
+    // Soumission du formulaire.
+    const form = document.getElementById("form-signalement");
+    if (form) {
+      form.addEventListener("submit", addSignalement);
+    }
 
-  // Vider tous les signalements.
-  const btnVider = document.getElementById("btnViderSignalements");
-  if (btnVider) {
-    btnVider.addEventListener("click", clearSignalements);
-  }
+    // Vider tous les signalements.
+    const btnVider = document.getElementById("btnViderSignalements");
+    if (btnVider) {
+      btnVider.addEventListener("click", clearSignalements);
+    }
 
-  const btnShowAll = document.getElementById("btn-show-all");
-  if (btnShowAll) {
-    btnShowAll.addEventListener("click", showAllSignalements);
-  }
+    const btnShowAll = document.getElementById("btn-show-all");
+    if (btnShowAll) {
+      btnShowAll.addEventListener("click", showAllSignalements);
+    }
 
-  installAddressLivePreview();
-  addFilterListeners();
-  setAddressStatus("info", ADDRESS_STATUS_TEXT.prompt);
+    installAddressLivePreview();
+    addFilterListeners();
+    setAddressStatus("info", ADDRESS_STATUS_TEXT.prompt);
 
-  updateTotalSignalements();
+    updateTotalSignalements();
+  })();
 });
 
 async function loadSignalementsFromBackend() {
@@ -196,24 +196,10 @@ async function loadSignalementsFromBackend() {
       });
       if (!resp.ok) continue;
 
-      const data = await resp.json();
-      if (!Array.isArray(data)) continue;
+      const data = unwrapApiListResponse(await resp.json());
+      if (!data.length) continue;
 
-      // Fusion backend + local pour éviter de perdre des brouillons locaux.
-      const mapByKey = new Map();
-      [...data, ...signalements].forEach((sig) => {
-        const k = String(
-          sig?.id ||
-            sig?.timestamp ||
-            `${sig?.titre || ""}-${sig?.lat || ""}-${sig?.lng || ""}`,
-        );
-        if (!mapByKey.has(k)) {
-          mapByKey.set(k, sig);
-        }
-      });
-
-      signalements = Array.from(mapByKey.values());
-      localStorage.setItem("signalements", JSON.stringify(signalements));
+      signalements = data;
       renderList();
       renderMap();
       updateTotalSignalements();
@@ -232,6 +218,7 @@ async function createSignalementToBackend(sig) {
     lieu: sig.lieu,
     lat: sig.lat,
     lng: sig.lng,
+    user_id: sig.user_id || String(readCurrentProfile().userId || ""),
     user_nom: sig.user_nom,
     user_email: sig.user_email || "",
     photo: sig.photo || "",
@@ -324,12 +311,42 @@ function resolveCurrentUserEmail() {
     .toLowerCase();
 }
 
+function normalizeIdentityTokens(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function namesReferToSamePerson(profileName, itemName) {
+  const profileTokens = normalizeIdentityTokens(profileName).filter(
+    (token) => token.length > 2,
+  );
+  const itemTokens = normalizeIdentityTokens(itemName).filter(
+    (token) => token.length > 2,
+  );
+
+  if (!profileTokens.length || !itemTokens.length) return false;
+  if (profileTokens.join(" ") === itemTokens.join(" ")) return true;
+
+  const profileInItem = profileTokens.every((token) =>
+    itemTokens.includes(token),
+  );
+  const itemInProfile = itemTokens.every((token) =>
+    profileTokens.includes(token),
+  );
+  return profileInItem || itemInProfile;
+}
+
 function readCurrentProfile() {
   const nom = resolveCurrentUserName();
   const email = resolveCurrentUserEmail();
+  const userId = String(localStorage.getItem("user_id") || "").trim();
   const connected =
     String(localStorage.getItem("auth_connected") || "") === "1";
-  return { connected, nom, email };
+  return { connected, nom, email, userId };
 }
 
 function isOwnedByCurrentUser(item) {
@@ -345,9 +362,11 @@ function isOwnedByCurrentUser(item) {
   const profileNom = String(profile.nom || "")
     .trim()
     .toLowerCase();
+  const itemUserId = String(item?.user_id || "").trim();
 
   if (profile.email && itemEmail) return itemEmail === profile.email;
-  return Boolean(profileNom && itemNom && itemNom === profileNom);
+  if (profile.userId && itemUserId) return itemUserId === profile.userId;
+  return namesReferToSamePerson(profileNom, itemNom);
 }
 
 function getVisibleSignalements() {
@@ -1122,6 +1141,7 @@ async function addSignalement(e) {
     lat: geo.lat,
     lng: geo.lng,
     adresseVerifiee: geo.formattedAddress || geo.displayName || lieu,
+    user_id: profile.userId || "",
     user_nom: resolveCurrentUserName(),
     user_email: resolveCurrentUserEmail(),
     photo: photoDataUrl,
@@ -1135,10 +1155,14 @@ async function addSignalement(e) {
     return;
   }
 
-  const finalSig = backendSig.ok ? backendSig.data : sig;
+  if (!backendSig.ok) {
+    alert(backendSig.message || SIGNALEMENT_TEXT.invalidSignalement);
+    return;
+  }
+
+  const finalSig = backendSig.data;
 
   signalements.unshift(finalSig); // Add to front
-  localStorage.setItem("signalements", JSON.stringify(signalements));
 
   renderList();
   renderMap();
@@ -1630,7 +1654,6 @@ async function deleteSignalement(idOrTimestamp) {
     signalements = signalements.filter(
       (s) => String(s.id || s.timestamp) !== String(idOrTimestamp),
     );
-    localStorage.setItem("signalements", JSON.stringify(signalements));
     renderList();
     renderMap();
     updateTotalSignalements();
@@ -1641,7 +1664,6 @@ function clearSignalements() {
   if (confirm(SIGNALEMENT_TEXT.confirmClear)) {
     // En page personnelle: on ne retire que les signalements du compte connecté.
     signalements = signalements.filter((sig) => !isOwnedByCurrentUser(sig));
-    localStorage.setItem("signalements", JSON.stringify(signalements));
     renderList();
     renderMap();
     updateTotalSignalements();

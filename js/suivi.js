@@ -63,7 +63,7 @@ function initMap() {
  * Charge et affiche les signalements sur la carte
  */
 async function loadAndDisplaySignalements() {
-  // Recuperer les signalements depuis le backend (avec fallback localStorage).
+  // Recuperer les signalements depuis le backend uniquement.
   try {
     let apiData = null;
 
@@ -77,8 +77,8 @@ async function loadAndDisplaySignalements() {
 
         if (!resp.ok) continue;
 
-        const data = await resp.json();
-        if (Array.isArray(data)) {
+        const data = unwrapApiListResponse(await resp.json());
+        if (data.length) {
           apiData = data;
           break;
         }
@@ -87,15 +87,10 @@ async function loadAndDisplaySignalements() {
       }
     }
 
-    if (Array.isArray(apiData)) {
-      signalements = apiData;
-    } else {
-      // Fallback: utile quand le backend est indisponible dans l'environnement local.
-      signalements = JSON.parse(localStorage.getItem("signalements") || "[]");
-    }
+    signalements = Array.isArray(apiData) ? apiData : [];
   } catch (err) {
     console.error("Erreur réseau lors du chargement des signalements", err);
-    signalements = JSON.parse(localStorage.getItem("signalements") || "[]");
+    signalements = [];
   }
 
   // Nettoyer les marqueurs existants
@@ -624,7 +619,7 @@ function setupCarouselSignalements() {
   prepareInfiniteCarouselSignalements(carousel);
 
   const baseCount = Number(carousel.dataset.baseCount || 0);
-  if (baseCount <= MIN_CARDS_FOR_AUTO_SCROLL) {
+  if (baseCount < MIN_CARDS_FOR_AUTO_SCROLL) {
     carousel.scrollLeft = 0;
     return;
   }
@@ -676,7 +671,7 @@ function prepareInfiniteCarouselSignalements(carousel) {
   const originalCount = originals.length;
   carousel.dataset.baseCount = String(originalCount);
 
-  if (originalCount <= MIN_CARDS_FOR_AUTO_SCROLL) {
+  if (originalCount < MIN_CARDS_FOR_AUTO_SCROLL) {
     carousel.dataset.loopSpan = "0";
     carousel.scrollLeft = 0;
     return;
