@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.boxicons.com/fonts/basic/boxicons.min.css" rel="stylesheet">
+    <link href="https://cdn.boxicons.com/fonts/brands/boxicons-brands.min.css" rel="stylesheet">
+    <link rel="shortcut icon" href="../img/logo 2.png">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/connexion.css">
+    <link rel="stylesheet" href="../css/nav-mobile-fix.css">
+    <link rel="stylesheet" href="../css/layout-global-fix.css">
+    <title>Connexion administration</title>
+</head>
+
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="navlogo">
+                <img src="../img/logo.png" alt="urbainelikyadrc" class="logo">
+            </div>
+            <ul class="navigation-menu">
+                <li><a href="index.html">Accueil</a></li>
+                <li><a href="admin-login.html" class="btn-connexion">Connexion</a></li>
+            </ul>
+            <div class="menu-burger" id="menu-burger">
+                <i class='bx bx-menu'></i>
+            </div>
+        </nav>
+    </header>
+
+    <main class="page-connexion">
+        <div class="hero-overlay"></div>
+        <section class="formulaire-section" id="formulaire-section">
+            <div class="formulaire-connexion-inscription">
+                <div class="form connexion active">
+                    <button class="btn-retour" id="btn-retour" type="button"
+                        onclick="window.location.href='index.html'">
+                        <i class='bx bx-arrow-back'></i> Retour
+                    </button>
+
+                    <div class="formulaire" id="adminLoginFormWrap">
+                        <div class="form-group">
+                            <h2>Connexion administration</h2>
+                            <p>Accès réservé aux comptes administrateur et super admin.</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="adminEmail">Email</label>
+                            <input type="email" id="adminEmail" name="adminEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="adminPassword">Mot de passe</label>
+                            <input type="password" id="adminPassword" name="adminPassword" required>
+                        </div>
+                        <div class="form-group">
+                            <button type="button" class="btn-envoyer" id="adminLoginBtn">Connexion admin</button>
+                        </div>
+                        <div class="form-group">
+                            <p><a href="connexion.html" class="Switch">Aller à la connexion utilisateur</a></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-contenaire">
+            <div class="footer-section">
+                <h3><span class="couleur-part1">Urbain</span>ElikyaDRC</h3>
+                <p>Plateforme dédiée à l'amélioration de l'urbanisme et à la participation citoyenne en République
+                    Démocratique du Congo.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Liens Rapides</h3>
+                <ul>
+                    <li><a href="index.html">Accueil</a></li>
+                    <li><a href="connexion.html">Connexion utilisateur</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contactez-nous</h3>
+                <p>Email: contact@urbainelikyadrc.com</p>
+                <p>Téléphone: +243 843 630 372</p>
+            </div>
+        </div>
+        <div class="footer-bottom">© 2025 Urbain ElikyaDRC - Tous droits réservés.</div>
+    </footer>
+
+    <script src="../js/utils.js"></script>
+    <script src="../js/admin-login.js"></script>
+</body>
+
+</html>
